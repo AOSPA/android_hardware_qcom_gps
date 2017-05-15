@@ -808,12 +808,7 @@ GnssAdapter::gnssDeleteAidingDataCommand(GnssAidingData& data)
             mData(data) {}
         inline virtual void proc() const {
             LocationError err = LOCATION_ERROR_SUCCESS;
-            #ifdef TARGET_BUILD_VARIANT_USER
-                err = LOCATION_ERROR_NOT_SUPPORTED;
-            #endif
-            if (LOCATION_ERROR_SUCCESS == err) {
-                err = mApi.deleteAidingData(mData);
-            }
+            err = mApi.deleteAidingData(mData);
             mAdapter.reportResponse(err, mSessionId);
         }
     };
@@ -2007,9 +2002,9 @@ GnssAdapter::reportNmeaEvent(const char* nmea, size_t length, bool fromUlp)
                              size_t length) :
             LocMsg(),
             mAdapter(adapter),
-            mNmea(new char[length]),
+            mNmea(new char[length+1]),
             mLength(length) {
-                memcpy((void*)mNmea, (void*)nmea, length);
+                strlcpy((char*)mNmea, nmea, length+1);
             }
         inline virtual ~MsgReportNmea()
         {
