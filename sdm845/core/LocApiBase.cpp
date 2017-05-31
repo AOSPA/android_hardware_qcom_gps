@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2018 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -143,6 +143,18 @@ LOC_API_ADAPTER_EVENT_MASK_T LocApiBase::getEvtMask()
     TO_ALL_LOCADAPTERS(mask |= mLocAdapters[i]->getEvtMask());
 
     return mask & ~mExcludedMask;
+}
+
+bool LocApiBase::isMaster()
+{
+    bool isMaster = false;
+
+    for (int i = 0;
+            !isMaster && i < MAX_ADAPTERS && NULL != mLocAdapters[i];
+            i++) {
+        isMaster |= mLocAdapters[i]->isAdapterMaster();
+    }
+    return isMaster;
 }
 
 bool LocApiBase::isInSession()
@@ -607,7 +619,7 @@ void LocApiBase::
 DEFAULT_IMPL()
 
 int LocApiBase::
-    getGpsLock()
+    getGpsLock(uint8_t /*subType*/)
 DEFAULT_IMPL(-1)
 
 LocationError LocApiBase::
