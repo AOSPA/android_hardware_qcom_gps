@@ -62,7 +62,8 @@ GnssAdapter::GnssAdapter() :
     mControlCallbacks(),
     mPowerVoteId(0),
     mNiData(),
-    mAgpsManager()
+    mAgpsManager(),
+    mAgpsCbInfo()
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mUlpPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -1095,7 +1096,7 @@ GnssAdapter::requestCapabilitiesCommand(LocationAPI* client)
                 return;
             }
 
-            LocationCapabilitiesMask mask = {};
+            LocationCapabilitiesMask mask = 0;
             // time based tracking always supported
             mask |= LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT;
             if (mApi.isMessageSupported(LOC_API_ADAPTER_MESSAGE_DISTANCE_BASE_LOCATION_BATCHING)){
@@ -1922,7 +1923,12 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
     }
 
     if (NMEA_PROVIDER_AP == ContextBase::mGps_conf.NMEA_PROVIDER && !mTrackingSessions.empty()) {
-        uint8_t generate_nmea = (reported && status != LOC_SESS_FAILURE);
+        /*Only BlankNMEA sentence needs to be processed and sent, if both lat, long is 0 &
+          horReliability is not set. */
+        bool blank_fix = ((0 == ulpLocation.gpsLocation.latitude) &&
+                          (0 == ulpLocation.gpsLocation.longitude) &&
+                          (LOC_RELIABILITY_NOT_SET == locationExtended.horizontal_reliability));
+        uint8_t generate_nmea = (reported && status != LOC_SESS_FAILURE && !blank_fix);
         std::vector<std::string> nmeaArraystr;
         loc_nmea_generate_pos(ulpLocation, locationExtended, generate_nmea, nmeaArraystr);
         for (auto sentence : nmeaArraystr) {
@@ -2301,7 +2307,7 @@ GnssAdapter::reportSvPolynomialEvent(GnssSvPolynomial &svPolynomial)
 }
 
 /* INIT LOC AGPS MANAGER */
-void GnssAdapter::initAgpsCommand(void* statusV4Cb){
+void GnssAdapter::initAgpsCommand(const AgpsCbInfo& cbInfo){
 
     LOC_LOGI("GnssAdapter::initAgpsCommand");
 
@@ -2416,10 +2422,20 @@ void GnssAdapter::initAgpsCommand(void* statusV4Cb){
         }
     };
 
+    if (mAgpsCbInfo.cbPriority > cbInfo.cbPriority) {
+        LOC_LOGI("Higher priority AGPS CB already registered (%d > %d) !",
+                mAgpsCbInfo.cbPriority, cbInfo.cbPriority);
+        return;
+    } else {
+        mAgpsCbInfo = cbInfo;
+        LOC_LOGI("Registering AGPS CB 0x%x with priority %d",
+                mAgpsCbInfo.statusV4Cb, mAgpsCbInfo.cbPriority);
+    }
+
     /* Send message to initialize AGPS Manager */
     sendMsg(new AgpsMsgInit(
                 &mAgpsManager,
-                (AgpsFrameworkInterface::AgnssStatusIpV4Cb)statusV4Cb,
+                (AgpsFrameworkInterface::AgnssStatusIpV4Cb)cbInfo.statusV4Cb,
                 atlOpenStatusCb, atlCloseStatusCb,
                 dsClientInitFn, dsClientOpenAndStartDataCallFn,
                 dsClientStopDataCallFn, dsClientCloseDataCallFn,
@@ -2725,7 +2741,7 @@ void GnssAdapter::convertSatelliteInfo(std::vector<GnssDebugSatelliteInfo>& out,
     }
 
     // extract each sv info from systemstatus report
-    for(uint32_t i=0; i<svid_num; i++) {
+    for(uint32_t i=0; i<svid_num && (svid_idx+i)<SV_ALL_NUM; i++) {
 
         GnssDebugSatelliteInfo s = {};
         s.size = sizeof(s);
