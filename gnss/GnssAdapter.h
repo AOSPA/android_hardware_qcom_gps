@@ -106,10 +106,12 @@ class GnssAdapter : public LocAdapterBase {
     // This must be initialized via initAgps()
     AgpsManager mAgpsManager;
     AgpsCbInfo mAgpsCbInfo;
-    XtraSystemStatusObserver mXtraObserver;
+    void initAgps(const AgpsCbInfo& cbInfo);
 
     /* === SystemStatus ===================================================================== */
     SystemStatus* mSystemStatus;
+    std::string mServerUrl;
+    XtraSystemStatusObserver mXtraObserver;
 
     /*==== CONVERSION ===================================================================*/
     static void convertOptions(LocPosMode& out, const LocationOptions& options);
@@ -150,6 +152,7 @@ public:
     LocationCallbacks getClientCallbacks(LocationAPI* client);
     LocationCapabilitiesMask getCapabilities();
     void broadcastCapabilities(LocationCapabilitiesMask);
+    LocationError setSuplHostServer(const char* server, int port);
 
     /* ==== TRACKING ======================================================================= */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
@@ -170,7 +173,7 @@ public:
     void saveTrackingSession(LocationAPI* client, uint32_t sessionId,
                              const LocationOptions& options);
     void eraseTrackingSession(LocationAPI* client, uint32_t sessionId);
-    void setUlpPositionMode(const LocPosMode& mode) { mUlpPositionMode = mode; }
+    bool setUlpPositionMode(const LocPosMode& mode);
     LocPosMode& getUlpPositionMode() { return mUlpPositionMode; }
     LocationError startTrackingMultiplex(const LocationOptions& options);
     LocationError startTracking(const LocationOptions& options);
@@ -198,10 +201,10 @@ public:
     uint32_t* gnssUpdateConfigCommand(GnssConfig config);
     uint32_t gnssDeleteAidingDataCommand(GnssAidingData& data);
 
+    void initDefaultAgpsCommand();
     void initAgpsCommand(const AgpsCbInfo& cbInfo);
-    void dataConnOpenCommand(
-            AGpsExtType agpsType,
-            const char* apnName, int apnLen, LocApnIpType ipType);
+    void dataConnOpenCommand(AGpsExtType agpsType,
+            const char* apnName, int apnLen, AGpsBearerType bearerType);
     void dataConnClosedCommand(AGpsExtType agpsType);
     void dataConnFailedCommand(AGpsExtType agpsType);
 
@@ -215,6 +218,8 @@ public:
     void setPowerVoteId(uint32_t id) { mPowerVoteId = id; }
     uint32_t getPowerVoteId() { return mPowerVoteId; }
     bool resolveInAddress(const char* hostAddress, struct in_addr* inAddress);
+    virtual bool isInSession() { return !mTrackingSessions.empty(); }
+    void initDefaultAgps();
 
     /* ==== REPORTS ======================================================================== */
     /* ======== EVENTS ====(Called from QMI/ULP Thread)===================================== */
@@ -238,6 +243,8 @@ public:
     virtual bool reportDataCallClosed();
 
     /* ======== UTILITIES ================================================================= */
+    bool needReport(const UlpLocation& ulpLocation,
+            enum loc_sess_status status, LocPosTechMask techMask);
     void reportPosition(const UlpLocation &ulpLocation,
                         const GpsLocationExtended &locationExtended,
                         enum loc_sess_status status,
@@ -254,6 +261,8 @@ public:
 
     /*==== SYSTEM STATUS ================================================================*/
     inline SystemStatus* getSystemStatus(void) { return mSystemStatus; }
+    std::string& getServerUrl(void) { return mServerUrl; }
+    void setServerUrl(const char* server) { mServerUrl.assign(server); }
 
     /*==== CONVERSION ===================================================================*/
     static uint32_t convertGpsLock(const GnssConfigGpsLock gpsLock);
@@ -276,10 +285,6 @@ public:
 
     void injectLocationCommand(double latitude, double longitude, float accuracy);
     void injectTimeCommand(int64_t time, int64_t timeReference, int32_t uncertainty);
-
-    inline void updateConnectionStatusCommand(bool connected, uint8_t type) {
-        mXtraObserver.updateConnectionStatus(connected, type);
-    }
 
 };
 
