@@ -164,7 +164,7 @@ void LocApiBase::addAdapter(LocAdapterBase* adapter)
         if (mLocAdapters[i] == NULL) {
             mLocAdapters[i] = adapter;
             mMsgTask->sendMsg(new LocOpenMsg(this,
-                                             (adapter->getEvtMask())));
+                    mMask | adapter->getEvtMask()));
             break;
         }
     }
@@ -208,7 +208,7 @@ void LocApiBase::removeAdapter(LocAdapterBase* adapter)
 
 void LocApiBase::updateEvtMask()
 {
-    mMsgTask->sendMsg(new LocOpenMsg(this, getEvtMask()));
+    open(getEvtMask());
 }
 
 void LocApiBase::handleEngineUpEvent()
