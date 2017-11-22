@@ -32,6 +32,7 @@
 #include <vector>
 #include <stdint.h>
 #include <functional>
+#include <list>
 
 #define GNSS_NI_REQUESTOR_MAX  256
 #define GNSS_NI_MESSAGE_ID_MAX 2048
@@ -138,6 +139,10 @@ typedef enum {
     LOCATION_CAPABILITIES_GNSS_MSB_BIT                      = (1<<6),
     // supports startTracking/startBatching API with LocationOptions.mode of MSA (MS Assisted)
     LOCATION_CAPABILITIES_GNSS_MSA_BIT                      = (1<<7),
+    // supports debug nmea sentences in the debugNmeaCallback
+    LOCATION_CAPABILITIES_DEBUG_NMEA_BIT                    = (1<<8),
+    // support outdoor trip batching
+    LOCATION_CAPABILITIES_OUTDOOR_TRIP_BATCHING_BIT         = (1<<9)
 } LocationCapabilitiesBits;
 
 typedef enum {
@@ -172,6 +177,9 @@ typedef uint16_t GnssConfigLppeControlPlaneMask;
 typedef enum {
     GNSS_CONFIG_LPPE_CONTROL_PLANE_DBH_BIT                  = (1<<0), // DBH
     GNSS_CONFIG_LPPE_CONTROL_PLANE_WLAN_AP_MEASUREMENTS_BIT = (1<<1), // WLAN_AP_MEASUREMENTS
+    GNSS_CONFIG_LPPE_CONTROL_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2), // SRN_AP_MEASUREMENTS
+    GNSS_CONFIG_LPPE_CONTROL_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
+                                                             // SENSOR_BARO_MEASUREMENTS
 } GnssConfigLppeControlPlaneBits;
 
 // Technology for LPPe User Plane
@@ -179,6 +187,9 @@ typedef uint16_t GnssConfigLppeUserPlaneMask;
 typedef enum {
     GNSS_CONFIG_LPPE_USER_PLANE_DBH_BIT                  = (1<<0), // DBH
     GNSS_CONFIG_LPPE_USER_PLANE_WLAN_AP_MEASUREMENTS_BIT = (1<<1), // WLAN_AP_MEASUREMENTS
+    GNSS_CONFIG_LPPE_USER_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2), // SRN_AP_MEASUREMENTS
+    GNSS_CONFIG_LPPE_USER_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
+                                                            // SENSOR_BARO_MEASUREMENTS
 } GnssConfigLppeUserPlaneBits;
 
 // Positioning Protocol on A-GLONASS system
@@ -295,6 +306,18 @@ typedef enum {
     GNSS_SUPL_MODE_MSB,
     GNSS_SUPL_MODE_MSA,
 } GnssSuplMode;
+
+typedef enum {
+    BATCHING_MODE_ROUTINE = 0,   // positions are reported when batched positions memory is full
+    BATCHING_MODE_TRIP,          // positions are reported when a certain distance is covered
+    BATCHING_MODE_NO_AUTO_REPORT // no report of positions automatically, instead queried on demand
+} BatchingMode;
+
+typedef enum {
+    BATCHING_STATUS_TRIP_COMPLETED = 0,
+    BATCHING_STATUS_POSITION_AVAILABE,
+    BATCHING_STATUS_POSITION_UNAVAILABLE
+} BatchingStatus;
 
 typedef uint16_t GnssMeasurementsAdrStateMask;
 typedef enum {
@@ -436,6 +459,16 @@ typedef struct  {
                           // gnssMeasurementsCallback may not be called
     GnssSuplMode mode;    // Standalone/MS-Based/MS-Assisted
 } LocationOptions;
+
+typedef struct {
+    size_t size;
+    BatchingMode batchingMode;
+} BatchingOptions;
+
+typedef struct {
+    size_t size;
+    BatchingStatus batchingStatus;
+} BatchingStatusInfo;
 
 typedef struct {
     size_t size;                            // set to sizeof(GeofenceOption)
@@ -655,8 +688,14 @@ typedef std::function<void(
    broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
     size_t count,      // number of locations in array
-    Location* location  // array of locations
+    Location* location, // array of locations
+    BatchingOptions batchingOptions // Batching options
 )> batchingCallback;
+
+typedef std::function<void(
+    BatchingStatusInfo batchingStatus, // batch status
+    std::list<uint32_t> & listOfCompletedTrips
+)> batchingStatusCallback;
 
 /* Gives GNSS Location information, optional can be NULL
     gnssLocationInfoCallback is called only during a tracking session
@@ -719,6 +758,7 @@ typedef struct {
     gnssSvCallback gnssSvCb;                         // optional
     gnssNmeaCallback gnssNmeaCb;                     // optional
     gnssMeasurementsCallback gnssMeasurementsCb;     // optional
+    batchingStatusCallback batchingStatusCb;         // optional
 } LocationCallbacks;
 
 class LocationAPI
@@ -786,7 +826,7 @@ public:
                 LOCATION_ERROR_CALLBACK_MISSING if no batchingCallback was passed in createInstance
                 LOCATION_ERROR_INVALID_PARAMETER if a parameter is invalid
                 LOCATION_ERROR_NOT_SUPPORTED if batching is not supported */
-    uint32_t startBatching(LocationOptions&); // returns session id
+    uint32_t startBatching(LocationOptions&, BatchingOptions&); // returns session id
 
     /* stopBatching stops a batching session associated with id parameter.
         responseCallback returns:
@@ -799,7 +839,7 @@ public:
                 LOCATION_ERROR_SUCCESS if successful
                 LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameters are invalid
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a batching session */
-    void updateBatchingOptions(uint32_t id, LocationOptions&);
+    void updateBatchingOptions(uint32_t id, LocationOptions&, BatchingOptions&);
 
     /* getBatchedLocations gets a number of locations that are currently stored/batched
        on the low power processor, delivered by the batchingCallback passed in createInstance.

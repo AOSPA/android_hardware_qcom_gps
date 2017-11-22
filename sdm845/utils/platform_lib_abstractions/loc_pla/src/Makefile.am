@@ -1,11 +1,11 @@
 AM_CFLAGS = \
      $(LOCSTUB_CFLAGS) \
+     -I$(WORKSPACE)/hardware/qcom/gps/utils/ \
      -I../include \
      -D__func__=__PRETTY_FUNCTION__ \
      -fno-short-enums
 
 h_sources = \
-    ../include/platform_lib_android_runtime.h \
     ../include/platform_lib_gettid.h \
     ../include/platform_lib_includes.h \
     ../include/platform_lib_log_util.h \
@@ -18,7 +18,6 @@ library_includedir = $(pkgincludedir)
 library_include_HEADERS = $(h_sources)
 
 libloc_pla_la_SOURCES = \
-    platform_lib_android_runtime.cpp \
     platform_lib_gettid.cpp \
     platform_lib_log_util.cpp \
     platform_lib_property_service.cpp \

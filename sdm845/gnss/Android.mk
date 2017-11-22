@@ -21,7 +21,8 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_SRC_FILES += \
     location_gnss.cpp \
     GnssAdapter.cpp \
-    Agps.cpp
+    Agps.cpp \
+    XtraSystemStatusObserver.cpp
 
 LOCAL_CFLAGS += \
      -fno-short-enums \
@@ -30,11 +31,13 @@ ifeq ($(TARGET_BUILD_VARIANT),user)
    LOCAL_CFLAGS += -DTARGET_BUILD_VARIANT_USER
 endif
 
-LOCAL_C_INCLUDES:= \
-    $(TARGET_OUT_HEADERS)/gps.utils \
-    $(TARGET_OUT_HEADERS)/libloc_core \
-    $(TARGET_OUT_HEADERS)/libloc_pla \
-    $(TARGET_OUT_HEADERS)/liblocation_api
+LOCAL_HEADER_LIBRARIES := \
+    libgps.utils_headers \
+    libloc_core_headers \
+    libloc_pla_headers \
+    liblocation_api_headers
+
+LOCAL_CFLAGS += $(GNSS_CFLAGS)
 
 LOCAL_PRELINK_MODULE := false
 

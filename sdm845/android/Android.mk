@@ -24,11 +24,12 @@ LOCAL_SRC_FILES += \
     location_api/MeasurementAPIClient.cpp \
 
 LOCAL_C_INCLUDES:= \
-    $(LOCAL_PATH)/location_api \
-    $(TARGET_OUT_HEADERS)/gps.utils \
-    $(TARGET_OUT_HEADERS)/libloc_core \
-    $(TARGET_OUT_HEADERS)/libloc_pla \
-    $(TARGET_OUT_HEADERS)/liblocation_api \
+    $(LOCAL_PATH)/location_api
+LOCAL_HEADER_LIBRARIES := \
+    libgps.utils_headers \
+    libloc_core_headers \
+    libloc_pla_headers \
+    liblocation_api_headers
 
 LOCAL_SHARED_LIBRARIES := \
     liblog \
@@ -45,6 +46,7 @@ LOCAL_SHARED_LIBRARIES += \
     libloc_pla \
     liblocation_api \
 
+LOCAL_CFLAGS += $(GNSS_CFLAGS)
 include $(BUILD_SHARED_LIBRARY)
 
 BUILD_GNSS_HIDL_SERVICE := true
@@ -64,11 +66,12 @@ LOCAL_SRC_FILES := \
     service.cpp \
 
 LOCAL_C_INCLUDES:= \
-    $(LOCAL_PATH)/location_api \
-    $(TARGET_OUT_HEADERS)/gps.utils \
-    $(TARGET_OUT_HEADERS)/libloc_core \
-    $(TARGET_OUT_HEADERS)/libloc_pla \
-    $(TARGET_OUT_HEADERS)/liblocation_api \
+    $(LOCAL_PATH)/location_api
+LOCAL_HEADER_LIBRARIES := \
+    libgps.utils_headers \
+    libloc_core_headers \
+    libloc_pla_headers \
+    liblocation_api_headers
 
 
 LOCAL_SHARED_LIBRARIES := \
@@ -84,5 +87,6 @@ LOCAL_SHARED_LIBRARIES += \
     libhidltransport \
     android.hardware.gnss@1.0 \
 
+LOCAL_CFLAGS += $(GNSS_CFLAGS)
 include $(BUILD_EXECUTABLE)
 endif # BUILD_GNSS_HIDL_SERVICE

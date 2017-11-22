@@ -30,6 +30,7 @@
 #define LOCATION_INTERFACE_H
 
 #include <LocationAPI.h>
+#include <gps_extended_c.h>
 
 struct GnssInterface {
     size_t size;
@@ -47,13 +48,15 @@ struct GnssInterface {
     void (*disable)(uint32_t id);
     uint32_t* (*gnssUpdateConfig)(GnssConfig config);
     uint32_t (*gnssDeleteAidingData)(GnssAidingData& data);
+    void (*gnssUpdateXtraThrottle)(const bool enabled);
     void (*injectLocation)(double latitude, double longitude, float accuracy);
     void (*injectTime)(int64_t time, int64_t timeReference, int32_t uncertainty);
-    void (*agpsInit)(void* statusV4Cb);
-    void (*agpsDataConnOpen)(short agpsType, const char* apnName, int apnLen, int ipType);
-    void (*agpsDataConnClosed)(short agpsType);
-    void (*agpsDataConnFailed)(short agpsType);
+    void (*agpsInit)(const AgpsCbInfo& cbInfo);
+    void (*agpsDataConnOpen)(AGpsExtType agpsType, const char* apnName, int apnLen, int ipType);
+    void (*agpsDataConnClosed)(AGpsExtType agpsType);
+    void (*agpsDataConnFailed)(AGpsExtType agpsType);
     void (*getDebugReport)(GnssDebugReport& report);
+    void (*updateConnectionStatus)(bool connected, int8_t type);
 };
 
 struct FlpInterface {
@@ -66,9 +69,10 @@ struct FlpInterface {
     uint32_t (*startTracking)(LocationAPI* client, LocationOptions& options);
     void (*updateTrackingOptions)(LocationAPI* client, uint32_t id, LocationOptions& options);
     void (*stopTracking)(LocationAPI* client, uint32_t id);
-    uint32_t (*startBatching)(LocationAPI* client, LocationOptions&);
+    uint32_t (*startBatching)(LocationAPI* client, LocationOptions&, BatchingOptions&);
     void (*stopBatching)(LocationAPI* client, uint32_t id);
-    void (*updateBatchingOptions)(LocationAPI* client, uint32_t id, LocationOptions&);
+    void (*updateBatchingOptions)(LocationAPI* client, uint32_t id, LocationOptions&,
+            BatchingOptions&);
     void (*getBatchedLocations)(LocationAPI* client, uint32_t id, size_t count);
     void (*getPowerStateChanges)(void* powerStateCb);
 };

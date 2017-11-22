@@ -45,6 +45,7 @@ static void stopTracking(LocationAPI* client, uint32_t id);
 
 static void gnssNiResponse(LocationAPI* client, uint32_t id, GnssNiResponse response);
 static uint32_t gnssDeleteAidingData(GnssAidingData& data);
+static void gnssUpdateXtraThrottle(const bool enabled);
 
 static void setControlCallbacks(LocationControlCallbacks& controlCallbacks);
 static uint32_t enable(LocationTechnologyType techType);
@@ -54,11 +55,12 @@ static uint32_t* gnssUpdateConfig(GnssConfig config);
 static void injectLocation(double latitude, double longitude, float accuracy);
 static void injectTime(int64_t time, int64_t timeReference, int32_t uncertainty);
 
-static void agpsInit(void* statusV4Cb);
+static void agpsInit(const AgpsCbInfo& cbInfo);
 static void agpsDataConnOpen(AGpsExtType agpsType, const char* apnName, int apnLen, int ipType);
 static void agpsDataConnClosed(AGpsExtType agpsType);
 static void agpsDataConnFailed(AGpsExtType agpsType);
 static void getDebugReport(GnssDebugReport& report);
+static void updateConnectionStatus(bool connected, int8_t type);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -76,6 +78,7 @@ static const GnssInterface gGnssInterface = {
     disable,
     gnssUpdateConfig,
     gnssDeleteAidingData,
+    gnssUpdateXtraThrottle,
     injectLocation,
     injectTime,
     agpsInit,
@@ -83,6 +86,7 @@ static const GnssInterface gGnssInterface = {
     agpsDataConnClosed,
     agpsDataConnFailed,
     getDebugReport,
+    updateConnectionStatus,
 };
 
 #ifndef DEBUG_X86
@@ -201,6 +205,13 @@ static uint32_t gnssDeleteAidingData(GnssAidingData& data)
     }
 }
 
+static void gnssUpdateXtraThrottle(const bool enabled)
+{
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->gnssUpdateXtraThrottleCommand(enabled);
+    }
+}
+
 static void injectLocation(double latitude, double longitude, float accuracy)
 {
    if (NULL != gGnssAdapter) {
@@ -215,10 +226,10 @@ static void injectTime(int64_t time, int64_t timeReference, int32_t uncertainty)
    }
 }
 
-static void agpsInit(void* statusV4Cb) {
+static void agpsInit(const AgpsCbInfo& cbInfo) {
 
     if (NULL != gGnssAdapter) {
-        gGnssAdapter->initAgpsCommand(statusV4Cb);
+        gGnssAdapter->initAgpsCommand(cbInfo);
     }
 }
 static void agpsDataConnOpen(
@@ -226,7 +237,7 @@ static void agpsDataConnOpen(
 
     if (NULL != gGnssAdapter) {
         gGnssAdapter->dataConnOpenCommand(
-                agpsType, apnName, apnLen, ipType);
+                agpsType, apnName, apnLen, (AGpsBearerType)ipType);
     }
 }
 static void agpsDataConnClosed(AGpsExtType agpsType) {
@@ -246,5 +257,11 @@ static void getDebugReport(GnssDebugReport& report) {
 
     if (NULL != gGnssAdapter) {
         gGnssAdapter->getDebugReport(report);
+    }
+}
+
+static void updateConnectionStatus(bool connected, int8_t type) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->getSystemStatus()->eventConnectionStatus(connected, type);
     }
 }
