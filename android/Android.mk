@@ -47,6 +47,7 @@ LOCAL_SHARED_LIBRARIES += \
     liblocation_api \
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
+LOCAL_CFLAGS += -Wno-error
 include $(BUILD_SHARED_LIBRARY)
 
 BUILD_GNSS_HIDL_SERVICE := true

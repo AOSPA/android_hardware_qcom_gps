@@ -53,6 +53,7 @@ LOCAL_HEADER_LIBRARIES := \
     liblocation_api_headers
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
+LOCAL_CFLAGS += -Wno-error
 
 include $(BUILD_SHARED_LIBRARY)
 
