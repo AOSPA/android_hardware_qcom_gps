@@ -101,6 +101,7 @@ struct Gnss : public IGnss {
             uint32_t minIntervalMs, uint32_t preferredAccuracyMeters,
             uint32_t preferredTimeMs, bool lowPowerMode) override;
     Return<sp<V1_1::IGnssMeasurement>> getExtensionGnssMeasurement_1_1() override;
+    Return<sp<V1_1::IGnssConfiguration>> getExtensionGnssConfiguration_1_1() override;
 
     // These methods are not part of the IGnss base class.
     GnssAPIClient* getApi();

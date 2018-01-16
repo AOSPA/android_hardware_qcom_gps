@@ -380,6 +380,13 @@ Return<sp<V1_1::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement_1_1() {
     return mGnssMeasurement;
 }
 
+Return<sp<V1_1::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration_1_1() {
+    ENTRY_LOG_CALLFLOW();
+    if (mGnssConfig == nullptr)
+        mGnssConfig = new GnssConfiguration(this);
+    return mGnssConfig;
+}
+
 IGnss* HIDL_FETCH_IGnss(const char* hal) {
     ENTRY_LOG_CALLFLOW();
     IGnss* iface = nullptr;
