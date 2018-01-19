@@ -36,6 +36,7 @@ LOCAL_SHARED_LIBRARIES := \
     libhidlbase \
     libhidltransport \
     libhwbinder \
+    libcutils \
     libutils \
     android.hardware.gnss@1.0 \
     android.hardware.gnss@1.1 \
