@@ -116,7 +116,7 @@ void MeasurementAPIClient::measurementClose() {
 void MeasurementAPIClient::onGnssMeasurementsCb(
         GnssMeasurementsNotification gnssMeasurementsNotification)
 {
-    LOC_LOGD("%s]: (count: %zu active: %zu)",
+    LOC_LOGD("%s]: (count: %zu active: %d)",
             __FUNCTION__, gnssMeasurementsNotification.count, mTracking);
     if (mTracking) {
         if (mGnssMeasurementCbIface != nullptr) {
