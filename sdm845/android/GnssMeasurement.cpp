@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  * Not a Contribution
  */
 /*
@@ -27,7 +27,7 @@
 namespace android {
 namespace hardware {
 namespace gnss {
-namespace V1_0 {
+namespace V1_1 {
 namespace implementation {
 
 void GnssMeasurement::GnssMeasurementDeathRecipient::serviceDied(
@@ -92,8 +92,14 @@ Return<void> GnssMeasurement::close()  {
     return Void();
 }
 
+// Methods from ::android::hardware::gnss::V1_1::IGnssMeasurement follow.
+Return<GnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallback_1_1(
+        const sp<IGnssMeasurementCallback>& callback, bool /*enableFullTracking*/) {
+    return setCallback(callback);
+}
+
 }  // namespace implementation
-}  // namespace V1_0
+}  // namespace V1_1
 }  // namespace gnss
 }  // namespace hardware
 }  // namespace android
