@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,8 +40,13 @@
 namespace android {
 namespace hardware {
 namespace gnss {
-namespace V1_0 {
+namespace V1_1 {
 namespace implementation {
+
+using ::android::hardware::gnss::V1_0::IGnss;
+using ::android::hardware::gnss::V1_0::IGnssCallback;
+using ::android::hardware::gnss::V1_0::IGnssNiCallback;
+using ::android::hardware::gnss::V1_0::GnssLocation;
 
 static void convertGnssSvStatus(GnssSvNotification& in, IGnssCallback::GnssSvStatus& out);
 
@@ -304,7 +309,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask)
     if (gnssCbIface != nullptr) {
         IGnssCallback::GnssSystemInfo gnssInfo;
         if (capabilitiesMask & LOCATION_CAPABILITIES_DEBUG_NMEA_BIT) {
-            gnssInfo.yearOfHw = 2017;
+            gnssInfo.yearOfHw = 2018;
         } else if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
             gnssInfo.yearOfHw = 2016;
         } else {
@@ -432,7 +437,7 @@ void GnssAPIClient::onGnssNmeaCb(GnssNmeaNotification gnssNmeaNotification)
         android::hardware::hidl_string nmeaString;
         nmeaString.setToExternal(gnssNmeaNotification.nmea, gnssNmeaNotification.length);
         auto r = gnssCbIface->gnssNmeaCb(
-            static_cast<GnssUtcTime>(gnssNmeaNotification.timestamp), nmeaString);
+            static_cast<V1_0::GnssUtcTime>(gnssNmeaNotification.timestamp), nmeaString);
         if (!r.isOk()) {
             LOC_LOGE("%s] Error from gnssNmeaCb nmea=%s length=%zu description=%s", __func__,
                 gnssNmeaNotification.nmea, gnssNmeaNotification.length, r.description().c_str());
@@ -482,10 +487,10 @@ static void convertGnssSvStatus(GnssSvNotification& in, IGnssCallback::GnssSvSta
 {
     memset(&out, 0, sizeof(IGnssCallback::GnssSvStatus));
     out.numSvs = in.count;
-    if (out.numSvs > static_cast<uint32_t>(GnssMax::SVS_COUNT)) {
+    if (out.numSvs > static_cast<uint32_t>(V1_0::GnssMax::SVS_COUNT)) {
         LOC_LOGW("%s]: Too many satellites %zd. Clamps to %d.",
-                __FUNCTION__,  out.numSvs, GnssMax::SVS_COUNT);
-        out.numSvs = static_cast<uint32_t>(GnssMax::SVS_COUNT);
+                __FUNCTION__,  out.numSvs, V1_0::GnssMax::SVS_COUNT);
+        out.numSvs = static_cast<uint32_t>(V1_0::GnssMax::SVS_COUNT);
     }
     for (size_t i = 0; i < out.numSvs; i++) {
         IGnssCallback::GnssSvInfo& info = out.gnssSvList[i];
@@ -505,7 +510,7 @@ static void convertGnssSvStatus(GnssSvNotification& in, IGnssCallback::GnssSvSta
 }
 
 }  // namespace implementation
-}  // namespace V1_0
+}  // namespace V1_1
 }  // namespace gnss
 }  // namespace hardware
 }  // namespace android
