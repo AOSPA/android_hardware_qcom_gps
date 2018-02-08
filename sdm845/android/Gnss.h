@@ -50,6 +50,7 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::sp;
+using ::android::hardware::gnss::V1_0::GnssLocation;
 
 struct Gnss : public IGnss {
     Gnss();
@@ -102,6 +103,7 @@ struct Gnss : public IGnss {
             uint32_t preferredTimeMs, bool lowPowerMode) override;
     Return<sp<V1_1::IGnssMeasurement>> getExtensionGnssMeasurement_1_1() override;
     Return<sp<V1_1::IGnssConfiguration>> getExtensionGnssConfiguration_1_1() override;
+    Return<bool> injectBestLocation(const GnssLocation& location) override;
 
     // These methods are not part of the IGnss base class.
     GnssAPIClient* getApi();

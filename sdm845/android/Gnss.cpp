@@ -387,6 +387,11 @@ Return<sp<V1_1::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration_1_1() {
     return mGnssConfig;
 }
 
+Return<bool> Gnss::injectBestLocation(const GnssLocation&) {
+    ENTRY_LOG_CALLFLOW();
+    return true;
+}
+
 IGnss* HIDL_FETCH_IGnss(const char* hal) {
     ENTRY_LOG_CALLFLOW();
     IGnss* iface = nullptr;
