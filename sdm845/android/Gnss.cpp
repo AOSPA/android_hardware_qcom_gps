@@ -327,11 +327,6 @@ Return<sp<V1_0::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement() {
     return mGnssMeasurement;
 }
 
-Return<bool> Gnss::injectBestLocation(const V1_0::GnssLocation& location) {
-    /*?*/
-    return false;
-}
-
 Return<sp<V1_0::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration()  {
     ENTRY_LOG_CALLFLOW();
     mGnssConfig = new GnssConfiguration(this);
