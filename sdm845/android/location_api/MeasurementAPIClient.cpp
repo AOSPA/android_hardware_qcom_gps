@@ -43,7 +43,7 @@ namespace V1_1 {
 namespace implementation {
 
 using ::android::hardware::gnss::V1_0::IGnssMeasurement;
-using ::android::hardware::gnss::V1_0::IGnssMeasurementCallback;
+using ::android::hardware::gnss::V1_1::IGnssMeasurementCallback;
 
 static void convertGnssData(GnssMeasurementsNotification& in,
         IGnssMeasurementCallback::GnssData& out);
@@ -122,7 +122,7 @@ void MeasurementAPIClient::onGnssMeasurementsCb(
         if (mGnssMeasurementCbIface != nullptr) {
             IGnssMeasurementCallback::GnssData gnssData;
             convertGnssData(gnssMeasurementsNotification, gnssData);
-            auto r = mGnssMeasurementCbIface->GnssMeasurementCb(gnssData);
+            auto r = mGnssMeasurementCbIface->gnssMeasurementCb(gnssData);
             if (!r.isOk()) {
                 LOC_LOGE("%s] Error from GnssMeasurementCb description=%s",
                     __func__, r.description().c_str());
@@ -132,8 +132,9 @@ void MeasurementAPIClient::onGnssMeasurementsCb(
 }
 
 static void convertGnssMeasurement(GnssMeasurementsData& in,
-        IGnssMeasurementCallback::GnssMeasurement& out)
+        IGnssMeasurementCallback::GnssMeasurement& out_v1_1)
 {
+    auto& out = out_v1_1.v1_0;
     memset(&out, 0, sizeof(IGnssMeasurementCallback::GnssMeasurement));
     if (in.flags & GNSS_MEASUREMENTS_DATA_SIGNAL_TO_NOISE_RATIO_BIT)
         out.flags |= IGnssMeasurementCallback::GnssMeasurementFlags::HAS_SNR;
@@ -241,13 +242,7 @@ static void convertGnssClock(GnssMeasurementsClock& in, IGnssMeasurementCallback
 static void convertGnssData(GnssMeasurementsNotification& in,
         IGnssMeasurementCallback::GnssData& out)
 {
-    out.measurementCount = in.count;
-    if (out.measurementCount > static_cast<uint32_t>(V1_0::GnssMax::SVS_COUNT)) {
-        LOC_LOGW("%s]: Too many measurement %zd. Clamps to %d.",
-                __FUNCTION__,  out.measurementCount, V1_0::GnssMax::SVS_COUNT);
-        out.measurementCount = static_cast<uint32_t>(V1_0::GnssMax::SVS_COUNT);
-    }
-    for (size_t i = 0; i < out.measurementCount; i++) {
+    for (size_t i = 0; i < in.count; i++) {
         convertGnssMeasurement(in.measurements[i], out.measurements[i]);
     }
     convertGnssClock(in.clock, out.clock);

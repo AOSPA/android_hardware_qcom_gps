@@ -52,8 +52,9 @@ GnssMeasurement::~GnssMeasurement() {
 }
 
 // Methods from ::android::hardware::gnss::V1_0::IGnssMeasurement follow.
+
 Return<IGnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallback(
-        const sp<IGnssMeasurementCallback>& callback)  {
+        const sp<::android::hardware::gnss::V1_0::IGnssMeasurementCallback>& callback)  {
 
     Return<IGnssMeasurement::GnssMeasurementStatus> ret =
         IGnssMeasurement::GnssMeasurementStatus::ERROR_GENERIC;
@@ -71,10 +72,13 @@ Return<IGnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallback(
         return ret;
     }
 
+    return ret;
+/*
     mGnssMeasurementCbIface = callback;
-    mGnssMeasurementCbIface->linkToDeath(mGnssMeasurementDeathRecipient, 0 /*cookie*/);
+    mGnssMeasurementCbIface->linkToDeath(mGnssMeasurementDeathRecipient, 0);
 
     return mApi->measurementSetCallback(callback);
+*/
 }
 
 Return<void> GnssMeasurement::close()  {

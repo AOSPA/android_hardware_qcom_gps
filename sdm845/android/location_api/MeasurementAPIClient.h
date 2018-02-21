@@ -32,7 +32,7 @@
 
 
 #include <android/hardware/gnss/1.1/IGnssMeasurement.h>
-#include <android/hardware/gnss/1.0/IGnssMeasurementCallback.h>
+#include <android/hardware/gnss/1.1/IGnssMeasurementCallback.h>
 #include <LocationAPIClientBase.h>
 #include <hidl/Status.h>
 
@@ -54,14 +54,14 @@ public:
 
     // for GpsMeasurementInterface
     Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> measurementSetCallback(
-            const sp<V1_0::IGnssMeasurementCallback>& callback);
+            const sp<V1_1::IGnssMeasurementCallback>& callback);
     void measurementClose();
 
     // callbacks we are interested in
     void onGnssMeasurementsCb(GnssMeasurementsNotification gnssMeasurementsNotification) final;
 
 private:
-    sp<V1_0::IGnssMeasurementCallback> mGnssMeasurementCbIface;
+    sp<V1_1::IGnssMeasurementCallback> mGnssMeasurementCbIface;
 
     bool mTracking;
 };

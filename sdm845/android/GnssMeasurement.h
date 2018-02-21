@@ -32,7 +32,7 @@ namespace V1_1 {
 namespace implementation {
 
 using ::android::hardware::gnss::V1_1::IGnssMeasurement;
-using ::android::hardware::gnss::V1_0::IGnssMeasurementCallback;
+using ::android::hardware::gnss::V1_1::IGnssMeasurementCallback;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::hardware::hidl_vec;
@@ -49,7 +49,7 @@ struct GnssMeasurement : public IGnssMeasurement {
      * These declarations were generated from IGnssMeasurement.hal.
      */
     Return<GnssMeasurement::GnssMeasurementStatus> setCallback(
-        const sp<IGnssMeasurementCallback>& callback) override;
+        const sp<::android::hardware::gnss::V1_0::IGnssMeasurementCallback>& callback) override;
     Return<void> close() override;
 
     // Methods from ::android::hardware::gnss::V1_1::IGnssMeasurement follow.
