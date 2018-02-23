@@ -327,11 +327,6 @@ Return<sp<V1_0::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement() {
     return mGnssMeasurement;
 }
 
-Return<bool> Gnss::injectBestLocation(const V1_0::GnssLocation& location) {
-    /*?*/
-    return false;
-}
-
 Return<sp<V1_0::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration()  {
     ENTRY_LOG_CALLFLOW();
     mGnssConfig = new GnssConfiguration(this);
@@ -390,6 +385,11 @@ Return<sp<V1_1::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration_1_1() {
     if (mGnssConfig == nullptr)
         mGnssConfig = new GnssConfiguration(this);
     return mGnssConfig;
+}
+
+Return<bool> Gnss::injectBestLocation(const GnssLocation&) {
+    ENTRY_LOG_CALLFLOW();
+    return true;
 }
 
 IGnss* HIDL_FETCH_IGnss(const char* hal) {
