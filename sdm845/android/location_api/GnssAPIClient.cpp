@@ -505,7 +505,7 @@ static void convertGnssSvStatus(GnssSvNotification& in, IGnssCallback::GnssSvSta
     memset(&out, 0, sizeof(IGnssCallback::GnssSvStatus));
     out.numSvs = in.count;
     if (out.numSvs > static_cast<uint32_t>(V1_0::GnssMax::SVS_COUNT)) {
-        LOC_LOGW("%s]: Too many satellites %zd. Clamps to %d.",
+        LOC_LOGW("%s]: Too many satellites %d. Clamps to %d.",
                 __FUNCTION__,  out.numSvs, V1_0::GnssMax::SVS_COUNT);
         out.numSvs = static_cast<uint32_t>(V1_0::GnssMax::SVS_COUNT);
     }
