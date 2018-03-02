@@ -32,7 +32,7 @@
 
 #include <mutex>
 #include <android/hardware/gnss/1.1/IGnssMeasurement.h>
-#include <android/hardware/gnss/1.0/IGnssMeasurementCallback.h>
+#include <android/hardware/gnss/1.1/IGnssMeasurementCallback.h>
 #include <LocationAPIClientBase.h>
 #include <hidl/Status.h>
 
@@ -55,14 +55,19 @@ public:
     // for GpsMeasurementInterface
     Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> measurementSetCallback(
             const sp<V1_0::IGnssMeasurementCallback>& callback);
+    Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> measurementSetCallback_1_1(
+            const sp<IGnssMeasurementCallback>& callback);
     void measurementClose();
+    Return<IGnssMeasurement::GnssMeasurementStatus> startTracking();
 
     // callbacks we are interested in
     void onGnssMeasurementsCb(GnssMeasurementsNotification gnssMeasurementsNotification) final;
 
 private:
-    sp<V1_0::IGnssMeasurementCallback> mGnssMeasurementCbIface;
     std::mutex mMutex;
+    sp<V1_0::IGnssMeasurementCallback> mGnssMeasurementCbIface;
+    sp<IGnssMeasurementCallback> mGnssMeasurementCbIface_1_1;
+
     bool mTracking;
 };
 
