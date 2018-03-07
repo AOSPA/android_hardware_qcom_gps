@@ -52,19 +52,21 @@ static std::string getVersionString() {
         if (std::string::npos == found) {
             continue;
         }
-        s.erase(0, found + 4);
-        s.erase(0, s.find_first_not_of(" "));
-        if (s.find("11:") != 0) {
+
+        // skip over space characters after "CRM:"
+        const char* substr = s.c_str();
+        found += 4;
+        while (0 != substr[found] && isspace(substr[found])) {
+            found++;
+        }
+        if (s.find("11:") != found) {
             continue;
         }
-        s.erase(0, 3);
-        found = s.find("\r");
+        s.erase(0, found + 3);
+
+        found = s.find_first_of("\r\n");
         if (std::string::npos != found) {
-            s.erase(s.begin() + found);
-        }
-        found = s.find("\n");
-        if (std::string::npos != found) {
-            s.erase(s.begin() + found);
+            s.erase(s.begin() + found, s.end());
         }
         version.append(s).append(DELIMITER);
     }
