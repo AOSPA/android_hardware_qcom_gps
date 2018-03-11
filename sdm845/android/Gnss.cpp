@@ -23,10 +23,12 @@
 #include <fstream>
 #include <log_util.h>
 #include <dlfcn.h>
+#include <cutils/properties.h>
 #include "Gnss.h"
 typedef void* (getLocationInterface)();
 
 #define IMAGES_INFO_FILE "/sys/devices/soc0/images"
+#define DELIMITER ";"
 
 namespace android {
 namespace hardware {
@@ -38,6 +40,11 @@ static std::string getVersionString() {
     static std::string version;
     if (!version.empty())
         return version;
+
+    char value[PROPERTY_VALUE_MAX] = {0};
+    property_get("ro.hardware", value, "unknown");
+    version.append(value).append(DELIMITER);
+
     std::ifstream in(IMAGES_INFO_FILE);
     std::string s;
     while(getline(in, s)) {
@@ -59,7 +66,7 @@ static std::string getVersionString() {
         if (std::string::npos != found) {
             s.erase(s.begin() + found);
         }
-        version.append(s).append(";");
+        version.append(s).append(DELIMITER);
     }
     return version;
 }
