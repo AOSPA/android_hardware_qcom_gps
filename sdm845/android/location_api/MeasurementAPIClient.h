@@ -54,15 +54,20 @@ public:
 
     // for GpsMeasurementInterface
     Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> measurementSetCallback(
-            const sp<V1_1::IGnssMeasurementCallback>& callback);
+            const sp<V1_0::IGnssMeasurementCallback>& callback);
+    Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> measurementSetCallback_1_1(
+            const sp<IGnssMeasurementCallback>& callback);
     void measurementClose();
+    Return<IGnssMeasurement::GnssMeasurementStatus> startTracking();
 
     // callbacks we are interested in
     void onGnssMeasurementsCb(GnssMeasurementsNotification gnssMeasurementsNotification) final;
 
 private:
-    sp<V1_1::IGnssMeasurementCallback> mGnssMeasurementCbIface;
     std::mutex mMutex;
+    sp<V1_0::IGnssMeasurementCallback> mGnssMeasurementCbIface;
+    sp<IGnssMeasurementCallback> mGnssMeasurementCbIface_1_1;
+
     bool mTracking;
 };
 
