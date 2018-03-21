@@ -75,11 +75,18 @@ GnssAdapter::GnssAdapter() :
     mAgpsManager(),
     mAgpsCbInfo(),
     mSystemStatus(SystemStatus::getInstance(mMsgTask)),
-    mServerUrl(""),
+    mServerUrl(":"),
     mXtraObserver(mSystemStatus->getOsObserver(), mMsgTask)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mUlpPositionMode.mode = LOC_POSITION_MODE_INVALID;
+
+    pthread_condattr_t condAttr;
+    pthread_condattr_init(&condAttr);
+    pthread_condattr_setclock(&condAttr, CLOCK_MONOTONIC);
+    pthread_cond_init(&mNiData.session.tCond, &condAttr);
+    pthread_cond_init(&mNiData.sessionEs.tCond, &condAttr);
+    pthread_condattr_destroy(&condAttr);
 
     /* Set ATL open/close callbacks */
     AgpsAtlOpenStatusCb atlOpenStatusCb =
@@ -584,21 +591,26 @@ GnssAdapter::setSuplHostServer(const char* server, int port)
     LocationError locErr = LOCATION_ERROR_SUCCESS;
     if (ContextBase::mGps_conf.AGPS_CONFIG_INJECT) {
         char serverUrl[MAX_URL_LEN] = {};
-        int32_t length = 0;
+        int32_t length = -1;
         const char noHost[] = "NONE";
-        if ((NULL == server) || (server[0] == 0) || (port == 0) ||
+
+        locErr = LOCATION_ERROR_INVALID_PARAMETER;
+
+        if ((NULL == server) || (server[0] == 0) ||
                 (strncasecmp(noHost, server, sizeof(noHost)) == 0)) {
-            locErr = LOCATION_ERROR_INVALID_PARAMETER;
-        } else {
+            serverUrl[0] = NULL;
+            length = 0;
+        } else if (port > 0) {
             length = snprintf(serverUrl, sizeof(serverUrl), "%s:%u", server, port);
-            if (length > 0 && strncasecmp(getServerUrl().c_str(),
-                                          serverUrl, sizeof(serverUrl)) != 0) {
-                setServerUrl(serverUrl);
-                locErr = mLocApi->setServer(serverUrl, length);
-                if (locErr != LOCATION_ERROR_SUCCESS) {
-                    LOC_LOGE("%s]:Error while setting SUPL_HOST server:%s",
-                            __func__, serverUrl);
-                }
+        }
+
+        if (length >= 0 && strncasecmp(getServerUrl().c_str(),
+                                       serverUrl, sizeof(serverUrl)) != 0) {
+            setServerUrl(serverUrl);
+            locErr = mLocApi->setServer(serverUrl, length);
+            if (locErr != LOCATION_ERROR_SUCCESS) {
+                LOC_LOGE("%s]:Error while setting SUPL_HOST server:%s",
+                         __func__, serverUrl);
             }
         }
     }
@@ -922,7 +934,7 @@ GnssAdapter::gnssDeleteAidingDataCommand(GnssAidingData& data)
             mAdapter.reportResponse(err, mSessionId);
             SystemStatus* s = mAdapter.getSystemStatus();
             if ((nullptr != s) && (mData.deleteAll)) {
-                s->setDefaultReport();
+                s->setDefaultGnssEngineStates();
             }
         }
     };
@@ -2317,14 +2329,14 @@ static void* niThreadProc(void *args)
     NiSession* pSession = (NiSession*)args;
     int rc = 0;          /* return code from pthread calls */
 
-    struct timeval present_time;
+    struct timespec present_time;
     struct timespec expire_time;
 
     pthread_mutex_lock(&pSession->tLock);
     /* Calculate absolute expire time */
-    gettimeofday(&present_time, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &present_time);
     expire_time.tv_sec  = present_time.tv_sec + pSession->respTimeLeft;
-    expire_time.tv_nsec = present_time.tv_usec * 1000;
+    expire_time.tv_nsec = present_time.tv_nsec;
     LOC_LOGD("%s]: time out set for abs time %ld with delay %d sec",
              __func__, (long)expire_time.tv_sec, pSession->respTimeLeft);
 

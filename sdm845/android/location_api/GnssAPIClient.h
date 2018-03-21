@@ -96,7 +96,6 @@ private:
     LocationAPIControlClient* mControlClient;
     LocationCapabilitiesMask mLocationCapabilitiesMask;
     bool mLocationCapabilitiesCached;
-
     LocationOptions mLocationOptions;
 };
 
