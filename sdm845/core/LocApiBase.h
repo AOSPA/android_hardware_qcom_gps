@@ -134,6 +134,8 @@ public:
     void reportGnssMeasurementData(GnssMeasurementsNotification& measurements, int msInWeek);
     void saveSupportedFeatureList(uint8_t *featureList);
     void reportWwanZppFix(LocGpsLocation &zppLoc);
+    void reportGnssSvIdConfig(const GnssSvIdConfig& config);
+    void reportGnssSvTypeConfig(const GnssSvTypeConfig& config);
 
     // downward calls
     // All below functions are to be defined by adapter specific modules:
@@ -256,6 +258,13 @@ public:
        Check if a feature is supported
       */
     bool isFeatureSupported(uint8_t featureVal);
+
+    /* Requests for SV/Constellation Control */
+    virtual LocationError setBlacklistSv(const GnssSvIdConfig& config);
+    virtual LocationError getBlacklistSv();
+    virtual LocationError setConstellationControl(const GnssSvTypeConfig& config);
+    virtual LocationError getConstellationControl();
+    virtual LocationError resetConstellationControl();
 };
 
 typedef LocApiBase* (getLocApi_t)(const MsgTask* msgTask,

@@ -229,6 +229,7 @@ typedef enum {
     GNSS_CONFIG_FLAGS_EM_PDN_FOR_EM_SUPL_VALID_BIT         = (1<<7),
     GNSS_CONFIG_FLAGS_SUPL_EM_SERVICES_BIT                 = (1<<8),
     GNSS_CONFIG_FLAGS_SUPL_MODE_BIT                        = (1<<9),
+    GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT               = (1<<10)
 } GnssConfigFlagsBits;
 
 typedef enum {
@@ -537,12 +538,22 @@ typedef struct {
     GnssSvOptionsMask gnssSvOptionsMask; // Bitwise OR of GnssSvOptionsBits
 } GnssSv;
 
-typedef struct {
+struct GnssConfigSetAssistanceServer {
     size_t size;             // set to sizeof(GnssConfigSetAssistanceServer)
     GnssAssistanceType type; // SUPL or C2K
     const char* hostName;    // null terminated string
     uint32_t port;           // port of server
-} GnssConfigSetAssistanceServer;
+
+    inline bool equals(const GnssConfigSetAssistanceServer& config) {
+        if (config.type == type && config.port == port &&
+               ((NULL == config.hostName && NULL == hostName) ||
+                (NULL != config.hostName && NULL != hostName &&
+                     0 == strcmp(config.hostName, hostName)))) {
+            return true;
+        }
+        return false;
+    }
+};
 
 typedef struct {
     size_t size;                               // set to sizeof(GnssMeasurementsData)
@@ -602,7 +613,40 @@ typedef struct {
     GnssMeasurementsClock clock; // clock
 } GnssMeasurementsNotification;
 
+typedef uint32_t GnssSvId;
+
+struct GnssSvIdSource{
+    size_t size;                 // set to sizeof(GnssSvIdSource)
+    GnssSvType constellation;    // constellation for the sv to blacklist
+    GnssSvId svId;           // sv id to blacklist
+};
+inline bool operator ==(GnssSvIdSource const& left, GnssSvIdSource const& right) {
+    return left.size == right.size &&
+            left.constellation == right.constellation && left.svId == right.svId;
+}
+
+#define GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK ((uint64_t)0xFFFFFFFFFFFFFFFF)
 typedef struct {
+    size_t size; // set to sizeof(GnssSvIdConfig)
+
+    // GLONASS - SV 65 maps to bit 0
+#define GNSS_SV_CONFIG_GLO_INITIAL_SV_ID 65
+    uint64_t gloBlacklistSvMask;
+
+    // BEIDOU - SV 201 maps to bit 0
+#define GNSS_SV_CONFIG_BDS_INITIAL_SV_ID 201
+    uint64_t bdsBlacklistSvMask;
+
+    // QZSS - SV 193 maps to bit 0
+#define GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID 193
+    uint64_t qzssBlacklistSvMask;
+
+    // GAL - SV 301 maps to bit 0
+#define GNSS_SV_CONFIG_GAL_INITIAL_SV_ID 301
+    uint64_t galBlacklistSvMask;
+} GnssSvIdConfig;
+
+struct GnssConfig{
     size_t size;  // set to sizeof(GnssConfig)
     GnssConfigFlagsMask flags; // bitwise OR of GnssConfigFlagsBits to mark which params are valid
     GnssConfigGpsLock gpsLock;
@@ -615,7 +659,26 @@ typedef struct {
     GnssConfigEmergencyPdnForEmergencySupl emergencyPdnForEmergencySupl;
     GnssConfigSuplEmergencyServices suplEmergencyServices;
     GnssConfigSuplModeMask suplModeMask; //bitwise OR of GnssConfigSuplModeBits
-} GnssConfig;
+    std::vector<GnssSvIdSource> blacklistedSvIds;
+
+    inline bool equals(const GnssConfig& config) {
+        if (flags == config.flags &&
+                gpsLock == config.gpsLock &&
+                suplVersion == config.suplVersion &&
+                assistanceServer.equals(config.assistanceServer) &&
+                lppProfile == config.lppProfile &&
+                lppeControlPlaneMask == config.lppeControlPlaneMask &&
+                lppeUserPlaneMask == config.lppeUserPlaneMask &&
+                aGlonassPositionProtocolMask == config.aGlonassPositionProtocolMask &&
+                emergencyPdnForEmergencySupl == config.emergencyPdnForEmergencySupl &&
+                suplEmergencyServices == config.suplEmergencyServices &&
+                suplModeMask == config.suplModeMask  &&
+                blacklistedSvIds == config.blacklistedSvIds) {
+            return true;
+        }
+        return false;
+    }
+};
 
 typedef struct {
     size_t size;                        // set to sizeof
@@ -743,6 +806,11 @@ typedef std::function<void(
 typedef std::function<void(
     GnssMeasurementsNotification gnssMeasurementsNotification
 )> gnssMeasurementsCallback;
+
+/* Provides the current GNSS configuration to the client */
+typedef std::function<void(
+    GnssConfig& config
+)> gnssConfigCallback;
 
 typedef struct {
     size_t size; // set to sizeof(LocationCallbacks)
@@ -908,6 +976,7 @@ typedef struct {
     size_t size; // set to sizeof(LocationControlCallbacks)
     responseCallback responseCb;                     // mandatory
     collectiveResponseCallback collectiveResponseCb; // mandatory
+    gnssConfigCallback gnssConfigCb;                 // optional
 } LocationControlCallbacks;
 
 class LocationControlAPI
@@ -960,6 +1029,21 @@ public:
                 LOCATION_ERROR_INVALID_PARAMETER if any other parameters are invalid
                 LOCATION_ERROR_GENERAL_FAILURE if failure for any other reason */
     uint32_t* gnssUpdateConfig(GnssConfig config);
+
+    /* gnssGetConfig fetches the current constellation and SV configuration
+       on the GNSS engine.
+       Returns a session id array with an id for each of the bits set in
+       the mask parameter, order from low bits to high bits.
+       Response is sent via the registered gnssConfigCallback.
+       This effect is global for all clients of LocationAPI
+       collectiveResponseCallback returns:
+           LOCATION_ERROR_SUCCESS if session was successful
+           LOCATION_ERROR_INVALID_PARAMETER if any parameter is invalid
+           LOCATION_ERROR_CALLBACK_MISSING If no gnssConfigCallback
+                                           was passed in createInstance
+           LOCATION_ERROR_NOT_SUPPORTED If read of requested configuration
+                                        is not supported */
+    uint32_t* gnssGetConfig(GnssConfigFlagsMask mask);
 
     /* delete specific gnss aiding data for testing, which returns a session id
        that will be returned in responseCallback to match command with response.

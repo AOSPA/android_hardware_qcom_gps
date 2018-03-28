@@ -94,10 +94,13 @@ class GnssAdapter : public LocAdapterBase {
     GnssSvUsedInPosition mGnssSvIdUsedInPosition;
     bool mGnssSvIdUsedInPosAvail;
 
-    /* ==== CONTROL ======================================================================== */
+    /* ==== CONTROL ================================================================= */
     LocationControlCallbacks mControlCallbacks;
     uint32_t mPowerVoteId;
     uint32_t mNmeaMask;
+    GnssSvIdConfig mGnssSvIdConfig;
+    GnssSvTypeConfig mGnssSvTypeConfig;
+    GnssSvTypeConfigCallback mGnssSvTypeConfigCb;
 
     /* ==== NI ============================================================================= */
     NiData mNiData;
@@ -191,7 +194,7 @@ public:
     bool hasNiNotifyCallback(LocationAPI* client);
     NiData& getNiData() { return mNiData; }
 
-    /* ==== CONTROL ======================================================================== */
+    /* ==== CONTROL CLIENT ================================================================= */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
     uint32_t enableCommand(LocationTechnologyType techType);
     void disableCommand(uint32_t id);
@@ -199,9 +202,31 @@ public:
     void readConfigCommand();
     void setConfigCommand();
     uint32_t* gnssUpdateConfigCommand(GnssConfig config);
+    uint32_t* gnssGetConfigCommand(GnssConfigFlagsMask mask);
     uint32_t gnssDeleteAidingDataCommand(GnssAidingData& data);
     void gnssUpdateXtraThrottleCommand(const bool enabled);
 
+    /* ==== GNSS SV TYPE CONFIG ============================================================ */
+    /* ==== COMMANDS ====(Called from Client Thread)======================================== */
+    /* ==== These commands are received directly from client bypassing Location API ======== */
+    void gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config);
+    void gnssGetSvTypeConfigCommand(GnssSvTypeConfigCallback callback);
+    void gnssResetSvTypeConfigCommand();
+
+    /* ==== UTILITIES ====================================================================== */
+    LocationError gnssSvIdConfigUpdate(const std::vector<GnssSvIdSource>& blacklistedSvIds);
+    LocationError gnssSvIdConfigUpdate();
+    LocationError gnssSvTypeConfigUpdate(const GnssSvTypeConfig& config);
+    LocationError gnssSvTypeConfigUpdate();
+    inline void gnssSetSvTypeConfig(const GnssSvTypeConfig& config)
+    { mGnssSvTypeConfig = config; }
+    inline void gnssSetSvTypeConfigCallback(GnssSvTypeConfigCallback callback)
+    { mGnssSvTypeConfigCb = callback; }
+    inline GnssSvTypeConfigCallback gnssGetSvTypeConfigCallback()
+    { return mGnssSvTypeConfigCb; }
+
+    /* ==== AGPS =========================================================================== */
+    /* ======== COMMANDS ====(Called from Client Thread)==================================== */
     void initDefaultAgpsCommand();
     void initAgpsCommand(const AgpsCbInfo& cbInfo);
     void dataConnOpenCommand(AGpsExtType agpsType,
@@ -236,6 +261,8 @@ public:
                                                 int msInWeek);
     virtual void reportSvMeasurementEvent(GnssSvMeasurementSet &svMeasurementSet);
     virtual void reportSvPolynomialEvent(GnssSvPolynomial &svPolynomial);
+    virtual void reportGnssSvIdConfigEvent(const GnssSvIdConfig& config);
+    virtual void reportGnssSvTypeConfigEvent(const GnssSvTypeConfig& config);
 
     virtual bool requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask mask);
     virtual bool releaseATL(int connHandle);
@@ -254,6 +281,8 @@ public:
     void reportNmea(const char* nmea, size_t length);
     bool requestNiNotify(const GnssNiNotification& notify, const void* data);
     void reportGnssMeasurementData(const GnssMeasurementsNotification& measurements);
+    void reportGnssSvIdConfig(const GnssSvIdConfig& config);
+    void reportGnssSvTypeConfig(const GnssSvTypeConfig& config);
 
     /*======== GNSSDEBUG ================================================================*/
     bool getDebugReport(GnssDebugReport& report);
@@ -283,6 +312,13 @@ public:
     static void convertSatelliteInfo(std::vector<GnssDebugSatelliteInfo>& out,
                                      const GnssSvType& in_constellation,
                                      const SystemStatusReports& in);
+    static void convertToGnssSvIdConfig(
+            const std::vector<GnssSvIdSource>& blacklistedSvIds, GnssSvIdConfig& config);
+    static void convertFromGnssSvIdConfig(
+            const GnssSvIdConfig& svConfig, GnssConfig& config);
+    static void convertGnssSvIdMaskToList(
+            uint64_t svIdMask, std::vector<GnssSvIdSource>& svIds,
+            GnssSvId initialSvId, GnssSvType svType);
 
     void injectLocationCommand(double latitude, double longitude, float accuracy);
     void injectTimeCommand(int64_t time, int64_t timeReference, int32_t uncertainty);

@@ -153,6 +153,8 @@ public:
     virtual void reportGnssMeasurementDataEvent(const GnssMeasurementsNotification& measurements,
                                                 int msInWeek);
     virtual bool reportWwanZppFix(LocGpsLocation &zppLoc);
+    virtual void reportGnssSvIdConfigEvent(const GnssSvIdConfig& config);
+    virtual void reportGnssSvTypeConfigEvent(const GnssSvTypeConfig& config);
 };
 
 } // namespace loc_core

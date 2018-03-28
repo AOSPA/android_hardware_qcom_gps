@@ -72,6 +72,9 @@ GnssAdapter::GnssAdapter() :
     mControlCallbacks(),
     mPowerVoteId(0),
     mNmeaMask(0),
+    mGnssSvIdConfig(),
+    mGnssSvTypeConfig(),
+    mGnssSvTypeConfigCb(nullptr),
     mNiData(),
     mAgpsManager(),
     mAgpsCbInfo(),
@@ -894,6 +897,23 @@ GnssAdapter::gnssUpdateConfigCommand(GnssConfig config)
                     errs[index++] = err;
                 }
             }
+            if (mConfig.flags & GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT) {
+                // Check if feature is supported
+                if (!mApi.isFeatureSupported(
+                        LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
+                    LOC_LOGe("Feature constellation enablement not supported.");
+                    err = LOCATION_ERROR_NOT_SUPPORTED;
+                } else {
+                    // Send the SV ID Config to Modem
+                    err = mAdapter.gnssSvIdConfigUpdate(mConfig.blacklistedSvIds);
+                    if (LOCATION_ERROR_SUCCESS != err) {
+                        LOC_LOGe("Failed to send config to modem, err %d", err);
+                    }
+                }
+                if (index < mCount) {
+                    errs[index++] = err;
+                }
+            }
 
             mAdapter.reportResponse(index, errs, mIds);
             delete[] errs;
@@ -907,6 +927,516 @@ GnssAdapter::gnssUpdateConfigCommand(GnssConfig config)
     }
 
     return ids;
+}
+
+LocationError
+GnssAdapter::gnssSvIdConfigUpdate(const std::vector<GnssSvIdSource>& blacklistedSvIds)
+{
+    // Clear the existing config
+    memset(&mGnssSvIdConfig, 0, sizeof(GnssSvIdConfig));
+
+    // Convert the sv id lists to masks
+    convertToGnssSvIdConfig(blacklistedSvIds, mGnssSvIdConfig);
+
+    // Now send to Modem
+    return gnssSvIdConfigUpdate();
+}
+
+LocationError
+GnssAdapter::gnssSvIdConfigUpdate()
+{
+    LOC_LOGd("blacklist bds 0x%" PRIx64 ", glo 0x%" PRIx64
+            ", qzss 0x%" PRIx64 ", gal 0x%" PRIx64,
+            mGnssSvIdConfig.bdsBlacklistSvMask, mGnssSvIdConfig.gloBlacklistSvMask,
+            mGnssSvIdConfig.qzssBlacklistSvMask, mGnssSvIdConfig.galBlacklistSvMask);
+
+    // Now set required blacklisted SVs
+    return mLocApi->setBlacklistSv(mGnssSvIdConfig);
+}
+
+uint32_t*
+GnssAdapter::gnssGetConfigCommand(GnssConfigFlagsMask configMask) {
+
+    // count the number of bits set
+    GnssConfigFlagsMask flagsCopy = configMask;
+    size_t count = 0;
+    while (flagsCopy > 0) {
+        if (flagsCopy & 1) {
+            count++;
+        }
+        flagsCopy >>= 1;
+    }
+    std::string idsString = "[";
+    uint32_t* ids = NULL;
+    if (count > 0) {
+        ids = new uint32_t[count];
+        if (nullptr == ids) {
+            LOC_LOGe("new allocation failed, fatal error.");
+            return nullptr;
+        }
+        for (size_t i=0; i < count; ++i) {
+            ids[i] = generateSessionId();
+            IF_LOC_LOGD {
+                idsString += std::to_string(ids[i]) + " ";
+            }
+        }
+    }
+    idsString += "]";
+
+    LOC_LOGd("ids %s flags 0x%X", idsString.c_str(), configMask);
+
+    struct MsgGnssGetConfig : public LocMsg {
+        GnssAdapter& mAdapter;
+        LocApiBase& mApi;
+        GnssConfigFlagsMask mConfigMask;
+        uint32_t* mIds;
+        size_t mCount;
+        inline MsgGnssGetConfig(GnssAdapter& adapter,
+                                LocApiBase& api,
+                                GnssConfigFlagsMask configMask,
+                                uint32_t* ids,
+                                size_t count) :
+            LocMsg(),
+            mAdapter(adapter),
+            mApi(api),
+            mConfigMask(configMask),
+            mIds(ids),
+            mCount(count) {}
+        inline virtual ~MsgGnssGetConfig()
+        {
+            delete[] mIds;
+        }
+        inline virtual void proc() const {
+
+            LocationError* errs = new LocationError[mCount];
+            LocationError err = LOCATION_ERROR_SUCCESS;
+            uint32_t index = 0;
+
+            if (nullptr == errs) {
+                LOC_LOGE("%s] new allocation failed, fatal error.", __func__);
+                return;
+            }
+
+            if (mConfigMask & GNSS_CONFIG_FLAGS_GPS_LOCK_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_SUPL_VERSION_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_SET_ASSISTANCE_DATA_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_LPPE_USER_PLANE_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_EM_PDN_FOR_EM_SUPL_VALID_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_SUPL_EM_SERVICES_BIT) {
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_SUPL_MODE_BIT) {
+                err = LOCATION_ERROR_NOT_SUPPORTED;
+                if (index < mCount) {
+                    errs[index++] = LOCATION_ERROR_NOT_SUPPORTED;
+                }
+            }
+            if (mConfigMask & GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT) {
+                // Check if feature is supported
+                if (!mApi.isFeatureSupported(
+                        LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
+                    LOC_LOGe("Feature not supported.");
+                    err = LOCATION_ERROR_NOT_SUPPORTED;
+                } else {
+                    // Send request to Modem to fetch the config
+                    err = mApi.getBlacklistSv();
+                    if (LOCATION_ERROR_SUCCESS != err) {
+                        LOC_LOGe("getConfig request to modem failed, err %d", err);
+                    }
+                }
+                if (index < mCount) {
+                    errs[index++] = err;
+                }
+            }
+
+            mAdapter.reportResponse(index, errs, mIds);
+            delete[] errs;
+        }
+    };
+
+    if (NULL != ids) {
+        sendMsg(new MsgGnssGetConfig(*this, *mLocApi, configMask, ids, count));
+    } else {
+        LOC_LOGe("No GNSS config items to Get");
+    }
+
+    return ids;
+}
+
+void
+GnssAdapter::convertToGnssSvIdConfig(
+        const std::vector<GnssSvIdSource>& blacklistedSvIds, GnssSvIdConfig& config)
+{
+    config.size = sizeof(GnssSvIdConfig);
+
+    // Empty vector => Clear any previous blacklisted SVs
+    if (0 == blacklistedSvIds.size()) {
+        config.gloBlacklistSvMask = 0;
+        config.bdsBlacklistSvMask = 0;
+        config.qzssBlacklistSvMask = 0;
+        config.galBlacklistSvMask = 0;
+    } else {
+        // Parse the vector and convert SV IDs to mask values
+        for (GnssSvIdSource source : blacklistedSvIds) {
+            uint64_t* svMaskPtr = NULL;
+            GnssSvId initialSvId = 0;
+            switch(source.constellation) {
+            case GNSS_SV_TYPE_GLONASS:
+                svMaskPtr = &config.gloBlacklistSvMask;
+                initialSvId = GNSS_SV_CONFIG_GLO_INITIAL_SV_ID;
+                break;
+            case GNSS_SV_TYPE_BEIDOU:
+                svMaskPtr = &config.bdsBlacklistSvMask;
+                initialSvId = GNSS_SV_CONFIG_BDS_INITIAL_SV_ID;
+                break;
+            case GNSS_SV_TYPE_QZSS:
+                svMaskPtr = &config.qzssBlacklistSvMask;
+                initialSvId = GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID;
+                break;
+            case GNSS_SV_TYPE_GALILEO:
+                svMaskPtr = &config.galBlacklistSvMask;
+                initialSvId = GNSS_SV_CONFIG_GAL_INITIAL_SV_ID;
+                break;
+            default:
+                break;
+            }
+
+            if (NULL == svMaskPtr) {
+                LOC_LOGe("Invalid constellation %d", source.constellation);
+            } else {
+                // SV ID 0 = All SV IDs
+                if (0 == source.svId) {
+                    *svMaskPtr = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
+                } else if (source.svId < initialSvId || source.svId >= initialSvId + 64) {
+                    LOC_LOGe("Invalid sv id %d for sv type %d",
+                            source.svId, source.constellation);
+                } else {
+                    *svMaskPtr |= (1 << (source.svId - initialSvId));
+                }
+            }
+        }
+    }
+}
+
+void GnssAdapter::convertFromGnssSvIdConfig(
+        const GnssSvIdConfig& svConfig, GnssConfig& config)
+{
+    // Convert blacklisted SV mask values to vectors
+    if (svConfig.bdsBlacklistSvMask) {
+        convertGnssSvIdMaskToList(
+                svConfig.bdsBlacklistSvMask, config.blacklistedSvIds,
+                GNSS_SV_CONFIG_BDS_INITIAL_SV_ID, GNSS_SV_TYPE_BEIDOU);
+        config.flags |= GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT;
+    }
+    if (svConfig.galBlacklistSvMask) {
+        convertGnssSvIdMaskToList(
+                svConfig.galBlacklistSvMask, config.blacklistedSvIds,
+                GNSS_SV_CONFIG_GAL_INITIAL_SV_ID, GNSS_SV_TYPE_GALILEO);
+        config.flags |= GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT;
+    }
+    if (svConfig.gloBlacklistSvMask) {
+        convertGnssSvIdMaskToList(
+                svConfig.gloBlacklistSvMask, config.blacklistedSvIds,
+                GNSS_SV_CONFIG_GLO_INITIAL_SV_ID, GNSS_SV_TYPE_GLONASS);
+        config.flags |= GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT;
+    }
+    if (svConfig.qzssBlacklistSvMask) {
+        convertGnssSvIdMaskToList(
+                svConfig.qzssBlacklistSvMask, config.blacklistedSvIds,
+                GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID, GNSS_SV_TYPE_QZSS);
+        config.flags |= GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT;
+    }
+}
+
+void GnssAdapter::convertGnssSvIdMaskToList(
+        uint64_t svIdMask, std::vector<GnssSvIdSource>& svIds,
+        GnssSvId initialSvId, GnssSvType svType)
+{
+    GnssSvIdSource source = {};
+    source.size = sizeof(GnssSvIdSource);
+    source.constellation = svType;
+
+    // SV ID 0 => All SV IDs in mask
+    if (GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK == svIdMask) {
+        source.svId = 0;
+        svIds.push_back(source);
+        return;
+    }
+
+    // Convert each bit in svIdMask to vector entry
+    uint32_t bitNumber = 0;
+    while (svIdMask > 0) {
+        if (svIdMask & 0x1) {
+            source.svId = bitNumber + initialSvId;
+            svIds.push_back(source);
+        }
+        bitNumber++;
+        svIdMask >>= 1;
+    }
+}
+
+void GnssAdapter::reportGnssSvIdConfigEvent(const GnssSvIdConfig& config)
+{
+    struct MsgReportGnssSvIdConfig : public LocMsg {
+        GnssAdapter& mAdapter;
+        const GnssSvIdConfig mConfig;
+        inline MsgReportGnssSvIdConfig(GnssAdapter& adapter,
+                                 const GnssSvIdConfig& config) :
+            LocMsg(),
+            mAdapter(adapter),
+            mConfig(config) {}
+        inline virtual void proc() const {
+            mAdapter.reportGnssSvIdConfig(mConfig);
+        }
+    };
+
+    sendMsg(new MsgReportGnssSvIdConfig(*this, config));
+}
+
+void GnssAdapter::reportGnssSvIdConfig(const GnssSvIdConfig& svIdConfig)
+{
+    GnssConfig config = {};
+    config.size = sizeof(GnssConfig);
+
+    // Invoke control clients config callback
+    if (nullptr != mControlCallbacks.gnssConfigCb &&
+            svIdConfig.size == sizeof(GnssSvIdConfig)) {
+        convertFromGnssSvIdConfig(svIdConfig, config);
+        LOC_LOGd("blacklist bds 0x%" PRIx64 ", glo 0x%" PRIx64
+                ", qzss 0x%" PRIx64 ", gal 0x%" PRIx64,
+                svIdConfig.bdsBlacklistSvMask, svIdConfig.gloBlacklistSvMask,
+                svIdConfig.qzssBlacklistSvMask, svIdConfig.galBlacklistSvMask);
+        mControlCallbacks.gnssConfigCb(config);
+    } else {
+        LOC_LOGe("Failed to report, size %d", (uint32_t)config.size);
+    }
+}
+
+void
+GnssAdapter::gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config)
+{
+    struct MsgGnssUpdateSvTypeConfig : public LocMsg {
+        GnssAdapter* mAdapter;
+        LocApiBase* mApi;
+        GnssSvTypeConfig mConfig;
+        inline MsgGnssUpdateSvTypeConfig(
+                GnssAdapter* adapter,
+                LocApiBase* api,
+                GnssSvTypeConfig& config) :
+            LocMsg(),
+            mAdapter(adapter),
+            mApi(api),
+            mConfig(config) {}
+        inline virtual void proc() const {
+            // Check if feature is supported
+            if (!mApi->isFeatureSupported(
+                    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
+                LOC_LOGe("Feature not supported.");
+            } else {
+                // Send update request to modem
+                LocationError err = mAdapter->gnssSvTypeConfigUpdate(mConfig);
+                if (err != LOCATION_ERROR_SUCCESS) {
+                    LOC_LOGe("Set constellation request failed, err %d", err);
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgGnssUpdateSvTypeConfig(this, mLocApi, config));
+}
+
+LocationError
+GnssAdapter::gnssSvTypeConfigUpdate(const GnssSvTypeConfig& config)
+{
+    gnssSetSvTypeConfig(config);
+    return gnssSvTypeConfigUpdate();
+}
+
+LocationError
+GnssAdapter::gnssSvTypeConfigUpdate()
+{
+    LocationError err = LOCATION_ERROR_GENERAL_FAILURE;
+    LOC_LOGd("constellations blacklisted 0x%" PRIx64 ", enabled 0x%" PRIx64,
+             mGnssSvTypeConfig.blacklistedSvTypesMask, mGnssSvTypeConfig.enabledSvTypesMask);
+
+    if (mGnssSvTypeConfig.size == sizeof(mGnssSvTypeConfig)) {
+        GnssSvIdConfig blacklistConfig = {};
+        // Revert to previously blacklisted SVs for each enabled constellation
+        blacklistConfig = mGnssSvIdConfig;
+        // Blacklist all SVs for each disabled constellation
+        if (mGnssSvTypeConfig.blacklistedSvTypesMask) {
+            if (mGnssSvTypeConfig.blacklistedSvTypesMask & GNSS_SV_TYPES_MASK_GLO_BIT) {
+                blacklistConfig.gloBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
+            }
+            if (mGnssSvTypeConfig.blacklistedSvTypesMask & GNSS_SV_TYPES_MASK_BDS_BIT) {
+                blacklistConfig.bdsBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
+            }
+            if (mGnssSvTypeConfig.blacklistedSvTypesMask & GNSS_SV_TYPES_MASK_QZSS_BIT) {
+                blacklistConfig.qzssBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
+            }
+            if (mGnssSvTypeConfig.blacklistedSvTypesMask & GNSS_SV_TYPES_MASK_GAL_BIT) {
+                blacklistConfig.galBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
+            }
+        }
+
+        // Send blacklist info
+        err = mLocApi->setBlacklistSv(blacklistConfig);
+        if (LOCATION_ERROR_SUCCESS != err) {
+            LOC_LOGE("Failed to send Set Blacklist");
+        }
+        // Send only enabled constellation config
+        if (mGnssSvTypeConfig.enabledSvTypesMask) {
+            GnssSvTypeConfig svTypeConfig = {sizeof(GnssSvTypeConfig), 0, 0};
+            svTypeConfig.enabledSvTypesMask = mGnssSvTypeConfig.enabledSvTypesMask;
+            err = mLocApi->setConstellationControl(svTypeConfig);
+            if (LOCATION_ERROR_SUCCESS != err) {
+                LOC_LOGE("Failed to send Set Constellation");
+            }
+        }
+    } else {
+        LOC_LOGE("Invalid GnssSvTypeConfig size");
+        err = LOCATION_ERROR_SUCCESS;
+    }
+
+    return err;
+}
+
+void
+GnssAdapter::gnssGetSvTypeConfigCommand(GnssSvTypeConfigCallback callback)
+{
+    struct MsgGnssGetSvTypeConfig : public LocMsg {
+        GnssAdapter* mAdapter;
+        LocApiBase* mApi;
+        GnssSvTypeConfigCallback mCallback;
+        inline MsgGnssGetSvTypeConfig(
+                GnssAdapter* adapter,
+                LocApiBase* api,
+                GnssSvTypeConfigCallback callback) :
+            LocMsg(),
+            mAdapter(adapter),
+            mApi(api),
+            mCallback(callback) {}
+        inline virtual void proc() const {
+            if (!mApi->isFeatureSupported(
+                    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
+                LOC_LOGe("Feature not supported.");
+            } else {
+                // Save the callback
+                mAdapter->gnssSetSvTypeConfigCallback(mCallback);
+                // Send GET request to modem
+                LocationError err = mApi->getConstellationControl();
+                if (err != LOCATION_ERROR_SUCCESS) {
+                    LOC_LOGe("Get constellation request failed, err %d", err);
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgGnssGetSvTypeConfig(this, mLocApi, callback));
+}
+
+void
+GnssAdapter::gnssResetSvTypeConfigCommand()
+{
+    struct MsgGnssResetSvTypeConfig : public LocMsg {
+        GnssAdapter* mAdapter;
+        LocApiBase* mApi;
+        inline MsgGnssResetSvTypeConfig(
+                GnssAdapter* adapter,
+                LocApiBase* api) :
+            LocMsg(),
+            mAdapter(adapter),
+            mApi(api) {}
+        inline virtual void proc() const {
+            if (!mApi->isFeatureSupported(
+                    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
+                LOC_LOGe("Feature not supported.");
+            } else {
+                // Reset constellation config
+                mAdapter->gnssSetSvTypeConfig({sizeof(GnssSvTypeConfig), 0, 0});
+                // Re-enforce SV blacklist config
+                LocationError err = mAdapter->gnssSvIdConfigUpdate();
+                if (err != LOCATION_ERROR_SUCCESS) {
+                    LOC_LOGe("SV Config request failed, err %d", err);
+                }
+                // Send reset request to modem
+                err = mApi->resetConstellationControl();
+                if (err != LOCATION_ERROR_SUCCESS) {
+                    LOC_LOGe("Reset constellation request failed, err %d", err);
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgGnssResetSvTypeConfig(this, mLocApi));
+}
+
+void GnssAdapter::reportGnssSvTypeConfigEvent(const GnssSvTypeConfig& config)
+{
+    struct MsgReportGnssSvTypeConfig : public LocMsg {
+        GnssAdapter& mAdapter;
+        const GnssSvTypeConfig mConfig;
+        inline MsgReportGnssSvTypeConfig(GnssAdapter& adapter,
+                                 const GnssSvTypeConfig& config) :
+            LocMsg(),
+            mAdapter(adapter),
+            mConfig(config) {}
+        inline virtual void proc() const {
+            mAdapter.reportGnssSvTypeConfig(mConfig);
+        }
+    };
+
+    sendMsg(new MsgReportGnssSvTypeConfig(*this, config));
+}
+
+void GnssAdapter::reportGnssSvTypeConfig(const GnssSvTypeConfig& config)
+{
+    // Invoke Get SV Type Callback
+    if (NULL != mGnssSvTypeConfigCb &&
+            config.size == sizeof(GnssSvTypeConfig)) {
+        LOC_LOGd("constellations blacklisted 0x%" PRIx64 ", enabled 0x%" PRIx64,
+                 config.blacklistedSvTypesMask, config.enabledSvTypesMask);
+        mGnssSvTypeConfigCb(config);
+    } else {
+        LOC_LOGe("Failed to report, size %d", (uint32_t)config.size);
+    }
 }
 
 uint32_t
@@ -1140,7 +1670,6 @@ GnssAdapter::stopClientSessions(LocationAPI* client)
         }
         ++it; // increment only when not erasing an iterator
     }
-
 }
 
 void
@@ -1193,6 +1722,8 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter(adapter) {}
         virtual void proc() const {
             mAdapter.restartSessions();
+            mAdapter.gnssSvIdConfigUpdate();
+            mAdapter.gnssSvTypeConfigUpdate();
         }
     };
 

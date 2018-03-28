@@ -408,6 +408,28 @@ void LocApiBase::reportGnssMeasurementData(GnssMeasurementsNotification& measure
     TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportGnssMeasurementDataEvent(measurements, msInWeek));
 }
 
+void LocApiBase::reportGnssSvIdConfig(const GnssSvIdConfig& config)
+{
+    // Print the config
+    LOC_LOGv("gloBlacklistSvMask: %" PRIu64 ", bdsBlacklistSvMask: %" PRIu64 ",\n"
+             "qzssBlacklistSvMask: %" PRIu64 ", galBlacklistSvMask: %" PRIu64,
+             config.gloBlacklistSvMask, config.bdsBlacklistSvMask,
+             config.qzssBlacklistSvMask, config.galBlacklistSvMask);
+
+    // Loop through adapters, and deliver to all adapters.
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportGnssSvIdConfigEvent(config));
+}
+
+void LocApiBase::reportGnssSvTypeConfig(const GnssSvTypeConfig& config)
+{
+    // Print the config
+    LOC_LOGv("blacklistedMask: %" PRIu64 ", enabledMask: %" PRIu64,
+             config.blacklistedSvTypesMask, config.enabledSvTypesMask);
+
+    // Loop through adapters, and deliver to all adapters.
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportGnssSvTypeConfigEvent(config));
+}
+
 enum loc_api_adapter_err LocApiBase::
    open(LOC_API_ADAPTER_EVENT_MASK_T /*mask*/)
 DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
@@ -605,5 +627,25 @@ bool LocApiBase::
     if (arrayIndex >= MAX_FEATURE_LENGTH) return false;
     return ((mFeaturesSupported[arrayIndex] >> bitPos ) & 0x1);
 }
+
+LocationError LocApiBase::
+    setBlacklistSv(const GnssSvIdConfig& /*config*/)
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    getBlacklistSv()
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    setConstellationControl(const GnssSvTypeConfig& /*config*/)
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    getConstellationControl()
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    resetConstellationControl()
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
 
 } // namespace loc_core
