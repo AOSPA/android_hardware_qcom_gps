@@ -114,11 +114,13 @@ enum loc_registration_mask_status {
 
 typedef enum {
     LOC_SUPPORTED_FEATURE_ODCPI_2_V02 = 0, /**<  Support ODCPI version 2 feature  */
-    LOC_SUPPORTED_FEATURE_WIFI_AP_DATA_INJECT_2_V02, /**<  Support Wifi AP data inject version 2 feature  */
-    LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02, /**< Support debug NMEA feature */
-    LOC_SUPPORTED_FEATURE_GNSS_ONLY_POSITION_REPORT_V02, /**<  Support the GNSS only position report feature  */
-    LOC_SUPPORTED_FEATURE_FDCL_V02, /**<  Support the FDCL feature  */
-    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02, /**<  Support the GNSS constellation enablement feature  */
+    LOC_SUPPORTED_FEATURE_WIFI_AP_DATA_INJECT_2_V02 = 1, /**<  Support Wifi AP data inject version 2 feature  */
+    LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02 = 2, /**< Support debug NMEA feature */
+    LOC_SUPPORTED_FEATURE_GNSS_ONLY_POSITION_REPORT_V02 = 3, /**< Support the GNSS only position report feature */
+    LOC_SUPPORTED_FEATURE_FDCL_V02 = 4, /**< Support the FDCL feature */
+    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02 = 5, /**<  Support the GNSS constellation enablement feature  */
+    LOC_SUPPORTED_FEATURE_AGPM_V02 = 6, /**<  Support the advanced GNSS power management feature  */
+    LOC_SUPPORTED_FEATURE_PASSIVE_LISTENER_V02 = 7, /**<  Support the passive listener feature  */
 } loc_supported_feature_enum;
 
 typedef struct {

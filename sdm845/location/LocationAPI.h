@@ -453,18 +453,60 @@ typedef struct {
     LocationTechnologyMask techMask;
 } Location;
 
-typedef struct  {
+struct LocationOptions {
     size_t size;          // set to sizeof(LocationOptions)
     uint32_t minInterval; // in milliseconds
     uint32_t minDistance; // in meters. if minDistance > 0, gnssSvCallback/gnssNmeaCallback/
                           // gnssMeasurementsCallback may not be called
     GnssSuplMode mode;    // Standalone/MS-Based/MS-Assisted
-} LocationOptions;
 
-typedef struct {
-    size_t size;
+    inline LocationOptions() :
+            size(0), minInterval(0), minDistance(0), mode(GNSS_SUPL_MODE_STANDALONE) {}
+};
+
+typedef enum {
+    GNSS_POWER_MODE_INVALID = 0,
+    GNSS_POWER_MODE_M1,  /* Improved Accuracy Mode */
+    GNSS_POWER_MODE_M2,  /* Normal Mode */
+    GNSS_POWER_MODE_M3,  /* Background Mode */
+    GNSS_POWER_MODE_M4,  /* Background Mode */
+    GNSS_POWER_MODE_M5   /* Background Mode */
+} GnssPowerMode;
+
+struct TrackingOptions : LocationOptions {
+    GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
+                                sessions */
+    uint32_t tbm;  /* Time interval between measurements.
+                      Applicable to background power modes */
+
+    inline TrackingOptions() :
+            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+    inline TrackingOptions(size_t s, GnssPowerMode m, uint32_t t) :
+            LocationOptions(), powerMode(m), tbm(t) { LocationOptions::size = s; }
+    inline TrackingOptions(const LocationOptions& options) :
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+    inline void setLocationOptions(const LocationOptions& options) {
+        minInterval = options.minInterval;
+        minDistance = options.minDistance;
+        mode = options.mode;
+    }
+};
+
+struct BatchingOptions : LocationOptions {
     BatchingMode batchingMode;
-} BatchingOptions;
+
+    inline BatchingOptions() :
+            LocationOptions(), batchingMode(BATCHING_MODE_ROUTINE) {}
+    inline BatchingOptions(size_t s, BatchingMode m) :
+            LocationOptions(), batchingMode(m) { LocationOptions::size = s; }
+    inline BatchingOptions(const LocationOptions& options) :
+            LocationOptions(options), batchingMode(BATCHING_MODE_ROUTINE) {}
+    inline void setLocationOptions(const LocationOptions& options) {
+        minInterval = options.minInterval;
+        minDistance = options.minDistance;
+        mode = options.mode;
+    }
+};
 
 typedef struct {
     size_t size;
@@ -861,8 +903,8 @@ public:
                 LOCATION_ERROR_SUCCESS if session was successfully started
                 LOCATION_ERROR_ALREADY_STARTED if a startTracking session is already in progress
                 LOCATION_ERROR_CALLBACK_MISSING if no trackingCallback was passed in createInstance
-                LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameter is invalid */
-    uint32_t startTracking(LocationOptions&); // returns session id
+                LOCATION_ERROR_INVALID_PARAMETER if TrackingOptions parameter is invalid */
+    uint32_t startTracking(TrackingOptions&); // returns session id
 
     /* stopTracking stops a tracking session associated with id parameter.
         responseCallback returns:
@@ -870,12 +912,12 @@ public:
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a tracking session */
     void stopTracking(uint32_t id);
 
-    /* updateTrackingOptions changes the LocationOptions of a tracking session associated with id
+    /* updateTrackingOptions changes the TrackingOptions of a tracking session associated with id
         responseCallback returns:
                 LOCATION_ERROR_SUCCESS if successful
-                LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameters are invalid
+                LOCATION_ERROR_INVALID_PARAMETER if TrackingOptions parameters are invalid
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a tracking session */
-    void updateTrackingOptions(uint32_t id, LocationOptions&);
+    void updateTrackingOptions(uint32_t id, TrackingOptions&);
 
     /* ================================== BATCHING ================================== */
 
@@ -894,7 +936,7 @@ public:
                 LOCATION_ERROR_CALLBACK_MISSING if no batchingCallback was passed in createInstance
                 LOCATION_ERROR_INVALID_PARAMETER if a parameter is invalid
                 LOCATION_ERROR_NOT_SUPPORTED if batching is not supported */
-    uint32_t startBatching(LocationOptions&, BatchingOptions&); // returns session id
+    uint32_t startBatching(BatchingOptions&); // returns session id
 
     /* stopBatching stops a batching session associated with id parameter.
         responseCallback returns:
@@ -902,12 +944,12 @@ public:
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with batching session */
     void stopBatching(uint32_t id);
 
-    /* updateBatchingOptions changes the LocationOptions of a batching session associated with id
+    /* updateBatchingOptions changes the BatchingOptions of a batching session associated with id
         responseCallback returns:
                 LOCATION_ERROR_SUCCESS if successful
-                LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameters are invalid
+                LOCATION_ERROR_INVALID_PARAMETER if BatchingOptions parameters are invalid
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a batching session */
-    void updateBatchingOptions(uint32_t id, LocationOptions&, BatchingOptions&);
+    void updateBatchingOptions(uint32_t id, BatchingOptions&);
 
     /* getBatchedLocations gets a number of locations that are currently stored/batched
        on the low power processor, delivered by the batchingCallback passed in createInstance.

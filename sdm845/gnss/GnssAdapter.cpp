@@ -172,10 +172,9 @@ GnssAdapter::setControlCallbacksCommand(LocationControlCallbacks& controlCallbac
 }
 
 void
-GnssAdapter::convertOptions(LocPosMode& out, const LocationOptions& options)
+GnssAdapter::convertOptions(LocPosMode& out, const TrackingOptions& trackingOptions)
 {
-    LocPosMode locPosMode = {};
-    switch (options.mode) {
+    switch (trackingOptions.mode) {
     case GNSS_SUPL_MODE_MSB:
         out.mode = LOC_POSITION_MODE_MS_BASED;
         break;
@@ -187,7 +186,9 @@ GnssAdapter::convertOptions(LocPosMode& out, const LocationOptions& options)
         break;
     }
     out.share_position = true;
-    out.min_interval = options.minInterval;
+    out.min_interval = trackingOptions.minInterval;
+    out.powerMode = trackingOptions.powerMode;
+    out.timeBetweenMeasurements = trackingOptions.tbm;
 }
 
 void
@@ -1741,16 +1742,26 @@ GnssAdapter::restartSessions()
     }
 
     // get the LocationOptions that has the smallest interval, which should be the active one
-    LocationOptions smallestIntervalOptions = {}; // size is zero until set for the first time
+    TrackingOptions smallestIntervalOptions = {}; // size is zero until set for the first time
+    TrackingOptions highestPowerTrackingOptions = {};
     for (auto it = mTrackingSessions.begin(); it != mTrackingSessions.end(); ++it) {
-        if (0 == smallestIntervalOptions.size || //size of zero means we havent set it yet
+        // size of zero means we havent set it yet
+        if (0 == smallestIntervalOptions.size ||
             it->second.minInterval < smallestIntervalOptions.minInterval) {
              smallestIntervalOptions = it->second;
+        }
+        GnssPowerMode powerMode = it->second.powerMode;
+        // Size of zero means we havent set it yet
+        if (0 == highestPowerTrackingOptions.size ||
+            (GNSS_POWER_MODE_INVALID != powerMode &&
+                    powerMode < highestPowerTrackingOptions.powerMode)) {
+             highestPowerTrackingOptions = it->second;
         }
     }
 
     LocPosMode locPosMode = {};
-    convertOptions(locPosMode, smallestIntervalOptions);
+    highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
+    convertOptions(locPosMode, highestPowerTrackingOptions);
     mLocApi->startFix(locPosMode);
 }
 
@@ -1879,21 +1890,20 @@ GnssAdapter::isTrackingSession(LocationAPI* client, uint32_t sessionId)
 
 void
 GnssAdapter::saveTrackingSession(LocationAPI* client, uint32_t sessionId,
-                                 const LocationOptions& options)
+                                 const TrackingOptions& trackingOptions)
 {
     LocationSessionKey key(client, sessionId);
-    mTrackingSessions[key] = options;
+    mTrackingSessions[key] = trackingOptions;
 }
 
 void
 GnssAdapter::eraseTrackingSession(LocationAPI* client, uint32_t sessionId)
 {
     LocationSessionKey key(client, sessionId);
-    auto it = mTrackingSessions.find(key);
-    if (it != mTrackingSessions.end()) {
-        mTrackingSessions.erase(it);
+    auto itr = mTrackingSessions.find(key);
+    if (itr != mTrackingSessions.end()) {
+        mTrackingSessions.erase(itr);
     }
-
 }
 
 bool GnssAdapter::setUlpPositionMode(const LocPosMode& mode) {
@@ -1958,72 +1968,91 @@ GnssAdapter::reportResponse(size_t count, LocationError* errs, uint32_t* ids)
 }
 
 uint32_t
-GnssAdapter::startTrackingCommand(LocationAPI* client, LocationOptions& options)
+GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
 {
     uint32_t sessionId = generateSessionId();
-    LOC_LOGD("%s]: client %p id %u minInterval %u mode %u",
-             __func__, client, sessionId, options.minInterval, options.mode);
+    LOC_LOGD("%s]: client %p id %u minInterval %u minDistance %u mode %u powermode %u tbm %u",
+             __func__, client, sessionId, options.minInterval, options.minDistance, options.mode,
+             options.powerMode, options.tbm);
 
     struct MsgStartTracking : public LocMsg {
         GnssAdapter& mAdapter;
         LocApiBase& mApi;
         LocationAPI* mClient;
         uint32_t mSessionId;
-        LocationOptions mOptions;
+        mutable TrackingOptions mTrackingOptions;
         inline MsgStartTracking(GnssAdapter& adapter,
                                LocApiBase& api,
                                LocationAPI* client,
                                uint32_t sessionId,
-                               LocationOptions options) :
+                               TrackingOptions trackingOptions) :
             LocMsg(),
             mAdapter(adapter),
             mApi(api),
             mClient(client),
             mSessionId(sessionId),
-            mOptions(options) {}
+            mTrackingOptions(trackingOptions) {}
         inline virtual void proc() const {
             LocationError err = LOCATION_ERROR_SUCCESS;
             if (!mAdapter.hasTrackingCallback(mClient) &&
                 !mAdapter.hasMeasurementsCallback(mClient)) {
                 err = LOCATION_ERROR_CALLBACK_MISSING;
-            } else if (0 == mOptions.size) {
+            } else if (0 == mTrackingOptions.size) {
                 err = LOCATION_ERROR_INVALID_PARAMETER;
             } else {
+                if (GNSS_POWER_MODE_INVALID != mTrackingOptions.powerMode &&
+                        !mApi.isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02)) {
+                    LOC_LOGv("Ignoring power mode, feature not supported.");
+                    mTrackingOptions.powerMode = GNSS_POWER_MODE_INVALID;
+                }
                 // Api doesn't support multiple clients for time based tracking, so mutiplex
-                err = mAdapter.startTrackingMultiplex(mOptions);
+                err = mAdapter.startTrackingMultiplex(mTrackingOptions);
                 if (LOCATION_ERROR_SUCCESS == err) {
-                    mAdapter.saveTrackingSession(mClient, mSessionId, mOptions);
+                    mAdapter.saveTrackingSession(
+                            mClient, mSessionId, mTrackingOptions);
                 }
             }
             mAdapter.reportResponse(mClient, err, mSessionId);
         }
     };
 
-    sendMsg(new MsgStartTracking(*this, *mLocApi, client, sessionId, options));
+    sendMsg(new MsgStartTracking(
+            *this, *mLocApi, client, sessionId, options));
     return sessionId;
-
 }
 
 LocationError
-GnssAdapter::startTrackingMultiplex(const LocationOptions& options)
+GnssAdapter::startTrackingMultiplex(const TrackingOptions& options)
 {
     LocationError err = LOCATION_ERROR_SUCCESS;
 
     if (mTrackingSessions.empty()) {
         err = startTracking(options);
     } else {
-        // get the LocationOptions that has the smallest interval, which should be the active one
-        LocationOptions smallestIntervalOptions = {}; // size is zero until set for the first time
+        // Get the LocationOptions that has the smallest interval,
+        // which should be the active one
+        // Also get the highest power tracking options
+        TrackingOptions smallestIntervalOptions = {};
+        TrackingOptions highestPowerTrackingOptions = options;
         for (auto it = mTrackingSessions.begin(); it != mTrackingSessions.end(); ++it) {
-            if (0 == smallestIntervalOptions.size || //size of zero means we havent set it yet
+            GnssPowerMode powerMode = it->second.powerMode;
+            // Size of zero means we havent set it yet
+            if (0 == smallestIntervalOptions.size ||
                 it->second.minInterval < smallestIntervalOptions.minInterval) {
                  smallestIntervalOptions = it->second;
+            }
+            // Size of zero means we havent set it yet
+            if (0 == highestPowerTrackingOptions.size ||
+                (GNSS_POWER_MODE_INVALID != powerMode &&
+                        powerMode < highestPowerTrackingOptions.powerMode)) {
+                 highestPowerTrackingOptions = it->second;
             }
         }
         // if new session's minInterval is smaller than any in other sessions
         if (options.minInterval < smallestIntervalOptions.minInterval) {
             // restart time based tracking with new options
-            err = startTracking(options);
+            highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
+            err = startTracking(highestPowerTrackingOptions);
         }
     }
 
@@ -2031,11 +2060,11 @@ GnssAdapter::startTrackingMultiplex(const LocationOptions& options)
 }
 
 LocationError
-GnssAdapter::startTracking(const LocationOptions& options)
+GnssAdapter::startTracking(const TrackingOptions& trackingOptions)
 {
     LocationError err = LOCATION_ERROR_SUCCESS;
     LocPosMode locPosMode = {};
-    convertOptions(locPosMode, options);
+    convertOptions(locPosMode, trackingOptions);
     if (!mUlpProxy->sendFixMode(locPosMode)) {
         // do nothing
     }
@@ -2107,7 +2136,7 @@ GnssAdapter::startTrackingCommand()
 
 void
 GnssAdapter::updateTrackingOptionsCommand(LocationAPI* client, uint32_t id,
-                                          LocationOptions& options)
+                                          TrackingOptions& options)
 {
     LOC_LOGD("%s]: client %p id %u minInterval %u mode %u",
              __func__, client, id, options.minInterval, options.mode);
@@ -2117,28 +2146,35 @@ GnssAdapter::updateTrackingOptionsCommand(LocationAPI* client, uint32_t id,
         LocApiBase& mApi;
         LocationAPI* mClient;
         uint32_t mSessionId;
-        LocationOptions mOptions;
+        mutable TrackingOptions mTrackingOptions;
         inline MsgUpdateTracking(GnssAdapter& adapter,
                                 LocApiBase& api,
                                 LocationAPI* client,
                                 uint32_t sessionId,
-                                LocationOptions options) :
+                                TrackingOptions trackingOptions) :
             LocMsg(),
             mAdapter(adapter),
             mApi(api),
             mClient(client),
             mSessionId(sessionId),
-            mOptions(options) {}
+            mTrackingOptions(trackingOptions) {}
         inline virtual void proc() const {
             if (mAdapter.isTrackingSession(mClient, mSessionId)) {
                 LocationError err = LOCATION_ERROR_SUCCESS;
-                if (0 == mOptions.size) {
+                if (0 == mTrackingOptions.size) {
                     err = LOCATION_ERROR_INVALID_PARAMETER;
                 } else {
+                    if (GNSS_POWER_MODE_INVALID != mTrackingOptions.powerMode &&
+                            !mApi.isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02)) {
+                        LOC_LOGv("Ignoring power mode, feature not supported.");
+                        mTrackingOptions.powerMode = GNSS_POWER_MODE_INVALID;
+                    }
                     // Api doesn't support multiple clients for time based tracking, so mutiplex
-                    err = mAdapter.updateTrackingMultiplex(mClient, mSessionId, mOptions);
+                    err = mAdapter.updateTrackingMultiplex(
+                            mClient, mSessionId, mTrackingOptions);
                     if (LOCATION_ERROR_SUCCESS == err) {
-                        mAdapter.saveTrackingSession(mClient, mSessionId, mOptions);
+                        mAdapter.saveTrackingSession(
+                                mClient, mSessionId, mTrackingOptions);
                     }
                 }
                 mAdapter.reportResponse(mClient, err, mSessionId);
@@ -2154,12 +2190,12 @@ GnssAdapter::updateTrackingOptionsCommand(LocationAPI* client, uint32_t id,
 
 LocationError
 GnssAdapter::updateTrackingMultiplex(LocationAPI* client, uint32_t id,
-                                     const LocationOptions& options)
+                                     const TrackingOptions& trackingOptions)
 {
     LocationError err = LOCATION_ERROR_SUCCESS;
 
     if (1 == mTrackingSessions.size()) {
-        err = startTracking(options);
+        err = startTracking(trackingOptions);
     } else {
         LocationSessionKey key(client, id);
 
@@ -2167,23 +2203,34 @@ GnssAdapter::updateTrackingMultiplex(LocationAPI* client, uint32_t id,
         auto it = mTrackingSessions.find(key);
         if (it != mTrackingSessions.end()) {
             // find the smallest interval, other than the session we are updating
-            LocationOptions smallestIntervalOptions = {}; // size is 0 until set for the first time
+            TrackingOptions smallestIntervalOptions = {}; // size is 0 until set for the first time
+            TrackingOptions highestPowerTrackingOptions = trackingOptions;
             for (auto it2 = mTrackingSessions.begin(); it2 != mTrackingSessions.end(); ++it2) {
-                // if session is not the one we are updating and either smallest interval is not set
-                // or there is a new smallest interval, then set the new smallest interval
+                GnssPowerMode powerMode = it2->second.powerMode;
+                // if session is not the one we are updating and either smallest
+                // interval is not set or there is a new smallest interval,
+                // then set the new smallest interval
                 if (it2->first != key && (0 == smallestIntervalOptions.size ||
                     it2->second.minInterval < smallestIntervalOptions.minInterval)) {
                      smallestIntervalOptions = it2->second;
                 }
+                // size of zero means we havent set it yet
+                if (0 == highestPowerTrackingOptions.size ||
+                    (GNSS_POWER_MODE_INVALID != powerMode &&
+                            powerMode < highestPowerTrackingOptions.powerMode)) {
+                     highestPowerTrackingOptions = it2->second;
+                }
             }
             // if session we are updating has smaller interval then next smallest
-            if (options.minInterval < smallestIntervalOptions.minInterval) {
+            if (trackingOptions.minInterval < smallestIntervalOptions.minInterval) {
                 // restart time based tracking with the newly updated interval
-                err = startTracking(options);
+                highestPowerTrackingOptions.setLocationOptions(trackingOptions);
+                err = startTracking(highestPowerTrackingOptions);
             // else if the session we are updating used to be the smallest
             } else if (it->second.minInterval < smallestIntervalOptions.minInterval) {
                 // restart time based tracking with the next smallest
-                err = startTracking(smallestIntervalOptions);
+                highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
+                err = startTracking(highestPowerTrackingOptions);
             }
         }
     }
@@ -2244,7 +2291,8 @@ GnssAdapter::stopTrackingMultiplex(LocationAPI* client, uint32_t id)
         auto it = mTrackingSessions.find(key);
         if (it != mTrackingSessions.end()) {
             // find the next smallest interval, other than the session we are stopping
-            LocationOptions smallestIntervalOptions = {}; // size is 0 until set for the first time
+            TrackingOptions smallestIntervalOptions = {}; // size is 0 until set for the first time
+            TrackingOptions highestPowerTrackingOptions = {};
             for (auto it2 = mTrackingSessions.begin(); it2 != mTrackingSessions.end(); ++it2) {
                 // if session is not the one we are stopping and either smallest interval is not set
                 // or there is a new smallest interval, then set the new smallest interval
@@ -2252,11 +2300,19 @@ GnssAdapter::stopTrackingMultiplex(LocationAPI* client, uint32_t id)
                     it2->second.minInterval < smallestIntervalOptions.minInterval)) {
                      smallestIntervalOptions = it2->second;
                 }
+                GnssPowerMode powerMode = it2->second.powerMode;
+                // Size of zero means we havent set it yet
+                if (0 == highestPowerTrackingOptions.size ||
+                    (GNSS_POWER_MODE_INVALID != powerMode &&
+                            powerMode < highestPowerTrackingOptions.powerMode)) {
+                     highestPowerTrackingOptions = it2->second;
+                }
             }
             // if session we are stopping has smaller interval then next smallest
             if (it->second.minInterval < smallestIntervalOptions.minInterval) {
                 // restart time based tracking with next smallest interval
-                err = startTracking(smallestIntervalOptions);
+                highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
+                err = startTracking(highestPowerTrackingOptions);
             }
         }
     }
