@@ -167,6 +167,7 @@ public:
     virtual bool reportWwanZppFix(LocGpsLocation &zppLoc);
     virtual void reportGnssSvIdConfigEvent(const GnssSvIdConfig& config);
     virtual void reportGnssSvTypeConfigEvent(const GnssSvTypeConfig& config);
+    virtual bool reportOdcpiRequestEvent(OdcpiRequestInfo& request);
 };
 
 } // namespace loc_core

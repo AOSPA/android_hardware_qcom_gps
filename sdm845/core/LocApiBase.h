@@ -137,6 +137,7 @@ public:
     void reportWwanZppFix(LocGpsLocation &zppLoc);
     void reportGnssSvIdConfig(const GnssSvIdConfig& config);
     void reportGnssSvTypeConfig(const GnssSvTypeConfig& config);
+    void reportOdcpiRequest(OdcpiRequestInfo& request);
 
     // downward calls
     // All below functions are to be defined by adapter specific modules:
@@ -156,6 +157,8 @@ public:
         setAPN(char* apn, int len);
     virtual enum loc_api_adapter_err
         injectPosition(double latitude, double longitude, float accuracy);
+    virtual enum loc_api_adapter_err
+        injectPosition(const Location& location);
     virtual enum loc_api_adapter_err
         setTime(LocGpsUtcTime time, int64_t timeReference, int uncertainty);
     virtual enum loc_api_adapter_err

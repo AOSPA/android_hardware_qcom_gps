@@ -168,4 +168,8 @@ DEFAULT_IMPL()
 void LocAdapterBase::reportGnssSvTypeConfigEvent(const GnssSvTypeConfig& /*config*/)
 DEFAULT_IMPL()
 
+bool LocAdapterBase::
+    reportOdcpiRequestEvent(OdcpiRequestInfo& /*request*/)
+DEFAULT_IMPL(false)
+
 } // namespace loc_core
