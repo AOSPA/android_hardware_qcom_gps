@@ -2017,6 +2017,13 @@ GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
                     LOC_LOGv("Ignoring power mode, feature not supported.");
                     mTrackingOptions.powerMode = GNSS_POWER_MODE_INVALID;
                 }
+                if (mApi.isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02) &&
+                        GNSS_POWER_MODE_M4 == mTrackingOptions.powerMode &&
+                        mTrackingOptions.tbm > TRACKING_TBM_THRESHOLD_MILLIS) {
+                    LOC_LOGd("TBM (%d) > %d Falling back to M2 power mode",
+                            mTrackingOptions.tbm, TRACKING_TBM_THRESHOLD_MILLIS);
+                    mTrackingOptions.powerMode = GNSS_POWER_MODE_M2;
+                }
                 // Api doesn't support multiple clients for time based tracking, so mutiplex
                 err = mAdapter.startTrackingMultiplex(mTrackingOptions);
                 if (LOCATION_ERROR_SUCCESS == err) {
@@ -2180,6 +2187,13 @@ GnssAdapter::updateTrackingOptionsCommand(LocationAPI* client, uint32_t id,
                             !mApi.isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02)) {
                         LOC_LOGv("Ignoring power mode, feature not supported.");
                         mTrackingOptions.powerMode = GNSS_POWER_MODE_INVALID;
+                    }
+                    if (mApi.isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02) &&
+                            GNSS_POWER_MODE_M4 == mTrackingOptions.powerMode &&
+                            mTrackingOptions.tbm > TRACKING_TBM_THRESHOLD_MILLIS) {
+                        LOC_LOGd("TBM (%d) > %d Falling back to M2 power mode",
+                                mTrackingOptions.tbm, TRACKING_TBM_THRESHOLD_MILLIS);
+                        mTrackingOptions.powerMode = GNSS_POWER_MODE_M2;
                     }
                     // Api doesn't support multiple clients for time based tracking, so mutiplex
                     err = mAdapter.updateTrackingMultiplex(
