@@ -34,8 +34,8 @@
 #include <string.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include <platform_lib_log_util.h>
-#include <MsgTask.h>
+#include <loc_pla.h>
+#include <log_util.h>
 #include <loc_nmea.h>
 #include <DataItemsFactoryProxy.h>
 #include <SystemStatus.h>
@@ -1301,12 +1301,11 @@ SystemStatus::SystemStatus(const MsgTask* msgTask) :
 /******************************************************************************
  SystemStatus - storing dataitems
 ******************************************************************************/
-bool SystemStatus::setNetworkInfo(const SystemStatusNetworkInfo& s)
+template <typename TYPE_SYSTEMSTATUS_ITEM, typename TYPE_REPORT, typename TYPE_ITEMBASE>
+bool SystemStatus::setItemBaseinReport(TYPE_REPORT& report, const TYPE_ITEMBASE& s)
 {
-    mConnected = s.mConnected;
-    SystemStatusNetworkInfo sout = s;
-    sout.mType = s.getType();
-    return setIteminReport(mCache.mNetworkInfo, sout);
+    TYPE_SYSTEMSTATUS_ITEM sout(s);
+    return setIteminReport(report, sout);
 }
 
 template <typename TYPE_REPORT, typename TYPE_ITEM>
@@ -1351,11 +1350,10 @@ void SystemStatus::getIteminReport(TYPE_REPORT& reportout, const TYPE_ITEM& c) c
 @param[In]  data pointer to the NMEA string
 @param[In]  len  length of the NMEA string
 
-@return     true when successfully done
+@return     true when the NMEA is consumed by the method.
 ******************************************************************************/
 bool SystemStatus::setNmeaString(const char *data, uint32_t len)
 {
-    bool ret = false;
     if (!loc_nmea_is_debug(data, len)) {
         return false;
     }
@@ -1366,43 +1364,43 @@ bool SystemStatus::setNmeaString(const char *data, uint32_t len)
     pthread_mutex_lock(&mMutexSystemStatus);
 
     // parse the received nmea strings here
-    if      (0 == strncmp(data, "$PQWM1", SystemStatusNmeaBase::NMEA_MINSIZE)) {
+    if (0 == strncmp(data, "$PQWM1", SystemStatusNmeaBase::NMEA_MINSIZE)) {
         SystemStatusPQWM1 s = SystemStatusPQWM1parser(buf, len).get();
-        ret |= setIteminReport(mCache.mTimeAndClock, SystemStatusTimeAndClock(s));
-        ret |= setIteminReport(mCache.mXoState, SystemStatusXoState(s));
-        ret |= setIteminReport(mCache.mRfAndParams, SystemStatusRfAndParams(s));
-        ret |= setIteminReport(mCache.mErrRecovery, SystemStatusErrRecovery(s));
+        setIteminReport(mCache.mTimeAndClock, SystemStatusTimeAndClock(s));
+        setIteminReport(mCache.mXoState, SystemStatusXoState(s));
+        setIteminReport(mCache.mRfAndParams, SystemStatusRfAndParams(s));
+        setIteminReport(mCache.mErrRecovery, SystemStatusErrRecovery(s));
     }
     else if (0 == strncmp(data, "$PQWP1", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mInjectedPosition,
+        setIteminReport(mCache.mInjectedPosition,
                 SystemStatusInjectedPosition(SystemStatusPQWP1parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWP2", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mBestPosition,
+        setIteminReport(mCache.mBestPosition,
                 SystemStatusBestPosition(SystemStatusPQWP2parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWP3", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mXtra,
+        setIteminReport(mCache.mXtra,
                 SystemStatusXtra(SystemStatusPQWP3parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWP4", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mEphemeris,
+        setIteminReport(mCache.mEphemeris,
                 SystemStatusEphemeris(SystemStatusPQWP4parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWP5", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mSvHealth,
+        setIteminReport(mCache.mSvHealth,
                 SystemStatusSvHealth(SystemStatusPQWP5parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWP6", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mPdr,
+        setIteminReport(mCache.mPdr,
                 SystemStatusPdr(SystemStatusPQWP6parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWP7", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mNavData,
+        setIteminReport(mCache.mNavData,
                 SystemStatusNavData(SystemStatusPQWP7parser(buf, len).get()));
     }
     else if (0 == strncmp(data, "$PQWS1", SystemStatusNmeaBase::NMEA_MINSIZE)) {
-        ret = setIteminReport(mCache.mPositionFailure,
+        setIteminReport(mCache.mPositionFailure,
                 SystemStatusPositionFailure(SystemStatusPQWS1parser(buf, len).get()));
     }
     else {
@@ -1410,7 +1408,7 @@ bool SystemStatus::setNmeaString(const char *data, uint32_t len)
     }
 
     pthread_mutex_unlock(&mMutexSystemStatus);
-    return ret;
+    return true;
 }
 
 /******************************************************************************
@@ -1451,93 +1449,94 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
     switch(dataitem->getId())
     {
         case AIRPLANEMODE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mAirplaneMode,
-                    *(static_cast<SystemStatusAirplaneMode*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusAirplaneMode>(mCache.mAirplaneMode,
+                    *(static_cast<AirplaneModeDataItemBase*>(dataitem)));
             break;
         case ENH_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mENH,
-                    *(static_cast<SystemStatusENH*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusENH>(mCache.mENH,
+                    *(static_cast<ENHDataItemBase*>(dataitem)));
             break;
         case GPSSTATE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mGPSState,
-                    *(static_cast<SystemStatusGpsState*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusGpsState>(mCache.mGPSState,
+                    *(static_cast<GPSStateDataItemBase*>(dataitem)));
             break;
         case NLPSTATUS_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mNLPStatus,
-                    *(static_cast<SystemStatusNLPStatus*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusNLPStatus>(mCache.mNLPStatus,
+                    *(static_cast<NLPStatusDataItemBase*>(dataitem)));
             break;
         case WIFIHARDWARESTATE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mWifiHardwareState,
-                    *(static_cast<SystemStatusWifiHardwareState*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusWifiHardwareState>(mCache.mWifiHardwareState,
+                    *(static_cast<WifiHardwareStateDataItemBase*>(dataitem)));
             break;
         case NETWORKINFO_DATA_ITEM_ID:
-            // need special handling for this item to map emums
-            ret = setNetworkInfo(
-                    *(static_cast<SystemStatusNetworkInfo*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusNetworkInfo>(mCache.mNetworkInfo,
+                    *(static_cast<NetworkInfoDataItemBase*>(dataitem)));
             break;
         case RILSERVICEINFO_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mRilServiceInfo,
-                    *(static_cast<SystemStatusServiceInfo*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusServiceInfo>(mCache.mRilServiceInfo,
+                    *(static_cast<RilServiceInfoDataItemBase*>(dataitem)));
             break;
         case RILCELLINFO_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mRilCellInfo,
-                    *(static_cast<SystemStatusRilCellInfo*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusRilCellInfo>(mCache.mRilCellInfo,
+                    *(static_cast<RilCellInfoDataItemBase*>(dataitem)));
             break;
         case SERVICESTATUS_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mServiceStatus,
-                    *(static_cast<SystemStatusServiceStatus*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusServiceStatus>(mCache.mServiceStatus,
+                    *(static_cast<ServiceStatusDataItemBase*>(dataitem)));
             break;
         case MODEL_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mModel,
-                    *(static_cast<SystemStatusModel*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusModel>(mCache.mModel,
+                    *(static_cast<ModelDataItemBase*>(dataitem)));
             break;
         case MANUFACTURER_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mManufacturer,
-                    *(static_cast<SystemStatusManufacturer*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusManufacturer>(mCache.mManufacturer,
+                    *(static_cast<ManufacturerDataItemBase*>(dataitem)));
             break;
         case ASSISTED_GPS_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mAssistedGps,
-                    *(static_cast<SystemStatusAssistedGps*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusAssistedGps>(mCache.mAssistedGps,
+                    *(static_cast<AssistedGpsDataItemBase*>(dataitem)));
             break;
         case SCREEN_STATE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mScreenState,
-                    *(static_cast<SystemStatusScreenState*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusScreenState>(mCache.mScreenState,
+                    *(static_cast<ScreenStateDataItemBase*>(dataitem)));
             break;
         case POWER_CONNECTED_STATE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mPowerConnectState,
-                    *(static_cast<SystemStatusPowerConnectState*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusPowerConnectState>(mCache.mPowerConnectState,
+                    *(static_cast<PowerConnectStateDataItemBase*>(dataitem)));
             break;
         case TIMEZONE_CHANGE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mTimeZoneChange,
-                    *(static_cast<SystemStatusTimeZoneChange*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusTimeZoneChange>(mCache.mTimeZoneChange,
+                    *(static_cast<TimeZoneChangeDataItemBase*>(dataitem)));
             break;
         case TIME_CHANGE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mTimeChange,
-                    *(static_cast<SystemStatusTimeChange*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusTimeChange>(mCache.mTimeChange,
+                    *(static_cast<TimeChangeDataItemBase*>(dataitem)));
             break;
         case WIFI_SUPPLICANT_STATUS_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mWifiSupplicantStatus,
-                    *(static_cast<SystemStatusWifiSupplicantStatus*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusWifiSupplicantStatus>(
+                    mCache.mWifiSupplicantStatus,
+                    *(static_cast<WifiSupplicantStatusDataItemBase*>(dataitem)));
             break;
         case SHUTDOWN_STATE_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mShutdownState,
-                    *(static_cast<SystemStatusShutdownState*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusShutdownState>(mCache.mShutdownState,
+                    *(static_cast<ShutdownStateDataItemBase*>(dataitem)));
             break;
         case TAC_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mTac,
-                    *(static_cast<SystemStatusTac*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusTac>(mCache.mTac,
+                    *(static_cast<TacDataItemBase*>(dataitem)));
             break;
         case MCCMNC_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mMccMnc,
-                    *(static_cast<SystemStatusMccMnc*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusMccMnc>(mCache.mMccMnc,
+                    *(static_cast<MccmncDataItemBase*>(dataitem)));
             break;
         case BTLE_SCAN_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mBtDeviceScanDetail,
-                    *(static_cast<SystemStatusBtDeviceScanDetail*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusBtDeviceScanDetail>(mCache.mBtDeviceScanDetail,
+                    *(static_cast<BtDeviceScanDetailsDataItemBase*>(dataitem)));
             break;
         case BT_SCAN_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mBtLeDeviceScanDetail,
-                    *(static_cast<SystemStatusBtleDeviceScanDetail*>(dataitem)));
+            ret = setItemBaseinReport<SystemStatusBtleDeviceScanDetail>(
+                    mCache.mBtLeDeviceScanDetail,
+                    *(static_cast<BtLeDeviceScanDetailsDataItemBase*>(dataitem)));
             break;
         default:
             break;
@@ -1656,7 +1655,7 @@ bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly) con
 
 @return     true when successfully done
 ******************************************************************************/
-bool SystemStatus::setDefaultReport(void)
+bool SystemStatus::setDefaultGnssEngineStates(void)
 {
     pthread_mutex_lock(&mMutexSystemStatus);
 
@@ -1676,29 +1675,6 @@ bool SystemStatus::setDefaultReport(void)
     setDefaultIteminReport(mCache.mNavData, SystemStatusNavData());
 
     setDefaultIteminReport(mCache.mPositionFailure, SystemStatusPositionFailure());
-
-    setDefaultIteminReport(mCache.mAirplaneMode, SystemStatusAirplaneMode());
-    setDefaultIteminReport(mCache.mENH, SystemStatusENH());
-    setDefaultIteminReport(mCache.mGPSState, SystemStatusGpsState());
-    setDefaultIteminReport(mCache.mNLPStatus, SystemStatusNLPStatus());
-    setDefaultIteminReport(mCache.mWifiHardwareState, SystemStatusWifiHardwareState());
-    setDefaultIteminReport(mCache.mNetworkInfo, SystemStatusNetworkInfo());
-    setDefaultIteminReport(mCache.mRilServiceInfo, SystemStatusServiceInfo());
-    setDefaultIteminReport(mCache.mRilCellInfo, SystemStatusRilCellInfo());
-    setDefaultIteminReport(mCache.mServiceStatus, SystemStatusServiceStatus());
-    setDefaultIteminReport(mCache.mModel, SystemStatusModel());
-    setDefaultIteminReport(mCache.mManufacturer, SystemStatusManufacturer());
-    setDefaultIteminReport(mCache.mAssistedGps, SystemStatusAssistedGps());
-    setDefaultIteminReport(mCache.mScreenState, SystemStatusScreenState());
-    setDefaultIteminReport(mCache.mPowerConnectState, SystemStatusPowerConnectState());
-    setDefaultIteminReport(mCache.mTimeZoneChange, SystemStatusTimeZoneChange());
-    setDefaultIteminReport(mCache.mTimeChange, SystemStatusTimeChange());
-    setDefaultIteminReport(mCache.mWifiSupplicantStatus, SystemStatusWifiSupplicantStatus());
-    setDefaultIteminReport(mCache.mShutdownState, SystemStatusShutdownState());
-    setDefaultIteminReport(mCache.mTac, SystemStatusTac());
-    setDefaultIteminReport(mCache.mMccMnc, SystemStatusMccMnc());
-    setDefaultIteminReport(mCache.mBtDeviceScanDetail, SystemStatusBtDeviceScanDetail());
-    setDefaultIteminReport(mCache.mBtLeDeviceScanDetail, SystemStatusBtleDeviceScanDetail());
 
     pthread_mutex_unlock(&mMutexSystemStatus);
     return true;
