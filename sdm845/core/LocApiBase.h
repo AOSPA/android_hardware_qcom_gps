@@ -34,7 +34,7 @@
 #include <gps_extended.h>
 #include <LocationAPI.h>
 #include <MsgTask.h>
-#include <platform_lib_log_util.h>
+#include <log_util.h>
 
 namespace loc_core {
 class ContextBase;
@@ -124,9 +124,9 @@ public:
     void requestXtraData();
     void requestTime();
     void requestLocation();
-    void requestATL(int connHandle, LocAGpsType agps_type);
+    void requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask mask);
     void releaseATL(int connHandle);
-    void requestSuplES(int connHandle);
+    void requestSuplES(int connHandle, LocApnTypeMask mask);
     void reportDataCallOpened();
     void reportDataCallClosed();
     void requestNiNotify(GnssNiNotification &notify, const void* data);
@@ -160,7 +160,8 @@ public:
     virtual enum loc_api_adapter_err
         requestXtraServer();
     virtual enum loc_api_adapter_err
-        atlOpenStatus(int handle, int is_succ, char* apn, AGpsBearerType bear, LocAGpsType agpsType);
+        atlOpenStatus(int handle, int is_succ, char* apn, AGpsBearerType bear,
+                      LocAGpsType agpsType, LocApnTypeMask mask);
     virtual enum loc_api_adapter_err
         atlCloseStatus(int handle, int is_succ);
     virtual enum loc_api_adapter_err
