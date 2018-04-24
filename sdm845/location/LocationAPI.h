@@ -229,6 +229,7 @@ typedef enum {
     GNSS_CONFIG_FLAGS_EM_PDN_FOR_EM_SUPL_VALID_BIT         = (1<<7),
     GNSS_CONFIG_FLAGS_SUPL_EM_SERVICES_BIT                 = (1<<8),
     GNSS_CONFIG_FLAGS_SUPL_MODE_BIT                        = (1<<9),
+    GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT               = (1<<10)
 } GnssConfigFlagsBits;
 
 typedef enum {
@@ -452,18 +453,60 @@ typedef struct {
     LocationTechnologyMask techMask;
 } Location;
 
-typedef struct  {
+struct LocationOptions {
     size_t size;          // set to sizeof(LocationOptions)
     uint32_t minInterval; // in milliseconds
     uint32_t minDistance; // in meters. if minDistance > 0, gnssSvCallback/gnssNmeaCallback/
                           // gnssMeasurementsCallback may not be called
     GnssSuplMode mode;    // Standalone/MS-Based/MS-Assisted
-} LocationOptions;
 
-typedef struct {
-    size_t size;
+    inline LocationOptions() :
+            size(0), minInterval(0), minDistance(0), mode(GNSS_SUPL_MODE_STANDALONE) {}
+};
+
+typedef enum {
+    GNSS_POWER_MODE_INVALID = 0,
+    GNSS_POWER_MODE_M1,  /* Improved Accuracy Mode */
+    GNSS_POWER_MODE_M2,  /* Normal Mode */
+    GNSS_POWER_MODE_M3,  /* Background Mode */
+    GNSS_POWER_MODE_M4,  /* Background Mode */
+    GNSS_POWER_MODE_M5   /* Background Mode */
+} GnssPowerMode;
+
+struct TrackingOptions : LocationOptions {
+    GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
+                                sessions */
+    uint32_t tbm;  /* Time interval between measurements.
+                      Applicable to background power modes */
+
+    inline TrackingOptions() :
+            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+    inline TrackingOptions(size_t s, GnssPowerMode m, uint32_t t) :
+            LocationOptions(), powerMode(m), tbm(t) { LocationOptions::size = s; }
+    inline TrackingOptions(const LocationOptions& options) :
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+    inline void setLocationOptions(const LocationOptions& options) {
+        minInterval = options.minInterval;
+        minDistance = options.minDistance;
+        mode = options.mode;
+    }
+};
+
+struct BatchingOptions : LocationOptions {
     BatchingMode batchingMode;
-} BatchingOptions;
+
+    inline BatchingOptions() :
+            LocationOptions(), batchingMode(BATCHING_MODE_ROUTINE) {}
+    inline BatchingOptions(size_t s, BatchingMode m) :
+            LocationOptions(), batchingMode(m) { LocationOptions::size = s; }
+    inline BatchingOptions(const LocationOptions& options) :
+            LocationOptions(options), batchingMode(BATCHING_MODE_ROUTINE) {}
+    inline void setLocationOptions(const LocationOptions& options) {
+        minInterval = options.minInterval;
+        minDistance = options.minDistance;
+        mode = options.mode;
+    }
+};
 
 typedef struct {
     size_t size;
@@ -537,12 +580,22 @@ typedef struct {
     GnssSvOptionsMask gnssSvOptionsMask; // Bitwise OR of GnssSvOptionsBits
 } GnssSv;
 
-typedef struct {
+struct GnssConfigSetAssistanceServer {
     size_t size;             // set to sizeof(GnssConfigSetAssistanceServer)
     GnssAssistanceType type; // SUPL or C2K
     const char* hostName;    // null terminated string
     uint32_t port;           // port of server
-} GnssConfigSetAssistanceServer;
+
+    inline bool equals(const GnssConfigSetAssistanceServer& config) {
+        if (config.type == type && config.port == port &&
+               ((NULL == config.hostName && NULL == hostName) ||
+                (NULL != config.hostName && NULL != hostName &&
+                     0 == strcmp(config.hostName, hostName)))) {
+            return true;
+        }
+        return false;
+    }
+};
 
 typedef struct {
     size_t size;                               // set to sizeof(GnssMeasurementsData)
@@ -602,7 +655,40 @@ typedef struct {
     GnssMeasurementsClock clock; // clock
 } GnssMeasurementsNotification;
 
+typedef uint32_t GnssSvId;
+
+struct GnssSvIdSource{
+    size_t size;                 // set to sizeof(GnssSvIdSource)
+    GnssSvType constellation;    // constellation for the sv to blacklist
+    GnssSvId svId;           // sv id to blacklist
+};
+inline bool operator ==(GnssSvIdSource const& left, GnssSvIdSource const& right) {
+    return left.size == right.size &&
+            left.constellation == right.constellation && left.svId == right.svId;
+}
+
+#define GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK ((uint64_t)0xFFFFFFFFFFFFFFFF)
 typedef struct {
+    size_t size; // set to sizeof(GnssSvIdConfig)
+
+    // GLONASS - SV 65 maps to bit 0
+#define GNSS_SV_CONFIG_GLO_INITIAL_SV_ID 65
+    uint64_t gloBlacklistSvMask;
+
+    // BEIDOU - SV 201 maps to bit 0
+#define GNSS_SV_CONFIG_BDS_INITIAL_SV_ID 201
+    uint64_t bdsBlacklistSvMask;
+
+    // QZSS - SV 193 maps to bit 0
+#define GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID 193
+    uint64_t qzssBlacklistSvMask;
+
+    // GAL - SV 301 maps to bit 0
+#define GNSS_SV_CONFIG_GAL_INITIAL_SV_ID 301
+    uint64_t galBlacklistSvMask;
+} GnssSvIdConfig;
+
+struct GnssConfig{
     size_t size;  // set to sizeof(GnssConfig)
     GnssConfigFlagsMask flags; // bitwise OR of GnssConfigFlagsBits to mark which params are valid
     GnssConfigGpsLock gpsLock;
@@ -615,7 +701,26 @@ typedef struct {
     GnssConfigEmergencyPdnForEmergencySupl emergencyPdnForEmergencySupl;
     GnssConfigSuplEmergencyServices suplEmergencyServices;
     GnssConfigSuplModeMask suplModeMask; //bitwise OR of GnssConfigSuplModeBits
-} GnssConfig;
+    std::vector<GnssSvIdSource> blacklistedSvIds;
+
+    inline bool equals(const GnssConfig& config) {
+        if (flags == config.flags &&
+                gpsLock == config.gpsLock &&
+                suplVersion == config.suplVersion &&
+                assistanceServer.equals(config.assistanceServer) &&
+                lppProfile == config.lppProfile &&
+                lppeControlPlaneMask == config.lppeControlPlaneMask &&
+                lppeUserPlaneMask == config.lppeUserPlaneMask &&
+                aGlonassPositionProtocolMask == config.aGlonassPositionProtocolMask &&
+                emergencyPdnForEmergencySupl == config.emergencyPdnForEmergencySupl &&
+                suplEmergencyServices == config.suplEmergencyServices &&
+                suplModeMask == config.suplModeMask  &&
+                blacklistedSvIds == config.blacklistedSvIds) {
+            return true;
+        }
+        return false;
+    }
+};
 
 typedef struct {
     size_t size;                        // set to sizeof
@@ -744,6 +849,11 @@ typedef std::function<void(
     GnssMeasurementsNotification gnssMeasurementsNotification
 )> gnssMeasurementsCallback;
 
+/* Provides the current GNSS configuration to the client */
+typedef std::function<void(
+    GnssConfig& config
+)> gnssConfigCallback;
+
 typedef struct {
     size_t size; // set to sizeof(LocationCallbacks)
     capabilitiesCallback capabilitiesCb;             // mandatory
@@ -793,8 +903,8 @@ public:
                 LOCATION_ERROR_SUCCESS if session was successfully started
                 LOCATION_ERROR_ALREADY_STARTED if a startTracking session is already in progress
                 LOCATION_ERROR_CALLBACK_MISSING if no trackingCallback was passed in createInstance
-                LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameter is invalid */
-    uint32_t startTracking(LocationOptions&); // returns session id
+                LOCATION_ERROR_INVALID_PARAMETER if TrackingOptions parameter is invalid */
+    uint32_t startTracking(TrackingOptions&); // returns session id
 
     /* stopTracking stops a tracking session associated with id parameter.
         responseCallback returns:
@@ -802,12 +912,12 @@ public:
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a tracking session */
     void stopTracking(uint32_t id);
 
-    /* updateTrackingOptions changes the LocationOptions of a tracking session associated with id
+    /* updateTrackingOptions changes the TrackingOptions of a tracking session associated with id
         responseCallback returns:
                 LOCATION_ERROR_SUCCESS if successful
-                LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameters are invalid
+                LOCATION_ERROR_INVALID_PARAMETER if TrackingOptions parameters are invalid
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a tracking session */
-    void updateTrackingOptions(uint32_t id, LocationOptions&);
+    void updateTrackingOptions(uint32_t id, TrackingOptions&);
 
     /* ================================== BATCHING ================================== */
 
@@ -826,7 +936,7 @@ public:
                 LOCATION_ERROR_CALLBACK_MISSING if no batchingCallback was passed in createInstance
                 LOCATION_ERROR_INVALID_PARAMETER if a parameter is invalid
                 LOCATION_ERROR_NOT_SUPPORTED if batching is not supported */
-    uint32_t startBatching(LocationOptions&, BatchingOptions&); // returns session id
+    uint32_t startBatching(BatchingOptions&); // returns session id
 
     /* stopBatching stops a batching session associated with id parameter.
         responseCallback returns:
@@ -834,12 +944,12 @@ public:
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with batching session */
     void stopBatching(uint32_t id);
 
-    /* updateBatchingOptions changes the LocationOptions of a batching session associated with id
+    /* updateBatchingOptions changes the BatchingOptions of a batching session associated with id
         responseCallback returns:
                 LOCATION_ERROR_SUCCESS if successful
-                LOCATION_ERROR_INVALID_PARAMETER if LocationOptions parameters are invalid
+                LOCATION_ERROR_INVALID_PARAMETER if BatchingOptions parameters are invalid
                 LOCATION_ERROR_ID_UNKNOWN if id is not associated with a batching session */
-    void updateBatchingOptions(uint32_t id, LocationOptions&, BatchingOptions&);
+    void updateBatchingOptions(uint32_t id, BatchingOptions&);
 
     /* getBatchedLocations gets a number of locations that are currently stored/batched
        on the low power processor, delivered by the batchingCallback passed in createInstance.
@@ -908,6 +1018,7 @@ typedef struct {
     size_t size; // set to sizeof(LocationControlCallbacks)
     responseCallback responseCb;                     // mandatory
     collectiveResponseCallback collectiveResponseCb; // mandatory
+    gnssConfigCallback gnssConfigCb;                 // optional
 } LocationControlCallbacks;
 
 class LocationControlAPI
@@ -960,6 +1071,21 @@ public:
                 LOCATION_ERROR_INVALID_PARAMETER if any other parameters are invalid
                 LOCATION_ERROR_GENERAL_FAILURE if failure for any other reason */
     uint32_t* gnssUpdateConfig(GnssConfig config);
+
+    /* gnssGetConfig fetches the current constellation and SV configuration
+       on the GNSS engine.
+       Returns a session id array with an id for each of the bits set in
+       the mask parameter, order from low bits to high bits.
+       Response is sent via the registered gnssConfigCallback.
+       This effect is global for all clients of LocationAPI
+       collectiveResponseCallback returns:
+           LOCATION_ERROR_SUCCESS if session was successful
+           LOCATION_ERROR_INVALID_PARAMETER if any parameter is invalid
+           LOCATION_ERROR_CALLBACK_MISSING If no gnssConfigCallback
+                                           was passed in createInstance
+           LOCATION_ERROR_NOT_SUPPORTED If read of requested configuration
+                                        is not supported */
+    uint32_t* gnssGetConfig(GnssConfigFlagsMask mask);
 
     /* delete specific gnss aiding data for testing, which returns a session id
        that will be returned in responseCallback to match command with response.

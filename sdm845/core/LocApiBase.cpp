@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2018 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -142,6 +142,18 @@ LOC_API_ADAPTER_EVENT_MASK_T LocApiBase::getEvtMask()
     return mask & ~mExcludedMask;
 }
 
+bool LocApiBase::isMaster()
+{
+    bool isMaster = false;
+
+    for (int i = 0;
+            !isMaster && i < MAX_ADAPTERS && NULL != mLocAdapters[i];
+            i++) {
+        isMaster |= mLocAdapters[i]->isAdapterMaster();
+    }
+    return isMaster;
+}
+
 bool LocApiBase::isInSession()
 {
     bool inSession = false;
@@ -258,6 +270,12 @@ void LocApiBase::reportWwanZppFix(LocGpsLocation &zppLoc)
 {
     // loop through adapters, and deliver to the first handling adapter.
     TO_1ST_HANDLING_LOCADAPTERS(mLocAdapters[i]->reportWwanZppFix(zppLoc));
+}
+
+void LocApiBase::reportOdcpiRequest(OdcpiRequestInfo& request)
+{
+    // loop through adapters, and deliver to the first handling adapter.
+    TO_1ST_HANDLING_LOCADAPTERS(mLocAdapters[i]->reportOdcpiRequestEvent(request));
 }
 
 void LocApiBase::reportSv(GnssSvNotification& svNotify)
@@ -404,6 +422,28 @@ void LocApiBase::reportGnssMeasurementData(GnssMeasurementsNotification& measure
     TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportGnssMeasurementDataEvent(measurements, msInWeek));
 }
 
+void LocApiBase::reportGnssSvIdConfig(const GnssSvIdConfig& config)
+{
+    // Print the config
+    LOC_LOGv("gloBlacklistSvMask: %" PRIu64 ", bdsBlacklistSvMask: %" PRIu64 ",\n"
+             "qzssBlacklistSvMask: %" PRIu64 ", galBlacklistSvMask: %" PRIu64,
+             config.gloBlacklistSvMask, config.bdsBlacklistSvMask,
+             config.qzssBlacklistSvMask, config.galBlacklistSvMask);
+
+    // Loop through adapters, and deliver to all adapters.
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportGnssSvIdConfigEvent(config));
+}
+
+void LocApiBase::reportGnssSvTypeConfig(const GnssSvTypeConfig& config)
+{
+    // Print the config
+    LOC_LOGv("blacklistedMask: %" PRIu64 ", enabledMask: %" PRIu64,
+             config.blacklistedSvTypesMask, config.enabledSvTypesMask);
+
+    // Loop through adapters, and deliver to all adapters.
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportGnssSvTypeConfigEvent(config));
+}
+
 enum loc_api_adapter_err LocApiBase::
    open(LOC_API_ADAPTER_EVENT_MASK_T /*mask*/)
 DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
@@ -434,6 +474,10 @@ DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
 
 enum loc_api_adapter_err LocApiBase::
     injectPosition(double /*latitude*/, double /*longitude*/, float /*accuracy*/)
+DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
+
+enum loc_api_adapter_err LocApiBase::
+    injectPosition(const Location& /*location*/)
 DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
 
 enum loc_api_adapter_err LocApiBase::
@@ -581,7 +625,7 @@ void LocApiBase::
 DEFAULT_IMPL()
 
 int LocApiBase::
-    getGpsLock()
+    getGpsLock(uint8_t /*subType*/)
 DEFAULT_IMPL(-1)
 
 LocationError LocApiBase::
@@ -601,5 +645,25 @@ bool LocApiBase::
     if (arrayIndex >= MAX_FEATURE_LENGTH) return false;
     return ((mFeaturesSupported[arrayIndex] >> bitPos ) & 0x1);
 }
+
+LocationError LocApiBase::
+    setBlacklistSv(const GnssSvIdConfig& /*config*/)
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    getBlacklistSv()
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    setConstellationControl(const GnssSvTypeConfig& /*config*/)
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    getConstellationControl()
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
+
+LocationError LocApiBase::
+    resetConstellationControl()
+DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
 
 } // namespace loc_core
