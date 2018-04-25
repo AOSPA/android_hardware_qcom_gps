@@ -606,7 +606,7 @@ GnssAdapter::setSuplHostServer(const char* server, int port)
 
         if ((NULL == server) || (server[0] == 0) ||
                 (strncasecmp(noHost, server, sizeof(noHost)) == 0)) {
-            serverUrl[0] = NULL;
+            serverUrl[0] = '\0';
             length = 0;
         } else if (port > 0) {
             length = snprintf(serverUrl, sizeof(serverUrl), "%s:%u", server, port);
@@ -1706,7 +1706,7 @@ GnssAdapter::updateClientsEventMask()
     ** For Automotive use cases we need to enable MEASUREMENT and POLY
     ** when QDR is enabled
     */
-    if(1 == ContextBase::mGps_conf.EXTERNAL_DR_ENABLED) {
+    if (1 == ContextBase::mGps_conf.EXTERNAL_DR_ENABLED) {
         mask |= LOC_API_ADAPTER_BIT_GNSS_MEASUREMENT;
         mask |= LOC_API_ADAPTER_BIT_GNSS_SV_POLYNOMIAL_REPORT;
 
@@ -2024,6 +2024,9 @@ GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
                             mTrackingOptions.tbm, TRACKING_TBM_THRESHOLD_MILLIS);
                     mTrackingOptions.powerMode = GNSS_POWER_MODE_M2;
                 }
+                if (mTrackingOptions.minInterval < MIN_TRACKING_INTERVAL) {
+                    mTrackingOptions.minInterval = MIN_TRACKING_INTERVAL;
+                }
                 // Api doesn't support multiple clients for time based tracking, so mutiplex
                 err = mAdapter.startTrackingMultiplex(mTrackingOptions);
                 if (LOCATION_ERROR_SUCCESS == err) {
@@ -2048,30 +2051,36 @@ GnssAdapter::startTrackingMultiplex(const TrackingOptions& options)
     if (mTrackingSessions.empty()) {
         err = startTracking(options);
     } else {
-        // Get the LocationOptions that has the smallest interval,
-        // which should be the active one
-        // Also get the highest power tracking options
-        TrackingOptions smallestIntervalOptions = {};
-        TrackingOptions highestPowerTrackingOptions = options;
+        // find the smallest interval and powerMode
+        TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
+        GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
         for (auto it = mTrackingSessions.begin(); it != mTrackingSessions.end(); ++it) {
-            GnssPowerMode powerMode = it->second.powerMode;
-            // Size of zero means we havent set it yet
-            if (0 == smallestIntervalOptions.size ||
-                it->second.minInterval < smallestIntervalOptions.minInterval) {
-                 smallestIntervalOptions = it->second;
+            // if not set or there is a new smallest interval, then set the new interval
+            if (0 == multiplexedOptions.size ||
+                it->second.minInterval < multiplexedOptions.minInterval) {
+                multiplexedOptions = it->second;
             }
-            // Size of zero means we havent set it yet
-            if (0 == highestPowerTrackingOptions.size ||
-                (GNSS_POWER_MODE_INVALID != powerMode &&
-                        powerMode < highestPowerTrackingOptions.powerMode)) {
-                 highestPowerTrackingOptions = it->second;
+            // if session is not the one we are updating and either powerMode
+            // is not set or there is a new smallest powerMode, then set the new powerMode
+            if (GNSS_POWER_MODE_INVALID == multiplexedPowerMode ||
+                it->second.powerMode < multiplexedPowerMode) {
+                multiplexedPowerMode = it->second.powerMode;
             }
         }
-        // if new session's minInterval is smaller than any in other sessions
-        if (options.minInterval < smallestIntervalOptions.minInterval) {
-            // restart time based tracking with new options
-            highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
-            err = startTracking(highestPowerTrackingOptions);
+        bool updateOptions = false;
+        // if session we are starting has smaller interval then next smallest
+        if (options.minInterval < multiplexedOptions.minInterval) {
+            multiplexedOptions.minInterval = options.minInterval;
+            updateOptions = true;
+        }
+        // if session we are starting has smaller powerMode then next smallest
+        if (options.powerMode < multiplexedPowerMode) {
+            multiplexedOptions.powerMode = options.powerMode;
+            updateOptions = true;
+        }
+        if (updateOptions) {
+            // restart time based tracking with the newly updated options
+            err = startTracking(multiplexedOptions);
         }
     }
 
@@ -2081,6 +2090,10 @@ GnssAdapter::startTrackingMultiplex(const TrackingOptions& options)
 LocationError
 GnssAdapter::startTracking(const TrackingOptions& trackingOptions)
 {
+    LOC_LOGd("minInterval %u minDistance %u mode %u powermode %u tbm %u",
+         trackingOptions.minInterval, trackingOptions.minDistance,
+         trackingOptions.mode, trackingOptions.powerMode, trackingOptions.tbm);
+
     LocationError err = LOCATION_ERROR_SUCCESS;
     LocPosMode locPosMode = {};
     convertOptions(locPosMode, trackingOptions);
@@ -2195,6 +2208,9 @@ GnssAdapter::updateTrackingOptionsCommand(LocationAPI* client, uint32_t id,
                                 mTrackingOptions.tbm, TRACKING_TBM_THRESHOLD_MILLIS);
                         mTrackingOptions.powerMode = GNSS_POWER_MODE_M2;
                     }
+                    if (mTrackingOptions.minInterval < MIN_TRACKING_INTERVAL) {
+                        mTrackingOptions.minInterval = MIN_TRACKING_INTERVAL;
+                    }
                     // Api doesn't support multiple clients for time based tracking, so mutiplex
                     err = mAdapter.updateTrackingMultiplex(
                             mClient, mSessionId, mTrackingOptions);
@@ -2220,44 +2236,49 @@ GnssAdapter::updateTrackingMultiplex(LocationAPI* client, uint32_t id,
 {
     LocationError err = LOCATION_ERROR_SUCCESS;
 
-    if (1 == mTrackingSessions.size()) {
-        err = startTracking(trackingOptions);
-    } else {
-        LocationSessionKey key(client, id);
+    LocationSessionKey key(client, id);
 
-        // get the session we are updating
-        auto it = mTrackingSessions.find(key);
-        if (it != mTrackingSessions.end()) {
-            // find the smallest interval, other than the session we are updating
-            TrackingOptions smallestIntervalOptions = {}; // size is 0 until set for the first time
-            TrackingOptions highestPowerTrackingOptions = trackingOptions;
-            for (auto it2 = mTrackingSessions.begin(); it2 != mTrackingSessions.end(); ++it2) {
-                GnssPowerMode powerMode = it2->second.powerMode;
-                // if session is not the one we are updating and either smallest
-                // interval is not set or there is a new smallest interval,
-                // then set the new smallest interval
-                if (it2->first != key && (0 == smallestIntervalOptions.size ||
-                    it2->second.minInterval < smallestIntervalOptions.minInterval)) {
-                     smallestIntervalOptions = it2->second;
-                }
-                // size of zero means we havent set it yet
-                if (0 == highestPowerTrackingOptions.size ||
-                    (GNSS_POWER_MODE_INVALID != powerMode &&
-                            powerMode < highestPowerTrackingOptions.powerMode)) {
-                     highestPowerTrackingOptions = it2->second;
-                }
+    // get the session we are updating
+    auto it = mTrackingSessions.find(key);
+    // if session we are updating exists and the minInterval or powerMode has changed
+    if (it != mTrackingSessions.end() && (it->second.minInterval != trackingOptions.minInterval ||
+        it->second.powerMode != trackingOptions.powerMode)) {
+        // find the smallest interval and powerMode, other than the session we are updating
+        TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
+        GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
+        for (auto it2 = mTrackingSessions.begin(); it2 != mTrackingSessions.end(); ++it2) {
+            // if session is not the one we are updating and either interval
+            // is not set or there is a new smallest interval, then set the new interval
+            if (it2->first != key && (0 == multiplexedOptions.size ||
+                it2->second.minInterval < multiplexedOptions.minInterval)) {
+                 multiplexedOptions = it2->second;
             }
-            // if session we are updating has smaller interval then next smallest
-            if (trackingOptions.minInterval < smallestIntervalOptions.minInterval) {
-                // restart time based tracking with the newly updated interval
-                highestPowerTrackingOptions.setLocationOptions(trackingOptions);
-                err = startTracking(highestPowerTrackingOptions);
-            // else if the session we are updating used to be the smallest
-            } else if (it->second.minInterval < smallestIntervalOptions.minInterval) {
-                // restart time based tracking with the next smallest
-                highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
-                err = startTracking(highestPowerTrackingOptions);
+            // if session is not the one we are updating and either powerMode
+            // is not set or there is a new smallest powerMode, then set the new powerMode
+            if (it2->first != key && (GNSS_POWER_MODE_INVALID == multiplexedPowerMode ||
+                it2->second.powerMode < multiplexedPowerMode)) {
+                multiplexedPowerMode = it2->second.powerMode;
             }
+        }
+        bool updateOptions = false;
+        // if session we are updating has smaller interval then next smallest
+        if (trackingOptions.minInterval < multiplexedOptions.minInterval) {
+            multiplexedOptions.minInterval = trackingOptions.minInterval;
+            updateOptions = true;
+        }
+        // if session we are updating has smaller powerMode then next smallest
+        if (trackingOptions.powerMode < multiplexedPowerMode) {
+            multiplexedOptions.powerMode = trackingOptions.powerMode;
+            updateOptions = true;
+        }
+        // if only one session exists, then tracking should be updated with it
+        if (1 == mTrackingSessions.size()) {
+            multiplexedOptions = trackingOptions;
+            updateOptions = true;
+        }
+        if (updateOptions) {
+            // restart time based tracking with the newly updated options
+            err = startTracking(multiplexedOptions);
         }
     }
 
@@ -2316,29 +2337,30 @@ GnssAdapter::stopTrackingMultiplex(LocationAPI* client, uint32_t id)
         // get the session we are stopping
         auto it = mTrackingSessions.find(key);
         if (it != mTrackingSessions.end()) {
-            // find the next smallest interval, other than the session we are stopping
-            TrackingOptions smallestIntervalOptions = {}; // size is 0 until set for the first time
-            TrackingOptions highestPowerTrackingOptions = {};
+            // find the smallest interval and powerMode, other than the session we are stopping
+            TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
+            GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
             for (auto it2 = mTrackingSessions.begin(); it2 != mTrackingSessions.end(); ++it2) {
-                // if session is not the one we are stopping and either smallest interval is not set
-                // or there is a new smallest interval, then set the new smallest interval
-                if (it2->first != key && (0 == smallestIntervalOptions.size ||
-                    it2->second.minInterval < smallestIntervalOptions.minInterval)) {
-                     smallestIntervalOptions = it2->second;
+                // if session is not the one we are stopping and either interval
+                // is not set or there is a new smallest interval, then set the new interval
+                if (it2->first != key && (0 == multiplexedOptions.size ||
+                    it2->second.minInterval < multiplexedOptions.minInterval)) {
+                     multiplexedOptions = it2->second;
                 }
-                GnssPowerMode powerMode = it2->second.powerMode;
-                // Size of zero means we havent set it yet
-                if (0 == highestPowerTrackingOptions.size ||
-                    (GNSS_POWER_MODE_INVALID != powerMode &&
-                            powerMode < highestPowerTrackingOptions.powerMode)) {
-                     highestPowerTrackingOptions = it2->second;
+                // if session is not the one we are stopping and either powerMode
+                // is not set or there is a new smallest powerMode, then set the new powerMode
+                if (it2->first != key && (GNSS_POWER_MODE_INVALID == multiplexedPowerMode ||
+                    it2->second.powerMode < multiplexedPowerMode)) {
+                    multiplexedPowerMode = it2->second.powerMode;
                 }
             }
-            // if session we are stopping has smaller interval then next smallest
-            if (it->second.minInterval < smallestIntervalOptions.minInterval) {
-                // restart time based tracking with next smallest interval
-                highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
-                err = startTracking(highestPowerTrackingOptions);
+            // if session we are stopping has smaller interval then next smallest or
+            // if session we are stopping has smaller powerMode then next smallest
+            if (it->second.minInterval < multiplexedOptions.minInterval ||
+                it->second.powerMode < multiplexedPowerMode) {
+                multiplexedOptions.powerMode = multiplexedPowerMode;
+                // restart time based tracking with the newly updated options
+                err = startTracking(multiplexedOptions);
             }
         }
     }
