@@ -944,10 +944,15 @@ GnssAdapter::gnssSvIdConfigUpdate(const std::vector<GnssSvIdSource>& blacklisted
     memset(&mGnssSvIdConfig, 0, sizeof(GnssSvIdConfig));
 
     // Convert the sv id lists to masks
-    convertToGnssSvIdConfig(blacklistedSvIds, mGnssSvIdConfig);
+    bool convertSuccess = convertToGnssSvIdConfig(blacklistedSvIds, mGnssSvIdConfig);
 
-    // Now send to Modem
-    return gnssSvIdConfigUpdate();
+    // Now send to Modem if conversion successful
+    if (convertSuccess) {
+        return gnssSvIdConfigUpdate();
+    } else {
+        LOC_LOGe("convertToGnssSvIdConfig failed");
+        return LOCATION_ERROR_INVALID_PARAMETER;
+    }
 }
 
 LocationError
@@ -1108,10 +1113,11 @@ GnssAdapter::gnssGetConfigCommand(GnssConfigFlagsMask configMask) {
     return ids;
 }
 
-void
+bool
 GnssAdapter::convertToGnssSvIdConfig(
         const std::vector<GnssSvIdSource>& blacklistedSvIds, GnssSvIdConfig& config)
 {
+    bool retVal = false;
     config.size = sizeof(GnssSvIdConfig);
 
     // Empty vector => Clear any previous blacklisted SVs
@@ -1120,6 +1126,7 @@ GnssAdapter::convertToGnssSvIdConfig(
         config.bdsBlacklistSvMask = 0;
         config.qzssBlacklistSvMask = 0;
         config.galBlacklistSvMask = 0;
+        retVal = true;
     } else {
         // Parse the vector and convert SV IDs to mask values
         for (GnssSvIdSource source : blacklistedSvIds) {
@@ -1160,7 +1167,17 @@ GnssAdapter::convertToGnssSvIdConfig(
                 }
             }
         }
+
+        // Return true if any one source is valid
+        if (0 != config.gloBlacklistSvMask ||
+                0 != config.bdsBlacklistSvMask ||
+                0 != config.galBlacklistSvMask ||
+                0 != config.qzssBlacklistSvMask) {
+            retVal = true;
+        }
     }
+
+    return retVal;
 }
 
 void GnssAdapter::convertFromGnssSvIdConfig(
