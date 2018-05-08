@@ -641,10 +641,13 @@ GnssAdapter::setConfigCommand()
                                        ContextBase::mGps_conf.SUPL_PORT);
             mApi.setSensorControlConfig(ContextBase::mSap_conf.SENSOR_USAGE,
                                         ContextBase::mSap_conf.SENSOR_PROVIDER);
+
+            /* Mark these LPPe functions, they are MBN configured.
             mApi.setLPPeProtocolCp(
-                mAdapter.convertLppeCp(ContextBase::mGps_conf.LPPE_CP_TECHNOLOGY));
+                    mAdapter.convertLppeCp(ContextBase::mGps_conf.LPPE_CP_TECHNOLOGY));
             mApi.setLPPeProtocolUp(
-                mAdapter.convertLppeUp(ContextBase::mGps_conf.LPPE_UP_TECHNOLOGY));
+                    mAdapter.convertLppeUp(ContextBase::mGps_conf.LPPE_UP_TECHNOLOGY));
+            */
 
             // set nmea mask type
             uint32_t mask = 0;
