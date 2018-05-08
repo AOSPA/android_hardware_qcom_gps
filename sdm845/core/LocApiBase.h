@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2018 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -98,6 +98,7 @@ protected:
     inline virtual ~LocApiBase() { close(); }
     bool isInSession();
     const LOC_API_ADAPTER_EVENT_MASK_T mExcludedMask;
+    bool isMaster();
 
 public:
     inline void sendMsg(const LocMsg* msg) const {
@@ -134,6 +135,9 @@ public:
     void reportGnssMeasurementData(GnssMeasurementsNotification& measurements, int msInWeek);
     void saveSupportedFeatureList(uint8_t *featureList);
     void reportWwanZppFix(LocGpsLocation &zppLoc);
+    void reportGnssSvIdConfig(const GnssSvIdConfig& config);
+    void reportGnssSvTypeConfig(const GnssSvTypeConfig& config);
+    void reportOdcpiRequest(OdcpiRequestInfo& request);
 
     // downward calls
     // All below functions are to be defined by adapter specific modules:
@@ -153,6 +157,8 @@ public:
         setAPN(char* apn, int len);
     virtual enum loc_api_adapter_err
         injectPosition(double latitude, double longitude, float accuracy);
+    virtual enum loc_api_adapter_err
+        injectPosition(const Location& location);
     virtual enum loc_api_adapter_err
         setTime(LocGpsUtcTime time, int64_t timeReference, int uncertainty);
     virtual enum loc_api_adapter_err
@@ -244,7 +250,7 @@ public:
       Current value of GPS Lock on success
       -1 on failure
      */
-    virtual int getGpsLock(void);
+    virtual int getGpsLock(uint8_t subType);
 
     virtual LocationError setXtraVersionCheck(uint32_t check);
     /*
@@ -256,6 +262,13 @@ public:
        Check if a feature is supported
       */
     bool isFeatureSupported(uint8_t featureVal);
+
+    /* Requests for SV/Constellation Control */
+    virtual LocationError setBlacklistSv(const GnssSvIdConfig& config);
+    virtual LocationError getBlacklistSv();
+    virtual LocationError setConstellationControl(const GnssSvTypeConfig& config);
+    virtual LocationError getConstellationControl();
+    virtual LocationError resetConstellationControl();
 };
 
 typedef LocApiBase* (getLocApi_t)(const MsgTask* msgTask,

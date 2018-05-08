@@ -114,10 +114,13 @@ enum loc_registration_mask_status {
 
 typedef enum {
     LOC_SUPPORTED_FEATURE_ODCPI_2_V02 = 0, /**<  Support ODCPI version 2 feature  */
-    LOC_SUPPORTED_FEATURE_WIFI_AP_DATA_INJECT_2_V02, /**<  Support Wifi AP data inject version 2 feature  */
-    LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02, /**< Support debug NMEA feature */
-    LOC_SUPPORTED_FEATURE_GNSS_ONLY_POSITION_REPORT, /**< Support GNSS Only position reports */
-    LOC_SUPPORTED_FEATURE_FDCL /**< Support FDCL */
+    LOC_SUPPORTED_FEATURE_WIFI_AP_DATA_INJECT_2_V02 = 1, /**<  Support Wifi AP data inject version 2 feature  */
+    LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02 = 2, /**< Support debug NMEA feature */
+    LOC_SUPPORTED_FEATURE_GNSS_ONLY_POSITION_REPORT_V02 = 3, /**< Support the GNSS only position report feature */
+    LOC_SUPPORTED_FEATURE_FDCL_V02 = 4, /**< Support the FDCL feature */
+    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02 = 5, /**<  Support the GNSS constellation enablement feature  */
+    LOC_SUPPORTED_FEATURE_AGPM_V02 = 6, /**<  Support the advanced GNSS power management feature  */
+    LOC_SUPPORTED_FEATURE_PASSIVE_LISTENER_V02 = 7, /**<  Support the passive listener feature  */
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -1281,6 +1284,32 @@ typedef struct
     Gnss_Srn_MacAddr_Type  macAddrType; /* SRN AP MAC Address type */
 } GnssSrnDataReq;
 
+/* Mask indicating enabled or disabled constellations */
+typedef uint64_t GnssSvTypesMask;
+typedef enum {
+    GNSS_SV_TYPES_MASK_GLO_BIT  = (1<<0),
+    GNSS_SV_TYPES_MASK_BDS_BIT  = (1<<1),
+    GNSS_SV_TYPES_MASK_QZSS_BIT = (1<<2),
+    GNSS_SV_TYPES_MASK_GAL_BIT  = (1<<3),
+} GnssSvTypesMaskBits;
+
+/* This SV Type config is injected directly to GNSS Adapter
+ * bypassing Location API */
+typedef struct {
+    size_t size; // set to sizeof(GnssSvTypeConfig)
+    // Enabled Constellations
+    GnssSvTypesMask enabledSvTypesMask;
+    // Disabled Constellations
+    GnssSvTypesMask blacklistedSvTypesMask;
+} GnssSvTypeConfig;
+
+/* Provides the current GNSS SV Type configuration to the client.
+ * This is fetched via direct call to GNSS Adapter bypassing
+ * Location API */
+typedef std::function<void(
+    const GnssSvTypeConfig& config
+)> GnssSvTypeConfigCallback;
+
 /*
  * Represents the status of AGNSS augmented to support IPv4.
  */
@@ -1304,6 +1333,20 @@ struct AGnssExtStatusIpV6 {
      */
     uint8_t ipV6Addr[16];
 };
+
+/* ODCPI Request Info */
+enum OdcpiRequestType {
+    ODCPI_REQUEST_TYPE_START,
+    ODCPI_REQUEST_TYPE_STOP
+};
+struct OdcpiRequestInfo {
+    size_t size;
+    OdcpiRequestType type;
+    uint32_t tbfMillis;
+    bool isEmergencyMode;
+};
+/* Callback to send ODCPI request to framework */
+typedef std::function<void(const OdcpiRequestInfo& request)> OdcpiRequestCallback;
 
 /*
  * Callback with AGNSS(IpV4) status information.
