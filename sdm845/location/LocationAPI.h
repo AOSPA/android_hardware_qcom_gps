@@ -477,7 +477,7 @@ typedef enum {
 struct TrackingOptions : LocationOptions {
     GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
                                 sessions */
-    uint32_t tbm;  /* Time interval between measurements.
+    uint32_t tbm;  /* Time interval between measurements specified in millis.
                       Applicable to background power modes */
 
     inline TrackingOptions() :
