@@ -398,7 +398,7 @@ Return<bool> Gnss::setPositionMode_1_1(V1_0::IGnss::GnssPositionMode mode,
         GnssPowerMode powerMode = lowPowerMode?
                 GNSS_POWER_MODE_M4 : GNSS_POWER_MODE_M2;
         retVal = api->gnssSetPositionMode(mode, recurrence, minIntervalMs,
-                preferredAccuracyMeters, preferredTimeMs, powerMode);
+                preferredAccuracyMeters, preferredTimeMs, powerMode, minIntervalMs);
     }
     return retVal;
 }
