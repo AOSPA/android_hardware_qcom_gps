@@ -32,7 +32,6 @@
 
 #include <string>
 #include <memory>
-#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -96,7 +95,7 @@ private:
     int mIpcFd;
     bool mStopRequested;
     LocThread mThread;
-    std::unique_ptr<LocRunnable> mRunnable;
+    LocRunnable *mRunnable;
 };
 
 class LocIpcSender {
@@ -140,10 +139,10 @@ private:
     std::shared_ptr<int> mSocket;
     struct sockaddr_un mDestAddr;
 
-    inline LocIpcSender(
-            const std::shared_ptr<int>& mySocket, const char* destSocket) : mSocket(mySocket) {
+    inline LocIpcSender(const std::shared_ptr<int>& mySocket, const char* destSocket) :
+        mSocket(mySocket),
+        mDestAddr({.sun_family = AF_UNIX, {}}) {
         if ((nullptr != mSocket) && (-1 != *mSocket) && (nullptr != destSocket)) {
-            mDestAddr.sun_family = AF_UNIX;
             snprintf(mDestAddr.sun_path, sizeof(mDestAddr.sun_path), "%s", destSocket);
         }
     }
