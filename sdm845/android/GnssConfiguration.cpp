@@ -233,11 +233,6 @@ Return<bool> GnssConfiguration::setBlacklist(
         return false;
     }
 
-    // blValid is true if blacklist is empty, i.e. clearing the BL;
-    // if blacklist is not empty, blValid is initialied to false, and later
-    // updated in the for loop to become true only if there is at least
-    // one {constellation, svid} in the list that is valid.
-    bool blValid = (0 == blacklist.size());
     GnssConfig config;
     memset(&config, 0, sizeof(GnssConfig));
     config.size = sizeof(GnssConfig);
@@ -246,14 +241,14 @@ Return<bool> GnssConfiguration::setBlacklist(
 
     GnssSvIdSource source = {};
     for (int idx = 0; idx < (int)blacklist.size(); idx++) {
-        // Set blValid true if any one source is valid
-        blValid = setBlacklistedSource(source, blacklist[idx]) || blValid;
-        config.blacklistedSvIds.push_back(source);
+        // Add source to list if valid
+        if (setBlacklistedSource(source, blacklist[idx])) {
+            config.blacklistedSvIds.push_back(source);
+        }
     }
 
-    // Update configuration only if blValid is true
-    // i.e. only if atleast one source is valid for blacklisting
-    return (blValid && mGnss->updateConfiguration(config));
+    // Update configuration
+    return mGnss->updateConfiguration(config);
 }
 
 bool GnssConfiguration::setBlacklistedSource(
@@ -264,6 +259,8 @@ bool GnssConfiguration::setBlacklistedSource(
     uint16_t svIdOffset = 0;
     copyToSource.size = sizeof(GnssSvIdSource);
     copyToSource.svId = copyFromSource.svid;
+    GnssSvId initialSvId = 0;
+    GnssSvId lastSvId = 0;
 
     switch(copyFromSource.constellation) {
     case GnssConstellationType::GPS:
@@ -279,18 +276,26 @@ bool GnssConfiguration::setBlacklistedSource(
     case GnssConstellationType::GLONASS:
         copyToSource.constellation = GNSS_SV_TYPE_GLONASS;
         svIdOffset = GNSS_SV_CONFIG_GLO_INITIAL_SV_ID - 1;
+        initialSvId = GNSS_SV_CONFIG_GLO_INITIAL_SV_ID;
+        lastSvId = GNSS_SV_CONFIG_GLO_LAST_SV_ID;
         break;
     case GnssConstellationType::QZSS:
         copyToSource.constellation = GNSS_SV_TYPE_QZSS;
         svIdOffset = 0;
+        initialSvId = GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID;
+        lastSvId = GNSS_SV_CONFIG_QZSS_LAST_SV_ID;
         break;
     case GnssConstellationType::BEIDOU:
         copyToSource.constellation = GNSS_SV_TYPE_BEIDOU;
         svIdOffset = GNSS_SV_CONFIG_BDS_INITIAL_SV_ID - 1;
+        initialSvId = GNSS_SV_CONFIG_BDS_INITIAL_SV_ID;
+        lastSvId = GNSS_SV_CONFIG_BDS_LAST_SV_ID;
         break;
     case GnssConstellationType::GALILEO:
         copyToSource.constellation = GNSS_SV_TYPE_GALILEO;
         svIdOffset = GNSS_SV_CONFIG_GAL_INITIAL_SV_ID - 1;
+        initialSvId = GNSS_SV_CONFIG_GAL_INITIAL_SV_ID;
+        lastSvId = GNSS_SV_CONFIG_GAL_LAST_SV_ID;
         break;
     default:
         copyToSource.constellation = GNSS_SV_TYPE_UNKNOWN;
@@ -299,8 +304,14 @@ bool GnssConfiguration::setBlacklistedSource(
         break;
     }
 
-    if (copyToSource.svId > 0 && svIdOffset > 0) {
+    if (copyToSource.svId > 0) {
         copyToSource.svId += svIdOffset;
+        if (copyToSource.svId < initialSvId || copyToSource.svId > lastSvId) {
+            LOC_LOGe("Invalid sv id %d for sv type %d allowed range [%d, %d]",
+                     copyToSource.svId, copyToSource.constellation,
+                     initialSvId, lastSvId);
+            retVal = false;
+        }
     }
 
     return retVal;

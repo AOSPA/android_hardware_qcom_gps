@@ -1120,7 +1120,7 @@ bool
 GnssAdapter::convertToGnssSvIdConfig(
         const std::vector<GnssSvIdSource>& blacklistedSvIds, GnssSvIdConfig& config)
 {
-    bool retVal = false;
+    bool retVal = true;
     config.size = sizeof(GnssSvIdConfig);
 
     // Empty vector => Clear any previous blacklisted SVs
@@ -1129,28 +1129,32 @@ GnssAdapter::convertToGnssSvIdConfig(
         config.bdsBlacklistSvMask = 0;
         config.qzssBlacklistSvMask = 0;
         config.galBlacklistSvMask = 0;
-        retVal = true;
     } else {
         // Parse the vector and convert SV IDs to mask values
         for (GnssSvIdSource source : blacklistedSvIds) {
             uint64_t* svMaskPtr = NULL;
             GnssSvId initialSvId = 0;
+            GnssSvId lastSvId = 0;
             switch(source.constellation) {
             case GNSS_SV_TYPE_GLONASS:
                 svMaskPtr = &config.gloBlacklistSvMask;
                 initialSvId = GNSS_SV_CONFIG_GLO_INITIAL_SV_ID;
+                lastSvId = GNSS_SV_CONFIG_GLO_LAST_SV_ID;
                 break;
             case GNSS_SV_TYPE_BEIDOU:
                 svMaskPtr = &config.bdsBlacklistSvMask;
                 initialSvId = GNSS_SV_CONFIG_BDS_INITIAL_SV_ID;
+                lastSvId = GNSS_SV_CONFIG_BDS_LAST_SV_ID;
                 break;
             case GNSS_SV_TYPE_QZSS:
                 svMaskPtr = &config.qzssBlacklistSvMask;
                 initialSvId = GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID;
+                lastSvId = GNSS_SV_CONFIG_QZSS_LAST_SV_ID;
                 break;
             case GNSS_SV_TYPE_GALILEO:
                 svMaskPtr = &config.galBlacklistSvMask;
                 initialSvId = GNSS_SV_CONFIG_GAL_INITIAL_SV_ID;
+                lastSvId = GNSS_SV_CONFIG_GAL_LAST_SV_ID;
                 break;
             default:
                 break;
@@ -1162,21 +1166,13 @@ GnssAdapter::convertToGnssSvIdConfig(
                 // SV ID 0 = All SV IDs
                 if (0 == source.svId) {
                     *svMaskPtr = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
-                } else if (source.svId < initialSvId || source.svId >= initialSvId + 64) {
-                    LOC_LOGe("Invalid sv id %d for sv type %d",
-                            source.svId, source.constellation);
+                } else if (source.svId < initialSvId || source.svId > lastSvId) {
+                    LOC_LOGe("Invalid sv id %d for sv type %d allowed range [%d, %d]",
+                            source.svId, source.constellation, initialSvId, lastSvId);
                 } else {
-                    *svMaskPtr |= (1 << (source.svId - initialSvId));
+                    *svMaskPtr |= ((uint64_t)1 << (source.svId - initialSvId));
                 }
             }
-        }
-
-        // Return true if any one source is valid
-        if (0 != config.gloBlacklistSvMask ||
-                0 != config.bdsBlacklistSvMask ||
-                0 != config.galBlacklistSvMask ||
-                0 != config.qzssBlacklistSvMask) {
-            retVal = true;
         }
     }
 
