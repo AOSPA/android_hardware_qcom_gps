@@ -1,5 +1,5 @@
 # TODO:  Find a better way to separate build configs for ADP vs non-ADP devices
-ifneq ($(BOARD_IS_AUTOMOTIVE),true)
+ifneq ($(TARGET_BOARD_AUTO),true)
   ifneq ($(BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE),)
     LOCAL_PATH := $(call my-dir)
     ifeq ($(BOARD_VENDOR_QCOM_LOC_PDK_FEATURE_SET),true)
@@ -36,4 +36,4 @@ ifneq ($(BOARD_IS_AUTOMOTIVE),true)
     endif #BOARD_VENDOR_QCOM_LOC_PDK_FEATURE_SET
 
   endif #BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE
-endif
+endif #TARGET_BOARD_AUTO
