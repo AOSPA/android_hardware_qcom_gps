@@ -142,7 +142,11 @@ typedef enum {
     // supports debug nmea sentences in the debugNmeaCallback
     LOCATION_CAPABILITIES_DEBUG_NMEA_BIT                    = (1<<8),
     // support outdoor trip batching
-    LOCATION_CAPABILITIES_OUTDOOR_TRIP_BATCHING_BIT         = (1<<9)
+    LOCATION_CAPABILITIES_OUTDOOR_TRIP_BATCHING_BIT         = (1<<9),
+    // support constellation enablement
+    LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT      = (1<<10),
+    // support agpm
+    LOCATION_CAPABILITIES_AGPM_BIT                          = (1<<11),
 } LocationCapabilitiesBits;
 
 typedef enum {
@@ -675,18 +679,22 @@ typedef struct {
 
     // GLONASS - SV 65 maps to bit 0
 #define GNSS_SV_CONFIG_GLO_INITIAL_SV_ID 65
+#define GNSS_SV_CONFIG_GLO_LAST_SV_ID 88
     uint64_t gloBlacklistSvMask;
 
     // BEIDOU - SV 201 maps to bit 0
 #define GNSS_SV_CONFIG_BDS_INITIAL_SV_ID 201
+#define GNSS_SV_CONFIG_BDS_LAST_SV_ID 237
     uint64_t bdsBlacklistSvMask;
 
     // QZSS - SV 193 maps to bit 0
 #define GNSS_SV_CONFIG_QZSS_INITIAL_SV_ID 193
+#define GNSS_SV_CONFIG_QZSS_LAST_SV_ID 200
     uint64_t qzssBlacklistSvMask;
 
     // GAL - SV 301 maps to bit 0
 #define GNSS_SV_CONFIG_GAL_INITIAL_SV_ID 301
+#define GNSS_SV_CONFIG_GAL_LAST_SV_ID 336
     uint64_t galBlacklistSvMask;
 } GnssSvIdConfig;
 
