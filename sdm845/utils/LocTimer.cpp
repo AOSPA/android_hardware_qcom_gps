@@ -398,8 +398,8 @@ LocTimerDelegate* LocTimerContainer::popIfOutRanks(LocTimerDelegate& timer) {
 
 inline
 LocTimerPollTask::LocTimerPollTask()
-    : mFd(epoll_create(2)), mThread(new LocThread()) {
-    // before a next call returens, a thread will be created. The run() method
+    : mFd(epoll_create1(EPOLL_CLOEXEC)), mThread(new LocThread()) {
+    // before a next call returns, a thread will be created. The run() method
     // could already be running in parallel. Also, since each of the objs
     // creates a thread, the container will make sure that there will be only
     // one of such obj for our timer implementation.
