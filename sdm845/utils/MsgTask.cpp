@@ -35,6 +35,7 @@
 #include <log_util.h>
 #include <loc_log.h>
 #include <loc_pla.h>
+#include <processgroup/sched_policy.h>
 
 static void LocMsgDestroy(void* msg) {
     delete (LocMsg*)msg;
