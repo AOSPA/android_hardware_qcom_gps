@@ -1690,7 +1690,7 @@ bool SystemStatus::setDefaultGnssEngineStates(void)
 bool SystemStatus::eventConnectionStatus(bool connected, int8_t type)
 {
     // send networkinof dataitem to systemstatus observer clients
-    SystemStatusNetworkInfo s(type, "", "", false, connected, false);
+    SystemStatusNetworkInfo s(type, "", "", connected);
     mSysStatusObsvr.notify({&s});
 
     return true;
