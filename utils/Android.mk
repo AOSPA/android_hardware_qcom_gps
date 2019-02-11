@@ -10,8 +10,11 @@ include $(CLEAR_VARS)
 LOCAL_SHARED_LIBRARIES := \
     libutils \
     libcutils \
-    liblog \
-    libprocessgroup
+    liblog
+
+ifeq ($(filter P% p%,$(TARGET_PLATFORM_VERSION)),)
+LOCAL_SHARED_LIBRARIES += libprocessgroup
+endif
 
 LOCAL_SRC_FILES += \
     loc_log.cpp \
