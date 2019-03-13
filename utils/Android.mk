@@ -12,6 +12,10 @@ LOCAL_SHARED_LIBRARIES := \
     libcutils \
     liblog
 
+ifeq ($(filter P% p%,$(TARGET_PLATFORM_VERSION)),)
+LOCAL_SHARED_LIBRARIES += libprocessgroup
+endif
+
 LOCAL_SRC_FILES += \
     loc_log.cpp \
     loc_cfg.cpp \
