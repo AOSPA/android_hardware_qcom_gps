@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, 2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -129,6 +129,21 @@ void loc_get_auto_platform_name(char *platform_name, int array_length)
                  __func__, __LINE__);
     }
 }
+
+/*Reads the property ro.config.low_ram to identify if this is a low ram target
+  Returns:
+  0 if not a low ram target
+  1 if this is a low ram target
+*/
+int loc_identify_low_ram_target()
+{
+    int ret = 0;
+    char low_ram_target[PROPERTY_VALUE_MAX];
+    property_get("ro.config.low_ram", low_ram_target, "");
+    LOC_LOGd("low ram target: %s\n", low_ram_target);
+    return !(strncmp(low_ram_target, "true", PROPERTY_VALUE_MAX));
+}
+
 
 unsigned int loc_get_target(void)
 {
