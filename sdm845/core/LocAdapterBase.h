@@ -156,9 +156,9 @@ public:
     virtual bool requestXtraData();
     virtual bool requestTime();
     virtual bool requestLocation();
-    virtual bool requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask mask);
+    virtual bool requestATL(int connHandle, LocAGpsType agps_type);
     virtual bool releaseATL(int connHandle);
-    virtual bool requestSuplES(int connHandle, LocApnTypeMask mask);
+    virtual bool requestSuplES(int connHandle);
     virtual bool reportDataCallOpened();
     virtual bool reportDataCallClosed();
     virtual bool requestNiNotifyEvent(const GnssNiNotification &notify, const void* data);

@@ -26,7 +26,6 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#define LOG_NDEBUG 0
 #define LOG_TAG "LocSvc_GnssAdapter"
 
 #include <inttypes.h>
@@ -99,10 +98,10 @@ GnssAdapter::GnssAdapter() :
     /* Set ATL open/close callbacks */
     AgpsAtlOpenStatusCb atlOpenStatusCb =
             [this](int handle, int isSuccess, char* apn,
-                    AGpsBearerType bearerType, AGpsExtType agpsType, LocApnTypeMask mask) {
+                    AGpsBearerType bearerType, AGpsExtType agpsType) {
 
                 mLocApi->atlOpenStatus(
-                        handle, isSuccess, apn, bearerType, agpsType, mask);
+                        handle, isSuccess, apn, bearerType, agpsType);
             };
     AgpsAtlCloseStatusCb atlCloseStatusCb =
             [this](int handle, int isSuccess) {
@@ -3460,12 +3459,12 @@ void GnssAdapter::initAgpsCommand(const AgpsCbInfo& cbInfo){
  * Triggers the AGPS state machine to setup AGPS call for below WWAN types:
  * eQMI_LOC_WWAN_TYPE_INTERNET_V02
  * eQMI_LOC_WWAN_TYPE_AGNSS_V02 */
-bool GnssAdapter::requestATL(int connHandle, LocAGpsType agpsType, LocApnTypeMask mask){
+bool GnssAdapter::requestATL(int connHandle, LocAGpsType agpsType){
 
     LOC_LOGI("GnssAdapter::requestATL");
 
     sendMsg( new AgpsMsgRequestATL(
-             &mAgpsManager, connHandle, (AGpsExtType)agpsType, mask));
+             &mAgpsManager, connHandle, (AGpsExtType)agpsType));
 
     return true;
 }
@@ -3475,12 +3474,12 @@ bool GnssAdapter::requestATL(int connHandle, LocAGpsType agpsType, LocApnTypeMas
  * eQMI_LOC_SERVER_REQUEST_OPEN_V02
  * Triggers the AGPS state machine to setup AGPS call for below WWAN types:
  * eQMI_LOC_WWAN_TYPE_AGNSS_EMERGENCY_V02 */
-bool GnssAdapter::requestSuplES(int connHandle, LocApnTypeMask mask){
+bool GnssAdapter::requestSuplES(int connHandle){
 
     LOC_LOGI("GnssAdapter::requestSuplES");
 
     sendMsg( new AgpsMsgRequestATL(
-             &mAgpsManager, connHandle, LOC_AGPS_TYPE_SUPL_ES, mask));
+             &mAgpsManager, connHandle, LOC_AGPS_TYPE_SUPL_ES));
 
     return true;
 }

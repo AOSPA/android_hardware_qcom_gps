@@ -128,9 +128,9 @@ public:
     void requestXtraData();
     void requestTime();
     void requestLocation();
-    void requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask mask);
+    void requestATL(int connHandle, LocAGpsType agps_type);
     void releaseATL(int connHandle);
-    void requestSuplES(int connHandle, LocApnTypeMask mask);
+    void requestSuplES(int connHandle);
     void reportDataCallOpened();
     void reportDataCallClosed();
     void requestNiNotify(GnssNiNotification &notify, const void* data);
@@ -169,8 +169,7 @@ public:
     virtual enum loc_api_adapter_err
         requestXtraServer();
     virtual enum loc_api_adapter_err
-        atlOpenStatus(int handle, int is_succ, char* apn, AGpsBearerType bear,
-                      LocAGpsType agpsType, LocApnTypeMask mask);
+        atlOpenStatus(int handle, int is_succ, char* apn, AGpsBearerType bear, LocAGpsType agpsType);
     virtual enum loc_api_adapter_err
         atlCloseStatus(int handle, int is_succ);
     virtual enum loc_api_adapter_err

@@ -313,9 +313,9 @@ public:
     virtual void reportGnssSvIdConfigEvent(const GnssSvIdConfig& config);
     virtual void reportGnssSvTypeConfigEvent(const GnssSvTypeConfig& config);
 
-    virtual bool requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask mask);
+    virtual bool requestATL(int connHandle, LocAGpsType agps_type);
     virtual bool releaseATL(int connHandle);
-    virtual bool requestSuplES(int connHandle, LocApnTypeMask mask);
+    virtual bool requestSuplES(int connHandle);
     virtual bool reportDataCallOpened();
     virtual bool reportDataCallClosed();
     virtual bool reportOdcpiRequestEvent(OdcpiRequestInfo& request);
