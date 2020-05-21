@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -87,6 +87,15 @@ static uint32_t gnssUpdateSvConfig(const GnssSvTypeConfig& svTypeConfig,
                                    const GnssSvIdConfig& svIdConfig);
 static uint32_t gnssResetSvConfig();
 static uint32_t configLeverArm(const LeverArmConfigInfo& configInfo);
+static uint32_t configRobustLocation(bool enable, bool enableForE911);
+static uint32_t configMinGpsWeek(uint16_t minGpsWeek);
+static uint32_t configBodyToSensorMountParams(const BodyToSensorMountParams& b2sParams);
+
+static bool measCorrInit(const measCorrSetCapabilitiesCb setCapabilitiesCb);
+static bool measCorrSetCorrections(const GnssMeasurementCorrections gnssMeasCorr);
+static void measCorrClose();
+static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback);
+static void antennaInfoClose();
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -132,6 +141,14 @@ static const GnssInterface gGnssInterface = {
     gnssUpdateSvConfig,
     gnssResetSvConfig,
     configLeverArm,
+    measCorrInit,
+    measCorrSetCorrections,
+    measCorrClose,
+    antennaInfoInit,
+    antennaInfoClose,
+    configRobustLocation,
+    configMinGpsWeek,
+    configBodyToSensorMountParams,
 };
 
 #ifndef DEBUG_X86
@@ -140,6 +157,7 @@ extern "C" const GnssInterface* getGnssInterface()
 const GnssInterface* getGnssInterface()
 #endif // DEBUG_X86
 {
+   gGnssInterface.initialize();
    return &gGnssInterface;
 }
 
@@ -385,6 +403,7 @@ static void nfwInit(const NfwCbInfo& cbInfo) {
         gGnssAdapter->initNfwCommand(cbInfo);
     }
 }
+
 static void getPowerStateChanges(void* powerStateCb)
 {
     if (NULL != gGnssAdapter) {
@@ -449,6 +468,66 @@ static uint32_t gnssResetSvConfig() {
 static uint32_t configLeverArm(const LeverArmConfigInfo& configInfo){
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->configLeverArmCommand(configInfo);
+    } else {
+        return 0;
+    }
+}
+
+static bool measCorrInit(const measCorrSetCapabilitiesCb setCapabilitiesCb) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->openMeasCorrCommand(setCapabilitiesCb);
+    } else {
+        return false;
+    }
+}
+
+static bool measCorrSetCorrections(const GnssMeasurementCorrections gnssMeasCorr) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->measCorrSetCorrectionsCommand(gnssMeasCorr);
+    } else {
+        return false;
+    }
+}
+
+static void measCorrClose() {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->closeMeasCorrCommand();
+    }
+}
+
+static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->antennaInfoInitCommand(antennaInfoCallback);
+    } else {
+        return ANTENNA_INFO_ERROR_GENERIC;
+    }
+}
+
+static void antennaInfoClose() {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->antennaInfoCloseCommand();
+	}
+}
+
+static uint32_t configRobustLocation(bool enable, bool enableForE911){
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->configRobustLocationCommand(enable, enableForE911);
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t configMinGpsWeek(uint16_t minGpsWeek){
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->configMinGpsWeekCommand(minGpsWeek);
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t configBodyToSensorMountParams(const BodyToSensorMountParams& b2sParams){
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->configBodyToSensorMountParamsCommand(b2sParams);
     } else {
         return 0;
     }

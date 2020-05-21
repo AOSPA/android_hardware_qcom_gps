@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2019 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2020 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -196,6 +196,7 @@ public:
     void reportKlobucharIonoModel(GnssKlobucharIonoModel& ionoModel);
     void reportGnssAdditionalSystemInfo(GnssAdditionalSystemInfo& additionalSystemInfo);
     void sendNfwNotification(GnssNfwNotification& notification);
+    void reportGnssConfig(uint32_t sessionId, const GnssConfig& gnssConfig);
 
     void geofenceBreach(size_t count, uint32_t* hwIds, Location& location,
             GeofenceBreachType breachType, uint64_t timestamp);
@@ -248,6 +249,8 @@ public:
     virtual GnssConfigLppeControlPlaneMask convertLppeCp(const uint32_t lppeControlPlaneMask);
     virtual GnssConfigLppeUserPlaneMask convertLppeUp(const uint32_t lppeUserPlaneMask);
     virtual LocationError setEmergencyExtensionWindowSync(const uint32_t emergencyExtensionSeconds);
+    virtual LocationError setMeasurementCorrections(
+            const GnssMeasurementCorrections gnssMeasurementCorrections);
 
     virtual void getWwanZppFix();
     virtual void getBestAvailableZppFix();
@@ -318,6 +321,13 @@ public:
     void updateNmeaMask(uint32_t mask);
 
     virtual void updateSystemPowerState(PowerStateType systemPowerState);
+
+    virtual void configRobustLocation(bool enable, bool enableForE911,
+                                      LocApiResponse* adapterResponse=nullptr);
+    virtual void getRobustLocationConfig(uint32_t sessionId, LocApiResponse* adapterResponse);
+    virtual void configMinGpsWeek(uint16_t minGpsWeek,
+                                  LocApiResponse* adapterResponse=nullptr);
+    virtual void getMinGpsWeek(uint32_t sessionId, LocApiResponse* adapterResponse);
 };
 
 typedef LocApiBase* (getLocApi_t)(LOC_API_ADAPTER_EVENT_MASK_T exMask,

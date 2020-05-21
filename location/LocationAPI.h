@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -374,6 +374,60 @@ public:
                 LOCATION_ERROR_INVALID_PARAMETER if any parameters are invalid
     */
     virtual uint32_t configLeverArm(const LeverArmConfigInfo& configInfo) override;
+
+    /** @brief
+        Configure the robust location setting.
+
+        @param
+        enable: true to enable robust location and false to disable
+        robust location.
+
+        @param
+        enableForE911: true to enable robust location when device is
+        on E911 session and false to disable on E911 session.
+        This parameter is only valid if robust location is enabled.
+
+        @return
+        A session id that will be returned in responseCallback to
+        match command with response. This effect is global for all
+        clients of LocationAPI responseCallback returns:
+                LOCATION_ERROR_SUCCESS if successful
+                LOCATION_ERROR_INVALID_PARAMETER if any parameters are invalid
+    */
+    virtual uint32_t configRobustLocation(bool enable, bool enableForE911) override;
+
+    /** @brief
+        Config the minimal GPS week used by modem GNSS engine.
+
+        @param
+        minGpsWeek: minimal GPS week to be used by modem GNSS engine.
+
+        @return
+        A session id that will be returned in responseCallback to
+        match command with response. This effect is global for all
+        clients of LocationAPI responseCallback returns:
+                LOCATION_ERROR_SUCCESS if successful
+                LOCATION_ERROR_INVALID_PARAMETER if any parameters are invalid
+    */
+    virtual uint32_t configMinGpsWeek(uint16_t minGpsWeek) override;
+
+    /** @brief
+        Configure the vehicle body-to-Sensor mount parameters
+        for dead reckoning position engine.
+
+        @param
+        b2sParams: vehicle body-to-Sensor mount angles and
+        uncertainty.
+
+        @return
+        A session id that will be returned in responseCallback to
+        match command with response. This effect is global for all
+        clients of LocationAPI responseCallback returns:
+                LOCATION_ERROR_SUCCESS if successful
+                LOCATION_ERROR_INVALID_PARAMETER if any parameters are invalid
+    */
+    virtual uint32_t configBodyToSensorMountParams(
+            const BodyToSensorMountParams& b2sParams) override;
 };
 
 #endif /* LOCATIONAPI_H */
