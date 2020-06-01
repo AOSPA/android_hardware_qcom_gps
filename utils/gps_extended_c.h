@@ -134,7 +134,8 @@ typedef enum {
     LOC_SUPPORTED_FEATURE_FDCL_2, /**< Support FDCL V2 */
     LOC_SUPPORTED_FEATURE_LOCATION_PRIVACY, /**< Support location privacy */
     LOC_SUPPORTED_FEATURE_NAVIC, /**< Support NAVIC constellation */
-    LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION /**< Support measurements correction */
+    LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION, /**< Support measurements correction */
+    LOC_SUPPORTED_FEATURE_ROBUST_LOCATION, /**<  Support Robust Location feature */
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -410,6 +411,7 @@ typedef uint64_t GpsLocationExtendedFlags;
 #define GPS_LOCATION_EXTENDED_HAS_LLA_VRP_BASED                0x200000000000
 /** GpsLocationExtended has the velocityVRPased. */
 #define GPS_LOCATION_EXTENDED_HAS_ENU_VELOCITY_LLA_VRP_BASED   0x400000000000
+#define GPS_LOCATION_EXTENDED_HAS_UPPER_TRIANGLE_FULL_COV_MATRIX 0x800000000000
 
 typedef uint32_t LocNavSolutionMask;
 /* Bitmask to specify whether SBAS ionospheric correction is used  */
@@ -689,7 +691,7 @@ typedef struct {
     float carrierPhasAmbiguity;
 } GpsMeasUsageInfo;
 
-
+#define COV_MATRIX_SIZE 12
 /** Represents gps location extended. */
 typedef struct {
     /** set to sizeof(GpsLocationExtended) */
@@ -834,6 +836,27 @@ typedef struct {
     LLAInfo llaVRPBased;
     /** VRR-based east, north, and up velocity */
     float enuVelocityVRPBased[3];
+    /** Upper triangle elements of full matrix of position and
+        velocity estimate in ECEF
+
+         The full covariance matrix of PPE position
+         (x, y, z in ECEF, in the unit of meters) estimate is a 3x3 matrix
+            | px,x  px,y  px,z |
+            | py,x  py,y  py,z |
+            | pz,x  pz,y  pz,z |
+
+         The full covariance matrix of PPE velocity
+         (vx,vy, vz in ECEF, in the unit of m/s) estimate is a 3x3 matrix
+            | pvx,vx  pvx,vy  pvx,vz |
+            | pvy,vx  pvy,vy  pvy,vz |
+            | pvz,vx  pvz,vy  pvz,vz |
+
+        upperTriangleFullCovMatrix =
+          { px,x, px,y, px,z, py,y, py,z, pz,z, pvx,vx, pvx,vy, pvx,vz, pvy,vy, pvy,vz, pvz,vz}
+        Uint: px,x, px,y, px,z, py,y, py,z, pz,z is in meter
+              pvx,vx, pvx,vy, pvx,vz, pvy,vy, pvy,vz, pvz,vz is in meters/seconds
+    */
+    float upperTriangleFullCovMatrix[COV_MATRIX_SIZE];
 } GpsLocationExtended;
 
 enum loc_sess_status {
@@ -2286,6 +2309,12 @@ struct OdcpiRequestInfo {
 };
 /* Callback to send ODCPI request to framework */
 typedef std::function<void(const OdcpiRequestInfo& request)> OdcpiRequestCallback;
+
+/* ODCPI callback priorities*/
+enum OdcpiPrioritytype {
+    ODCPI_HANDLER_PRIORITY_LOW,
+    ODCPI_HANDLER_PRIORITY_HIGH
+};
 
 /*
  * Callback with AGNSS(IpV4) status information.
