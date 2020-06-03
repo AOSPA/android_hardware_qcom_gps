@@ -78,7 +78,7 @@ struct GnssInterface {
     void (*getDebugReport)(GnssDebugReport& report);
     void (*updateConnectionStatus)(bool connected, int8_t type, bool roaming,
                                    NetworkHandle networkHandle);
-    void (*odcpiInit)(const OdcpiRequestCallback& callback);
+    void (*odcpiInit)(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
     void (*odcpiInject)(const Location& location);
     void (*blockCPI)(double latitude, double longitude, float accuracy,
                      int blockDurationMsec, double latLonDiffThreshold);
@@ -95,7 +95,14 @@ struct GnssInterface {
                                    const GnssSvIdConfig& svIdConfig);
     uint32_t (*gnssResetSvConfig)();
     uint32_t (*configLeverArm)(const LeverArmConfigInfo& configInfo);
+    bool (*measCorrInit)(const measCorrSetCapabilitiesCb setCapabilitiesCb);
+    bool (*measCorrSetCorrections)(const GnssMeasurementCorrections gnssMeasCorr);
+    void (*measCorrClose)();
+    uint32_t (*antennaInfoInit)(const antennaInfoCb antennaInfoCallback);
+    void (*antennaInfoClose) ();
     uint32_t (*configRobustLocation)(bool enable, bool enableForE911);
+    uint32_t (*configMinGpsWeek)(uint16_t minGpsWeek);
+    uint32_t (*configBodyToSensorMountParams)(const BodyToSensorMountParams& b2sParams);
 };
 
 struct BatchingInterface {
