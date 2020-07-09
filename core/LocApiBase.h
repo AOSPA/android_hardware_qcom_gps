@@ -59,13 +59,6 @@ int decodeAddress(char *addr_string, int string_size,
 #define TO_1ST_HANDLING_ADAPTER(adapters, call)                              \
     for (int i = 0; i <MAX_ADAPTERS && NULL != (adapters)[i] && !(call); i++);
 
-enum xtra_version_check {
-    DISABLED,
-    AUTO,
-    XTRA2,
-    XTRA3
-};
-
 class LocAdapterBase;
 struct LocSsrMsg;
 struct LocOpenMsg;
@@ -215,7 +208,8 @@ public:
     virtual void startFix(const LocPosMode& fixCriteria, LocApiResponse* adapterResponse);
     virtual void stopFix(LocApiResponse* adapterResponse);
     virtual void deleteAidingData(const GnssAidingData& data, LocApiResponse* adapterResponse);
-    virtual void injectPosition(double latitude, double longitude, float accuracy);
+    virtual void injectPosition(double latitude, double longitude, float accuracy,
+            bool onDemandCpi);
     virtual void injectPosition(const GnssLocationInfoNotification &locationInfo,
             bool onDemandCpi=false);
     virtual void injectPosition(const Location& location, bool onDemandCpi);
@@ -229,7 +223,7 @@ public:
     virtual void informNiResponse(GnssNiResponse userResponse, const void* passThroughData);
     virtual LocationError setSUPLVersionSync(GnssConfigSuplVersion version);
     virtual enum loc_api_adapter_err setNMEATypesSync(uint32_t typesMask);
-    virtual LocationError setLPPConfigSync(GnssConfigLppProfile profile);
+    virtual LocationError setLPPConfigSync(GnssConfigLppProfileMask profileMask);
     virtual enum loc_api_adapter_err setSensorPropertiesSync(
             bool gyroBiasVarianceRandomWalk_valid, float gyroBiasVarianceRandomWalk,
             bool accelBiasVarianceRandomWalk_valid, float accelBiasVarianceRandomWalk,
@@ -245,7 +239,6 @@ public:
     virtual LocationError setLPPeProtocolCpSync(GnssConfigLppeControlPlaneMask lppeCP);
     virtual LocationError setLPPeProtocolUpSync(GnssConfigLppeUserPlaneMask lppeUP);
     virtual GnssConfigSuplVersion convertSuplVersion(const uint32_t suplVersion);
-    virtual GnssConfigLppProfile convertLppProfile(const uint32_t lppProfile);
     virtual GnssConfigLppeControlPlaneMask convertLppeCp(const uint32_t lppeControlPlaneMask);
     virtual GnssConfigLppeUserPlaneMask convertLppeUp(const uint32_t lppeUserPlaneMask);
     virtual LocationError setEmergencyExtensionWindowSync(const uint32_t emergencyExtensionSeconds);
@@ -328,6 +321,10 @@ public:
     virtual void configMinGpsWeek(uint16_t minGpsWeek,
                                   LocApiResponse* adapterResponse=nullptr);
     virtual void getMinGpsWeek(uint32_t sessionId, LocApiResponse* adapterResponse);
+
+    virtual LocationError setParameterSync(const GnssConfig & gnssConfig);
+    virtual void getParameter(uint32_t sessionId, GnssConfigFlagsMask flags,
+                              LocApiResponse* adapterResponse=nullptr);
 };
 
 typedef LocApiBase* (getLocApi_t)(LOC_API_ADAPTER_EVENT_MASK_T exMask,

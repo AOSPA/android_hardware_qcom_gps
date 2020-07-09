@@ -34,6 +34,7 @@
 #include <functional>
 #include <list>
 #include <string.h>
+#include <string>
 
 #define GNSS_NI_REQUESTOR_MAX  (256)
 #define GNSS_NI_MESSAGE_ID_MAX (2048)
@@ -76,6 +77,7 @@ typedef enum {
     LOCATION_HAS_BEARING_ACCURACY_BIT  = (1<<7), // location has valid bearing accuracy
     LOCATION_HAS_SPOOF_MASK            = (1<<8), // location has valid spoof mask
     LOCATION_HAS_ELAPSED_REAL_TIME     = (1<<9), // location has valid elapsed real time
+    LOCATION_HAS_CONFORMITY_INDEX_BIT  = (1<<10), // location has valid conformity index
 } LocationFlagsBits;
 
 typedef uint16_t LocationTechnologyMask;
@@ -103,13 +105,24 @@ typedef enum {
 
 typedef uint32_t GnssLocationNavSolutionMask;
 typedef enum {
-    LOCATION_SBAS_CORRECTION_IONO_BIT  = (1<<0), // SBAS ionospheric correction is used
-    LOCATION_SBAS_CORRECTION_FAST_BIT  = (1<<1), // SBAS fast correction is used
-    LOCATION_SBAS_CORRECTION_LONG_BIT  = (1<<2), // SBAS long-tem correction is used
-    LOCATION_SBAS_INTEGRITY_BIT        = (1<<3), // SBAS integrity information is used
-    LOCATION_NAV_CORRECTION_DGNSS_BIT  = (1<<4), // Position Report is DGNSS corrected
-    LOCATION_NAV_CORRECTION_RTK_BIT    = (1<<5), // Position Report is RTK corrected
-    LOCATION_NAV_CORRECTION_PPP_BIT    = (1<<6) // Position Report is PPP corrected
+    // SBAS ionospheric correction is used
+    LOCATION_SBAS_CORRECTION_IONO_BIT  = (1<<0),
+    // SBAS fast correction is used
+    LOCATION_SBAS_CORRECTION_FAST_BIT  = (1<<1),
+    // SBAS long-tem correction is used
+    LOCATION_SBAS_CORRECTION_LONG_BIT  = (1<<2),
+    // SBAS integrity information is used
+    LOCATION_SBAS_INTEGRITY_BIT        = (1<<3),
+    // Position Report is DGNSS corrected
+    LOCATION_NAV_CORRECTION_DGNSS_BIT  = (1<<4),
+     // Position Report is RTK corrected
+    LOCATION_NAV_CORRECTION_RTK_BIT    = (1<<5),
+    // Position Report is PPP corrected
+    LOCATION_NAV_CORRECTION_PPP_BIT    = (1<<6),
+    // Posiiton Report is RTF fixed corrected
+    LOCATION_NAV_CORRECTION_RTK_FIXED_BIT  = (1<<7),
+    // Position report is computed with only SBAS corrected SVs.
+    LOCATION_NAV_CORRECTION_ONLY_SBAS_CORRECTED_SV_USED_BIT = (1<<8)
 } GnssLocationNavSolutionBits;
 
 typedef uint32_t GnssLocationPosTechMask;
@@ -255,6 +268,10 @@ typedef enum {
     LOCATION_CAPABILITIES_PRIVACY_BIT                       = (1<<12),
     // support measurement corrections
     LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT       = (1<<13),
+    // support Robust Location
+    LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT               = (1<<14),
+    // support precise location edgnss
+    LOCATION_CAPABILITIES_EDGNSS_BIT                        = (1<<15),
 } LocationCapabilitiesBits;
 
 typedef enum {
@@ -279,12 +296,14 @@ typedef enum {
 } GnssConfigSuplVersion;
 
 // LTE Positioning Profile
+typedef uint16_t GnssConfigLppProfileMask;
 typedef enum {
-    GNSS_CONFIG_LPP_PROFILE_RRLP_ON_LTE = 0,              // RRLP on LTE (Default)
-    GNSS_CONFIG_LPP_PROFILE_USER_PLANE,                   // LPP User Plane (UP) on LTE
-    GNSS_CONFIG_LPP_PROFILE_CONTROL_PLANE,                // LPP_Control_Plane (CP)
-    GNSS_CONFIG_LPP_PROFILE_USER_PLANE_AND_CONTROL_PLANE, // Both LPP UP and CP
-} GnssConfigLppProfile;
+    GNSS_CONFIG_LPP_PROFILE_RRLP_ON_LTE = 0,                         // RRLP on LTE (Default)
+    GNSS_CONFIG_LPP_PROFILE_USER_PLANE_BIT                 = (1<<0), // LPP User Plane (UP) on LTE
+    GNSS_CONFIG_LPP_PROFILE_CONTROL_PLANE_BIT              = (1<<1), // LPP_Control_Plane (CP)
+    GNSS_CONFIG_LPP_PROFILE_USER_PLANE_OVER_NR5G_SA_BIT    = (1<<2), // LPP User Plane (UP) on LTE
+    GNSS_CONFIG_LPP_PROFILE_CONTROL_PLANE_OVER_NR5G_SA_BIT = (1<<3), // LPP_Control_Plane (CP)
+} GnssConfigLppProfileBits;
 
 // Technology for LPPe Control Plane
 typedef uint16_t GnssConfigLppeControlPlaneMask;
@@ -347,6 +366,7 @@ typedef enum {
     GNSS_CONFIG_FLAGS_EMERGENCY_EXTENSION_SECONDS_BIT      = (1<<11),
     GNSS_CONFIG_FLAGS_ROBUST_LOCATION_BIT                  = (1<<12),
     GNSS_CONFIG_FLAGS_MIN_GPS_WEEK_BIT                     = (1<<13),
+    GNSS_CONFIG_FLAGS_MIN_SV_ELEVATION_BIT                 = (1<<14),
 } GnssConfigFlagsBits;
 
 typedef enum {
@@ -493,6 +513,7 @@ typedef enum {
     GNSS_MEASUREMENTS_DATA_FULL_ISB_UNCERTAINTY_BIT         = (1<<19),
     GNSS_MEASUREMENTS_DATA_SATELLITE_ISB_BIT                = (1<<20),
     GNSS_MEASUREMENTS_DATA_SATELLITE_ISB_UNCERTAINTY_BIT    = (1<<21),
+    GNSS_MEASUREMENTS_DATA_CYCLE_SLIP_COUNT_BIT             = (1<<22),
 } GnssMeasurementsDataFlagsBits;
 
 typedef uint32_t GnssMeasurementsStateMask;
@@ -790,6 +811,7 @@ typedef struct {
     float verticalAccuracy;  // in meters
     float speedAccuracy;     // in meters/second
     float bearingAccuracy;   // in degrees (0 to 359.999)
+    float conformityIndex;   // in range [0, 1]
     LocationTechnologyMask techMask;
     LocationSpoofMask      spoofMask;
     uint64_t elapsedRealTime;    // in ns
@@ -1232,6 +1254,7 @@ typedef struct {
     double satelliteInterSignalBiasNs;
     double satelliteInterSignalBiasUncertaintyNs;
     int16_t gloFrequency;
+    uint8_t cycleSlipCount;
 } GnssMeasurementsData;
 
 typedef struct {
@@ -1411,7 +1434,7 @@ struct GnssConfig{
     GnssConfigGpsLock gpsLock;
     GnssConfigSuplVersion suplVersion;
     GnssConfigSetAssistanceServer assistanceServer;
-    GnssConfigLppProfile lppProfile;
+    GnssConfigLppProfileMask lppProfileMask;
     GnssConfigLppeControlPlaneMask lppeControlPlaneMask;
     GnssConfigLppeUserPlaneMask lppeUserPlaneMask;
     GnssConfigAGlonassPositionProtocolMask aGlonassPositionProtocolMask;
@@ -1422,13 +1445,14 @@ struct GnssConfig{
     uint32_t emergencyExtensionSeconds;
     GnssConfigRobustLocation robustLocationConfig;
     uint16_t minGpsWeek;
+    uint8_t minSvElevation;
 
     inline bool equals(const GnssConfig& config) {
         if (flags == config.flags &&
                 gpsLock == config.gpsLock &&
                 suplVersion == config.suplVersion &&
                 assistanceServer.equals(config.assistanceServer) &&
-                lppProfile == config.lppProfile &&
+                lppProfileMask == config.lppProfileMask &&
                 lppeControlPlaneMask == config.lppeControlPlaneMask &&
                 lppeUserPlaneMask == config.lppeUserPlaneMask &&
                 aGlonassPositionProtocolMask == config.aGlonassPositionProtocolMask &&
@@ -1438,7 +1462,8 @@ struct GnssConfig{
                 blacklistedSvIds == config.blacklistedSvIds &&
                 emergencyExtensionSeconds == config.emergencyExtensionSeconds &&
                 robustLocationConfig.equals(config.robustLocationConfig) &&
-                minGpsWeek == config.minGpsWeek) {
+                minGpsWeek == config.minGpsWeek &&
+                minSvElevation == config.minSvElevation) {
             return true;
         }
         return false;
@@ -1793,4 +1818,15 @@ typedef struct {
     std::vector<std::vector<double>> signalGainCorrectionDbi;
     std::vector<std::vector<double>> signalGainCorrectionUncertaintyDbi;
 } GnssAntennaInformation;
+
+typedef struct {
+    uint32_t size;                        // set to sizeof
+    bool requiresNmeaLocation;
+    std::string hostNameOrIp;    // null terminated string
+    std::string mountPoint;      // null terminated string
+    std::string username;        // null terminated string
+    std::string password;        // null terminated string
+    uint32_t port;
+    bool useSSL;
+} GnssNtripConnectionParams;
 #endif /* LOCATIONDATATYPES_H */
