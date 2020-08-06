@@ -276,6 +276,21 @@ GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
     if (LOC_POS_TECH_MASK_SENSORS & techMask) {
         out.techMask |= LOCATION_TECHNOLOGY_SENSORS_BIT;
     }
+    if (LOC_POS_TECH_MASK_REFERENCE_LOCATION & techMask) {
+        out.techMask |= LOCATION_TECHNOLOGY_REFERENCE_LOCATION_BIT;
+    }
+    if (LOC_POS_TECH_MASK_INJECTED_COARSE_POSITION & techMask) {
+        out.techMask |= LOCATION_TECHNOLOGY_INJECTED_COARSE_POSITION_BIT;
+    }
+    if (LOC_POS_TECH_MASK_AFLT & techMask) {
+        out.techMask |= LOCATION_TECHNOLOGY_AFLT_BIT;
+    }
+    if (LOC_POS_TECH_MASK_HYBRID & techMask) {
+        out.techMask |= LOCATION_TECHNOLOGY_HYBRID_BIT;
+    }
+    if (LOC_POS_TECH_MASK_PPE & techMask) {
+        out.techMask |= LOCATION_TECHNOLOGY_PPE_BIT;
+    }
 
     if (LOC_GPS_LOCATION_HAS_SPOOF_MASK & ulpLocation.gpsLocation.flags) {
         out.flags |= LOCATION_HAS_SPOOF_MASK;
@@ -465,10 +480,6 @@ GnssAdapter::convertLocationInfo(GnssLocationInfoNotification& out,
     if (GPS_LOCATION_EXTENDED_HAS_NAV_SOLUTION_MASK & locationExtended.flags) {
         out.flags |= GNSS_LOCATION_INFO_NAV_SOLUTION_MASK_BIT;
         out.navSolutionMask = locationExtended.navSolutionMask;
-    }
-    if (GPS_LOCATION_EXTENDED_HAS_POS_TECH_MASK & locationExtended.flags) {
-        out.flags |= GNSS_LOCATION_INFO_POS_TECH_MASK_BIT;
-        out.posTechMask = locationExtended.tech_mask;
     }
     if (GPS_LOCATION_EXTENDED_HAS_POS_DYNAMICS_DATA & locationExtended.flags) {
         out.flags |= GPS_LOCATION_EXTENDED_HAS_POS_DYNAMICS_DATA;
@@ -818,7 +829,9 @@ GnssAdapter::setSuplHostServer(const char* server, int port, LocServerType type)
         } else if (length >= 0) {
             if (LOC_AGPS_SUPL_SERVER == type) {
                 getServerUrl().assign(serverUrl);
-                strlcpy(ContextBase::mGps_conf.SUPL_HOST, server, LOC_MAX_PARAM_STRING);
+                strlcpy(ContextBase::mGps_conf.SUPL_HOST,
+                        (nullptr == server) ? serverUrl : server,
+                        LOC_MAX_PARAM_STRING);
                 ContextBase::mGps_conf.SUPL_PORT = port;
             } else {
                 if (strncasecmp(getMoServerUrl().c_str(), serverUrl, sizeof(serverUrl)) != 0) {
@@ -2677,15 +2690,15 @@ GnssAdapter::reportPowerStateIfChanged()
 }
 
 void
-GnssAdapter::getPowerStateChangesCommand(void* powerStateCb)
+GnssAdapter::getPowerStateChangesCommand(std::function<void(bool)> powerStateCb)
 {
     LOC_LOGD("%s]: ", __func__);
 
     struct MsgReportLocation : public LocMsg {
         GnssAdapter& mAdapter;
-        powerStateCallback mPowerStateCb;
+        std::function<void(bool)> mPowerStateCb;
         inline MsgReportLocation(GnssAdapter& adapter,
-                                 powerStateCallback powerStateCb) :
+                                 std::function<void(bool)> powerStateCb) :
             LocMsg(),
             mAdapter(adapter),
             mPowerStateCb(powerStateCb) {}
@@ -2695,7 +2708,7 @@ GnssAdapter::getPowerStateChangesCommand(void* powerStateCb)
         }
     };
 
-    sendMsg(new MsgReportLocation(*this, (powerStateCallback)powerStateCb));
+    sendMsg(new MsgReportLocation(*this, powerStateCb));
 }
 
 void
@@ -2727,6 +2740,12 @@ GnssAdapter::eraseTrackingSession(LocationAPI* client, uint32_t sessionId)
         }
     }
     reportPowerStateIfChanged();
+
+    if (mSendNmeaConsent && mStartDgnssNtripParams.ntripParams.requiresNmeaLocation) {
+        LOC_LOGd("requiresNmeaLocation");
+        mDgnssState &= ~DGNSS_STATE_NO_NMEA_PENDING;
+        mStartDgnssNtripParams.nmea.clear();
+    }
     stopDgnssNtrip();
 }
 
@@ -3512,11 +3531,12 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
     // this position is from QMI LOC API, then send report to engine hub
     // also, send out SPE fix promptly to the clients that have registered
     // with SPE report
-    LOC_LOGd("reportPositionEvent, eng type: %d, unpro %d, sess status %d",
-             locationExtended.locOutputEngType, ulpLocation.unpropagatedPosition, status);
+    LOC_LOGd("reportPositionEvent, eng type: %d, unpro %d, sess status %d msInWeek %d",
+             locationExtended.locOutputEngType,
+             ulpLocation.unpropagatedPosition, status, msInWeek);
 
     if (false == ulpLocation.unpropagatedPosition && pDataNotify != nullptr) {
-        reportDataEvent((GnssDataNotification&)pDataNotify, msInWeek);
+        reportDataEvent((GnssDataNotification&)(*pDataNotify), msInWeek);
     }
 
     if (true == initEngHubProxy()){
@@ -3750,14 +3770,23 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
         uint8_t generate_nmea = (reportToGnssClient && status != LOC_SESS_FAILURE && !blank_fix);
         bool custom_nmea_gga = (1 == ContextBase::mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED);
         std::vector<std::string> nmeaArraystr;
+        int indexOfGGA = -1;
         loc_nmea_generate_pos(ulpLocation, locationExtended, mLocSystemInfo,
-                              generate_nmea, custom_nmea_gga, nmeaArraystr);
+                              generate_nmea, custom_nmea_gga, nmeaArraystr, indexOfGGA);
         stringstream ss;
         for (auto itor = nmeaArraystr.begin(); itor != nmeaArraystr.end(); ++itor) {
             ss << *itor;
         }
         string s = ss.str();
         reportNmea(s.c_str(), s.length());
+
+        /* DgnssNtrip */
+        if (0 == (mDgnssState & DGNSS_STATE_NO_NMEA_PENDING) &&
+                -1 != indexOfGGA) {
+            mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
+            mStartDgnssNtripParams.nmea = std::move(nmeaArraystr[indexOfGGA]);
+            checkStartDgnssNtrip();
+        }
     }
 }
 
@@ -4029,6 +4058,8 @@ GnssAdapter::reportNmeaEvent(const char* nmea, size_t length)
             if (false == ret) {
                 // forward NMEA message to upper layer
                 mAdapter.reportNmea(mNmea, mLength);
+                // DgnssNtrip
+                mAdapter.reportGGAToNtrip(mNmea);
             }
         }
     };
@@ -4058,8 +4089,6 @@ GnssAdapter::reportNmea(const char* nmea, size_t length)
     if (isNMEAPrintEnabled()) {
         LOC_LOGd("[%" PRId64 ", %zu] %s", now, length, nmea);
     }
-    /* DgnssNtrip */
-    reportGGAtoNtirp(nmea);
 }
 
 void
@@ -4079,7 +4108,7 @@ GnssAdapter::reportDataEvent(const GnssDataNotification& dataNotify,
             mMsInWeek(msInWeek) {
         }
         inline virtual void proc() const {
-            if (-1 != mMsInWeek) {
+            if (mMsInWeek >= 0) {
                 mAdapter.getDataInformation((GnssDataNotification&)mDataNotify,
                                             mMsInWeek);
             }
@@ -6373,21 +6402,49 @@ void GnssAdapter::stopDgnssNtrip() {
     }
 }
 
-void GnssAdapter::reportGGAtoNtirp(const char* nmea) {
-#define INDEX_OF_GGA     (3)
-#define EMPTY_GGA_LENGTH (21) //"$GPGGA,,,,,,0,,,,,,,,"
+void GnssAdapter::reportGGAToNtrip(const char* nmea) {
 
-    if (mDgnssState & DGNSS_STATE_NO_NMEA_PENDING)
+#define POS_OF_GGA (3)  //start position of "GGA"
+#define COMMAS_BEFORE_VALID (6) //"$GPGGA,,,,,,0,,,,,,,,*hh"
+
+    if (mDgnssState & DGNSS_STATE_NO_NMEA_PENDING) {
         return;
+    }
+
+    if (nullptr == nmea || 0 == strlen(nmea)) {
+        return;
+    }
 
     string nmeaString(nmea);
+    size_t foundPos = nmeaString.find("GGA");
+    size_t foundNth = 0;
+    string GGAString;
 
-    size_t found = nmeaString.find("GGA");
-    if (found == INDEX_OF_GGA && EMPTY_GGA_LENGTH != nmeaString.size()) {
-        mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
-        mStartDgnssNtripParams.nmea = std::move(nmeaString);
-        checkStartDgnssNtrip();
+    if (foundPos != string::npos && foundPos >= POS_OF_GGA) {
+        size_t foundNextSentence = nmeaString.find("$", foundPos);
+        if (foundNextSentence != string::npos) {
+            /* remove other sentences after GGA */
+            GGAString = nmeaString.substr(foundPos - POS_OF_GGA, foundNextSentence);
+        } else {
+            /* GGA is the last sentence */
+            GGAString = nmeaString.substr(foundPos - POS_OF_GGA);
+        }
+        LOC_LOGd("GGAString %s", GGAString.c_str());
+
+        foundPos = GGAString.find(",");
+        while (foundPos != string::npos && foundNth < COMMAS_BEFORE_VALID) {
+            foundPos++;
+            foundNth++;
+            foundPos = GGAString.find(",", foundPos);
+        }
+
+        if (COMMAS_BEFORE_VALID == foundNth && GGAString.at(foundPos-1) != '0') {
+            mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
+            mStartDgnssNtripParams.nmea = std::move(GGAString);
+            checkStartDgnssNtrip();
+        }
     }
+
     return;
 }
 
