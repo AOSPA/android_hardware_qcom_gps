@@ -31,7 +31,6 @@
 
 #include <cinttypes>
 #include <string>
-#include <list>
 #include <map>
 #include <new>
 #include <vector>
@@ -55,7 +54,6 @@ using namespace loc_util;
 class IDataItemCore;
 class SystemStatus;
 class SystemStatusOsObserver;
-typedef map<IDataItemObserver*, list<DataItemId>> ObserverReqCache;
 typedef LocUnorderedSetMap<IDataItemObserver*, DataItemId> ClientToDataItems;
 typedef LocUnorderedSetMap<DataItemId, IDataItemObserver*> DataItemToClients;
 typedef unordered_map<DataItemId, IDataItemCore*> DataItemIdToCore;
@@ -120,18 +118,18 @@ public:
     }
 
     // IDataItemSubscription Overrides
-    inline virtual void subscribe(const list<DataItemId>& l, IDataItemObserver* client) override {
+    inline virtual void subscribe(const unordered_set<DataItemId>& l, IDataItemObserver* client) override {
         subscribe(l, client, false);
     }
-    virtual void updateSubscription(const list<DataItemId>& l, IDataItemObserver* client) override;
-    inline virtual void requestData(const list<DataItemId>& l, IDataItemObserver* client) override {
+    virtual void updateSubscription(const unordered_set<DataItemId>& l, IDataItemObserver* client) override;
+    inline virtual void requestData(const unordered_set<DataItemId>& l, IDataItemObserver* client) override {
         subscribe(l, client, true);
     }
-    virtual void unsubscribe(const list<DataItemId>& l, IDataItemObserver* client) override;
+    virtual void unsubscribe(const unordered_set<DataItemId>& l, IDataItemObserver* client) override;
     virtual void unsubscribeAll(IDataItemObserver* client) override;
 
     // IDataItemObserver Overrides
-    virtual void notify(const list<IDataItemCore*>& dlist) override;
+    virtual void notify(const unordered_set<IDataItemCore*>& dlist) override;
     inline virtual void getName(string& name) override {
         name = mAddress;
     }
@@ -153,15 +151,12 @@ private:
     DataItemIdToCore                                 mDataItemCache;
     DataItemIdToInt                                  mActiveRequestCount;
 
-    // Cache the subscribe and requestData till subscription obj is obtained
-    void cacheObserverRequest(ObserverReqCache& reqCache,
-            const list<DataItemId>& l, IDataItemObserver* client);
 #ifdef USE_GLIB
     // Cache the framework action request for connect/disconnect
     ClientBackhaulReqCache  mBackHaulConnReqCache;
 #endif
 
-    void subscribe(const list<DataItemId>& l, IDataItemObserver* client, bool toRequestData);
+    void subscribe(const unordered_set<DataItemId>& l, IDataItemObserver* client, bool toRequestData);
 
     // Helpers
     void sendCachedDataItems(const unordered_set<DataItemId>& s, IDataItemObserver* to);

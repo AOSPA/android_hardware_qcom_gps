@@ -68,7 +68,7 @@ public :
 
     // IDataItemObserver overrides
     inline virtual void getName(string& name);
-    virtual void notify(const list<IDataItemCore*>& dlist);
+    virtual void notify(const unordered_set<IDataItemCore*>& dlist);
 
     bool updateLockStatus(GnssConfigGpsLock lock);
     bool updateConnections(uint64_t allConnections,

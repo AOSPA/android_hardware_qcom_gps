@@ -288,21 +288,21 @@ void XtraSystemStatusObserver::updateNmeaToDgnssServer(const string& nmea)
 
 void XtraSystemStatusObserver::subscribe(bool yes)
 {
-    // Subscription data list
-    list<DataItemId> subItemIdList;
-    subItemIdList.push_back(NETWORKINFO_DATA_ITEM_ID);
-    subItemIdList.push_back(MCCMNC_DATA_ITEM_ID);
+    // Subscription data unordered_set
+    unordered_set<DataItemId> subItemIdSet;
+    subItemIdSet.insert(NETWORKINFO_DATA_ITEM_ID);
+    subItemIdSet.insert(MCCMNC_DATA_ITEM_ID);
 
     if (yes) {
-        mSystemStatusObsrvr->subscribe(subItemIdList, this);
+        mSystemStatusObsrvr->subscribe(subItemIdSet, this);
 
-        list<DataItemId> reqItemIdList;
-        reqItemIdList.push_back(TAC_DATA_ITEM_ID);
+        unordered_set<DataItemId> reqItemIdSet;
+        reqItemIdSet.insert(TAC_DATA_ITEM_ID);
 
-        mSystemStatusObsrvr->requestData(reqItemIdList, this);
+        mSystemStatusObsrvr->requestData(reqItemIdSet, this);
 
     } else {
-        mSystemStatusObsrvr->unsubscribe(subItemIdList, this);
+        mSystemStatusObsrvr->unsubscribe(subItemIdSet, this);
     }
 }
 
@@ -312,14 +312,14 @@ void XtraSystemStatusObserver::getName(string& name)
     name = "XtraSystemStatusObserver";
 }
 
-void XtraSystemStatusObserver::notify(const list<IDataItemCore*>& dlist)
+void XtraSystemStatusObserver::notify(const unordered_set<IDataItemCore*>& dlist)
 {
     struct HandleOsObserverUpdateMsg : public LocMsg {
         XtraSystemStatusObserver* mXtraSysStatObj;
         list <IDataItemCore*> mDataItemList;
 
         inline HandleOsObserverUpdateMsg(XtraSystemStatusObserver* xtraSysStatObs,
-                const list<IDataItemCore*>& dataItemList) :
+                const unordered_set<IDataItemCore*>& dataItemList) :
                 mXtraSysStatObj(xtraSysStatObs) {
             for (auto eachItem : dataItemList) {
                 IDataItemCore* dataitem = DataItemsFactoryProxy::createNewDataItem(eachItem);

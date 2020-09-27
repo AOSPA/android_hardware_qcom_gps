@@ -30,7 +30,7 @@
 #ifndef __IOSOBSERVER_H__
 #define __IOSOBSERVER_H__
 
-#include  <list>
+#include <unordered_set>
 #include <string>
 #include <IDataItemObserver.h>
 #include <IDataItemSubscription.h>
@@ -62,27 +62,27 @@ public:
 
     // IDataItemObserver Overrides
     inline virtual void getName (string & /*name*/) {}
-    inline virtual void notify (const std::list <IDataItemCore *> & /*dlist*/) {}
+    inline virtual void notify (const std::unordered_set <IDataItemCore *> & /*dlist*/) {}
 
     // IDataItemSubscription Overrides
     inline virtual void subscribe
     (
-        const std :: list <DataItemId> & /*l*/,
+        const std :: unordered_set <DataItemId> & /*l*/,
         IDataItemObserver * /*client*/
     ){}
     inline virtual void updateSubscription
     (
-        const std :: list <DataItemId> & /*l*/,
+        const std :: unordered_set <DataItemId> & /*l*/,
         IDataItemObserver * /*client*/
     ){}
     inline virtual void requestData
     (
-        const std :: list <DataItemId> & /*l*/,
+        const std :: unordered_set <DataItemId> & /*l*/,
         IDataItemObserver * /*client*/
     ){}
     inline virtual void unsubscribe
     (
-        const std :: list <DataItemId> & /*l*/,
+        const std :: unordered_set <DataItemId> & /*l*/,
         IDataItemObserver * /*client*/
     ){}
     inline virtual void unsubscribeAll (IDataItemObserver * /*client*/){}
