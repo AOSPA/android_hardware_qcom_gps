@@ -71,14 +71,26 @@ public:
         if (!STRNCMP(data, "ping")) {
             LOC_LOGd("ping received");
 #ifdef USE_GLIB
-        } else if (!STRNCMP(data, "connectBackhaul")) {
+        } else if ((!STRNCMP(data, "connectBackhaul")) || (!STRNCMP(data, "disconnectBackhaul"))) {
             char clientName[30] = {0};
-            sscanf(data, "%*s %29s", clientName);
-            mSystemStatusObsrvr->connectBackhaul(string(clientName));
-        } else if (!STRNCMP(data, "disconnectBackhaul")) {
-            char clientName[30] = {0};
-            sscanf(data, "%*s %29s", clientName);
-            mSystemStatusObsrvr->disconnectBackhaul(string(clientName));
+            uint16_t prefSub;
+            char prefApnName[30] = {0};
+            string prefApn;
+            uint16_t prefIpType;
+            int ret = sscanf(data, "%*s %29s %u %29s %u",
+                             clientName, &prefSub, prefApnName, &prefIpType);
+            if (0 == strcmp(prefApnName, "EMPTY")) {
+                prefApn = "";
+            } else {
+                prefApn = string(prefApnName);
+            }
+            BackhaulContext ctx = { string(clientName), prefSub, prefApn, prefIpType };
+
+            if (!STRNCMP(data, "connectBackhaul")) {
+                mSystemStatusObsrvr->connectBackhaul(ctx);
+            } else {
+                mSystemStatusObsrvr->disconnectBackhaul(ctx);
+            }
 #endif
         } else if (!STRNCMP(data, "requestStatus")) {
             int32_t xtraStatusUpdated = 0;

@@ -155,7 +155,7 @@ DEFAULT_IMPL(false)
 
 bool LocAdapterBase::
     requestATL(int /*connHandle*/, LocAGpsType /*agps_type*/,
-               LocApnTypeMask /*apn_type_mask*/)
+               LocApnTypeMask /*apn_type_mask*/, LocSubId /*sub_id*/)
 DEFAULT_IMPL(false)
 
 bool LocAdapterBase::
