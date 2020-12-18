@@ -1258,6 +1258,7 @@ typedef struct {
     GnssSvOptionsMask gnssSvOptionsMask; // Bitwise OR of GnssSvOptionsBits
     float carrierFrequencyHz; // carrier frequency of the signal tracked
     GnssSignalTypeMask gnssSignalTypeMask; // Specifies GNSS signal type
+    uint16_t  gloFrequency; // GLONASS Frequency channel number
 } GnssSv;
 
 struct GnssConfigSetAssistanceServer {

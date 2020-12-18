@@ -549,7 +549,11 @@ static void convertGnssSvStatus(GnssSvNotification& in, IGnssCallback::GnssSvSta
             info.svid = in.gnssSvs[i].svId;
             break;
         case GNSS_SV_TYPE_GLONASS:
-            info.svid = in.gnssSvs[i].svId - GLO_SV_PRN_MIN + 1;
+            if (!isGloSlotUnknown(in.gnssSvs[i].svId)) { // OSN is known
+                info.svid = in.gnssSvs[i].svId - GLO_SV_PRN_MIN + 1;
+            } else { //OSN is not known, report FCN
+                info.svid = in.gnssSvs[i].gloFrequency + 92;
+            }
             break;
         case GNSS_SV_TYPE_QZSS:
             info.svid = in.gnssSvs[i].svId;
@@ -561,8 +565,6 @@ static void convertGnssSvStatus(GnssSvNotification& in, IGnssCallback::GnssSvSta
             info.svid = in.gnssSvs[i].svId - GAL_SV_PRN_MIN + 1;
             break;
         case GNSS_SV_TYPE_NAVIC:
-            /*Android doesn't define Navic svid range yet, use Naviv svid [1, 14] now
-              will update this once Android give Navic svid definiitons */
             info.svid = in.gnssSvs[i].svId - NAVIC_SV_PRN_MIN + 1;
             break;
         default:
