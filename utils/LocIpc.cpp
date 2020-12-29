@@ -259,9 +259,7 @@ public:
     inline virtual const char* getName() const override { return mName.data(); };
     inline virtual void abort() const override {
         if (isSendable()) {
-            sockaddr_in loopBackAddr = {.sin_family = AF_INET, .sin_port = htons(mPort),
-                    .sin_addr = {htonl(INADDR_LOOPBACK)}};
-            mSock->sendAbort(0, (struct sockaddr*)&loopBackAddr, sizeof(loopBackAddr));
+            mSock->sendAbort(0, (struct sockaddr*)&mAddr, sizeof(mAddr));
         }
     }
     inline virtual unique_ptr<LocIpcSender> getLastSender() const override {
