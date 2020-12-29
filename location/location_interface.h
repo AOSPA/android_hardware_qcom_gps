@@ -97,6 +97,7 @@ struct GnssInterface {
     uint32_t (*gnssGetSecondaryBandConfig)();
     uint32_t (*configEngineRunState)(PositioningEngineMask engType,
                                      LocEngineRunState engState);
+    uint32_t (*configOutputNmeaTypes)(GnssNmeaTypesMask enabledNmeaTypes);
 };
 
 struct FlpInterface {

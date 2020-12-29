@@ -2458,7 +2458,6 @@ GnssAdapter::updateClientsEventMask()
                 mask);
     }
 
-
     if (mAgpsCbInfo.statusV4Cb != NULL) {
         mask |= LOC_API_ADAPTER_BIT_LOCATION_SERVER_REQUEST;
     }
@@ -6018,6 +6017,34 @@ uint32_t GnssAdapter::configEngineRunStateCommand(
     };
 
     sendMsg(new MsgConfigEngineRunState(*this, sessionId, engType, engState));
+
+    return sessionId;
+}
+
+uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes) {
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, enabled nmea = 0x%x", sessionId, enabledNmeaTypes);
+
+    struct MsgConfigOutputNmeaType : public LocMsg {
+        GnssAdapter& mAdapter;
+        uint32_t     mSessionId;
+        GnssNmeaTypesMask mEnabledNmeaTypes;
+
+        inline MsgConfigOutputNmeaType(GnssAdapter& adapter,
+                                       uint32_t sessionId,
+                                       GnssNmeaTypesMask enabledNmeaTypes) :
+            LocMsg(),
+            mAdapter(adapter),
+            mSessionId(sessionId),
+            mEnabledNmeaTypes(enabledNmeaTypes) {}
+        inline virtual void proc() const {
+           loc_nmea_config_output_types(mEnabledNmeaTypes);
+           mAdapter.reportResponse(LOCATION_ERROR_SUCCESS, mSessionId);
+        }
+    };
+
+    sendMsg(new MsgConfigOutputNmeaType(*this, sessionId, enabledNmeaTypes));
 
     return sessionId;
 }
