@@ -1,13 +1,13 @@
+ACLOCAL_AMFLAGS = -I m4
+
 AM_CFLAGS = \
      $(LOCPLA_CFLAGS) \
      $(LOCHAL_CFLAGS) \
      $(GPSUTILS_CFLAGS) \
      $(LOCCORE_CFLAGS) \
      -I./ \
-     -I../utils \
-     -I$(WORKSPACE)/hardware/qcom/gps/core/data-items \
      -I../location \
-     -std=c++1y
+     -std=c++14
 
 libgnss_la_SOURCES = \
     location_gnss.cpp \
