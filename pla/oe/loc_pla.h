@@ -47,13 +47,6 @@
 #endif
 #endif
 
-// use set/map instead of unordered_set/unordered_map for
-// older GCC versions
-#ifdef NO_UNORDERED_SET_OR_MAP
-#define unordered_set set
-#define unordered_map map
-#endif
-
 inline int64_t uptimeMillis()
 {
     struct timespec ts;

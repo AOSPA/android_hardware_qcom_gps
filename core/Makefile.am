@@ -23,6 +23,7 @@ libloc_core_la_h_sources = \
            data-items/DataItemId.h \
            data-items/IDataItemCore.h \
            data-items/DataItemConcreteTypesBase.h \
+           data-items/DataItemsFactoryProxy.h \
            observer/IDataItemObserver.h \
            observer/IDataItemSubscription.h \
            observer/IFrameworkActionReq.h \

@@ -26,10 +26,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+#include <loc_pla.h>
+
 #ifndef ENGINE_HUB_PROXY_BASE_H
 #define ENGINE_HUB_PROXY_BASE_H
 #ifdef NO_UNORDERED_SET_OR_MAP
     #include <map>
+    #define unordered_map map
 #else
     #include <unordered_map>
 #endif

@@ -31,12 +31,14 @@
 
 #include <stddef.h>
 #include <ctype.h>
+#include <loc_pla.h>
 #include <gps_extended.h>
 #include <LocationAPI.h>
 #include <MsgTask.h>
 #include <log_util.h>
 #ifdef NO_UNORDERED_SET_OR_MAP
     #include <map>
+    #define unordered_map map
 #else
     #include <unordered_map>
 #endif
