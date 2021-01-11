@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -412,11 +412,11 @@ void LocationAPIClientBase::locAPIUpdateTrackingOptions(TrackingOptions& options
 int32_t LocationAPIClientBase::locAPIGetBatchSize()
 {
     if (mBatchSize == -1) {
-        const loc_param_s_type flp_conf_param_table[] =
+        const loc_param_s_type batching_conf_param_table[] =
         {
             {"BATCH_SIZE", &mBatchSize, nullptr, 'n'},
         };
-        UTIL_READ_CONF(LOC_PATH_FLP_CONF, flp_conf_param_table);
+        UTIL_READ_CONF(LOC_PATH_BATCHING_CONF, batching_conf_param_table);
         if (mBatchSize < 0) {
             // set mBatchSize to 0 if we got an illegal value from config file
             mBatchSize = 0;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -277,7 +277,6 @@ class GnssAdapter : public LocAdapterBase {
     /* === Misc ===================================================================== */
     BlockCPIInfo mBlockCPIInfo;
     bool mPowerOn;
-    uint32_t mAllowFlpNetworkFixes;
     std::queue<GnssLatencyInfo> mGnssLatencyInfoQueue;
     GnssReportLoggerUtil mLogger;
     bool mDreIntEnabled;
@@ -302,7 +301,6 @@ class GnssAdapter : public LocAdapterBase {
     /* ======== UTILITIES ================================================================== */
     inline void initOdcpi(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
     inline void injectOdcpi(const Location& location);
-    static bool isFlpClient(LocationCallbacks& locationCallbacks);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
@@ -527,9 +525,10 @@ public:
     );
 
     /* ======== UTILITIES ================================================================= */
-    bool needReportForGnssClient(const UlpLocation& ulpLocation,
+    bool needReportForAllClients(const UlpLocation& ulpLocation,
             enum loc_sess_status status, LocPosTechMask techMask);
-    bool needReportForFlpClient(enum loc_sess_status status, LocPosTechMask techMask);
+    bool needReportForClient(LocationAPI* client, enum loc_sess_status status);
+    bool needReportForAnyClient(enum loc_sess_status status);
     bool needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
         const struct timespec32_t &apTimeStamp);
     void reportPosition(const UlpLocation &ulpLocation,
@@ -620,8 +619,6 @@ public:
     bool getPowerState() { return mPowerOn; }
     inline PowerStateType getSystemPowerState() { return mSystemPowerState; }
 
-    void setAllowFlpNetworkFixes(uint32_t allow) { mAllowFlpNetworkFixes = allow; }
-    uint32_t getAllowFlpNetworkFixes() { return mAllowFlpNetworkFixes; }
     void setSuplHostServer(const char* server, int port, LocServerType type);
     void notifyClientOfCachedLocationSystemInfo(LocationAPI* client,
                                                 const LocationCallbacks& callbacks);

@@ -963,13 +963,18 @@ struct TrackingOptions : LocationOptions {
                                 sessions */
     uint32_t tbm;  /* Time interval between measurements specified in millis.
                       Applicable to background power modes */
+    bool allowReportsWithAnyAccuracy; /* Send through position reports with
+                                         any accuracy. */
 
     inline TrackingOptions() :
-            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            allowReportsWithAnyAccuracy(false) {}
     inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
-            LocationOptions(), powerMode(m), tbm(t) { LocationOptions::size = s; }
+            LocationOptions(), powerMode(m), tbm(t),
+            allowReportsWithAnyAccuracy(false) { LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
-            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            allowReportsWithAnyAccuracy(false) {}
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;

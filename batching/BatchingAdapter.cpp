@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -67,14 +67,14 @@ BatchingAdapter::readConfigCommand()
             uint32_t batchingAccuracy = 0;
             uint32_t batchSize = 0;
             uint32_t tripBatchSize = 0;
-            static const loc_param_s_type flp_conf_param_table[] =
+            static const loc_param_s_type batching_conf_param_table[] =
             {
                 {"BATCH_SIZE", &batchSize, NULL, 'n'},
                 {"OUTDOOR_TRIP_BATCH_SIZE", &tripBatchSize, NULL, 'n'},
                 {"BATCH_SESSION_TIMEOUT", &batchingTimeout, NULL, 'n'},
                 {"ACCURACY", &batchingAccuracy, NULL, 'n'},
             };
-            UTIL_READ_CONF(LOC_PATH_FLP_CONF, flp_conf_param_table);
+            UTIL_READ_CONF(LOC_PATH_BATCHING_CONF, batching_conf_param_table);
 
             LOC_LOGD("%s]: batchSize %u tripBatchSize %u batchingAccuracy %u batchingTimeout %u ",
                      __func__, batchSize, tripBatchSize, batchingAccuracy, batchingTimeout);
