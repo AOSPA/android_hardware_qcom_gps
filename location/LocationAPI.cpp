@@ -40,7 +40,6 @@ typedef const GnssInterface* (getGnssInterface)();
 typedef const FlpInterface* (getFlpInterface)();
 typedef const GeofenceInterface* (getGeofenceInterface)();
 typedef void (createOSFramework)();
-typedef void (destroyOSFramework)();
 
 // GTP services
 typedef uint32_t (setOptInStatusGetter)(bool userConsent, responseCallback* callback);
@@ -77,7 +76,7 @@ static pthread_mutex_t gDataMutex = PTHREAD_MUTEX_INITIALIZER;
 static bool gGnssLoadFailed = false;
 static bool gFlpLoadFailed = false;
 static bool gGeofenceLoadFailed = false;
-static uint32_t gOSFrameworkRefCount = 0;
+static bool gOSFrameworkLoadAttempted = false;
 
 template <typename T1, typename T2>
 static const T1* loadLocationInterface(const char* library, const char* name) {
@@ -94,17 +93,6 @@ static void createOSFrameworkInstance() {
     void* libHandle = nullptr;
     createOSFramework* getter = (createOSFramework*)dlGetSymFromLib(libHandle,
             "liblocationservice_glue.so", "createOSFramework");
-    if (getter != nullptr) {
-        (*getter)();
-    } else {
-        LOC_LOGe("dlGetSymFromLib failed for liblocationservice_glue.so");
-    }
-}
-
-static void destroyOSFrameworkInstance() {
-    void* libHandle = nullptr;
-    destroyOSFramework* getter = (destroyOSFramework*)dlGetSymFromLib(libHandle,
-            "liblocationservice_glue.so", "destroyOSFramework");
     if (getter != nullptr) {
         (*getter)();
     } else {
@@ -203,8 +191,8 @@ LocationAPI::createInstance(LocationCallbacks& locationCallbacks)
 
     pthread_mutex_lock(&gDataMutex);
 
-    gOSFrameworkRefCount++;
-    if (1 == gOSFrameworkRefCount) {
+    if (!gOSFrameworkLoadAttempted) {
+        gOSFrameworkLoadAttempted = true;
         createOSFrameworkInstance();
     }
 
@@ -331,11 +319,6 @@ LocationAPI::destroy(locationApiDestroyCompleteCallback destroyCompleteCb)
         LOC_LOGE("%s:%d]: Location API client %p not found in client data",
                  __func__, __LINE__, this);
     }
-
-    if (1 == gOSFrameworkRefCount) {
-        destroyOSFrameworkInstance();
-    }
-    gOSFrameworkRefCount--;
 
     pthread_mutex_unlock(&gDataMutex);
     if (invokeDestroyCb == true) {
