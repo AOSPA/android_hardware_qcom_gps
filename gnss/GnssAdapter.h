@@ -434,6 +434,7 @@ public:
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
+    uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes);
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
