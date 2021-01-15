@@ -139,7 +139,9 @@ typedef enum {
     LOC_SUPPORTED_FEATURE_NAVIC, /**<  Support the NavIC constellation */
     LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION, /**<  Support measurements correction */
     LOC_SUPPORTED_FEATURE_ROBUST_LOCATION, /**<  Support Robust Location feature */
-    LOC_SUPPORTED_FEATURE_EDGNSS /**< Support precise location dgnss */
+    LOC_SUPPORTED_FEATURE_EDGNSS, /**< Support precise location dgnss */
+    LOC_SUPPORTED_FEATURE_MULTIBAND_CONFIG, /**<  Support the multiband GNSS config. feature  */
+    LOC_SUPPORTED_FEATURE_QMI_AGNSS_CONFIG_DISABLED, /**<  Support the AGNSS config. for DSDA  */
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -2227,6 +2229,7 @@ struct AGnssExtStatusIpV4 {
      * 32-bit IPv4 address.
      */
     uint32_t            ipV4Addr;
+    LocSubId            subId;
 };
 
 /*

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -145,6 +145,7 @@ private:
        LOC_AGPS_TYPE_SUPL_ES       5 */
     AGpsExtType mAgpsType;
     LocApnTypeMask mApnTypeMask;
+    LocSubId mSubId;
 
     /* APN and IP Type info for AGPS Call */
     char* mAPN;
@@ -169,6 +170,7 @@ public:
     inline LocApnTypeMask getApnTypeMask() const { return mApnTypeMask; }
     inline void setApnTypeMask(LocApnTypeMask apnTypeMask)
     { mApnTypeMask = apnTypeMask; }
+    inline void setSubId(LocSubId subId) { mSubId = subId; }
     inline AGpsBearerType getBearer() const { return mBearer; }
     inline void setType(AGpsExtType type) { mAgpsType = type; }
     inline AGpsExtType getType() const { return mAgpsType; }
@@ -254,7 +256,8 @@ public:
     void createAgpsStateMachines();
 
     /* Process incoming ATL requests */
-    void requestATL(int connHandle, AGpsExtType agpsType, LocApnTypeMask apnTypeMask);
+    void requestATL(int connHandle, AGpsExtType agpsType,
+                    LocApnTypeMask apnTypeMask, LocSubId subId);
     void releaseATL(int connHandle);
     /* Process incoming framework data call events */
     void reportAtlOpenSuccess(AGpsExtType agpsType, char* apnName, int apnLen,
@@ -287,11 +290,13 @@ struct AgpsMsgRequestATL: public LocMsg {
     int mConnHandle;
     AGpsExtType mAgpsType;
     LocApnTypeMask mApnTypeMask;
+    LocSubId mSubId;
 
     inline AgpsMsgRequestATL(AgpsManager* agpsManager, int connHandle,
-            AGpsExtType agpsType, LocApnTypeMask apnTypeMask) :
+            AGpsExtType agpsType, LocApnTypeMask apnTypeMask,
+            LocSubId subId) :
             LocMsg(), mAgpsManager(agpsManager), mConnHandle(connHandle),
-            mAgpsType(agpsType), mApnTypeMask(apnTypeMask){
+            mAgpsType(agpsType), mApnTypeMask(apnTypeMask), mSubId(subId){
 
         LOC_LOGV("AgpsMsgRequestATL");
     }
@@ -299,7 +304,7 @@ struct AgpsMsgRequestATL: public LocMsg {
     inline virtual void proc() const {
 
         LOC_LOGV("AgpsMsgRequestATL::proc()");
-        mAgpsManager->requestATL(mConnHandle, mAgpsType, mApnTypeMask);
+        mAgpsManager->requestATL(mConnHandle, mAgpsType, mApnTypeMask, mSubId);
     }
 };
 
