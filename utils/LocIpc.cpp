@@ -101,7 +101,7 @@ ssize_t Sock::recvfrom(const LocIpcRecver& recver, const shared_ptr<ILocIpcListe
     if (nBytes > 0) {
         if (strncmp(msg.data(), MSG_ABORT, sizeof(MSG_ABORT)) == 0) {
             LOC_LOGi("recvd abort msg.data %s", msg.data());
-            nBytes = 0;
+            nBytes = -100;
         } else if (strncmp(msg.data(), LOC_IPC_HEAD, sizeof(LOC_IPC_HEAD) - 1)) {
             // short message
             msg.resize(nBytes);
@@ -279,7 +279,14 @@ protected:
                 mConnFd = -1;
             }
         }
-        return mSock->recv(*this, mDataCb, 0, (struct sockaddr*)&mAddr, &size, mConnFd);
+        ssize_t nBytes = mSock->recv(*this, mDataCb, 0, (struct sockaddr*)&mAddr, &size, mConnFd);
+        if (0 == nBytes) {
+            // tcp connection closed, accept new connection for next recv
+            // But do not exit the receiver thread by returning 0 bytes.
+            mConnFd = -1;
+            nBytes = 100;
+        }
+        return nBytes;
     }
 public:
     inline LocIpcInetTcpRecver(const shared_ptr<ILocIpcListener>& listener, const char* name,
