@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -852,12 +852,16 @@ typedef struct {
     double latitude;         // in degrees
     double longitude;        // in degrees
     double altitude;         // in meters above the WGS 84 reference ellipsoid
-    float speed;             // in meters per second
+    float speed;             // horizontal speed, in meters per second
     float bearing;           // in degrees; range [0, 360)
-    float accuracy;          // in meters
+    float accuracy;          // horizontal acuracy, in meters
+                             // confidence level is at 68%
     float verticalAccuracy;  // in meters
-    float speedAccuracy;     // in meters/second
+                             // confidence level is at 68%
+    float speedAccuracy;     // horizontal speed unc, in meters/second
+                             // confidence level is at 68%
     float bearingAccuracy;   // in degrees (0 to 359.999)
+                             // confidence level is at 68%
     LocationTechnologyMask techMask;
     LocationSpoofMask spoofMask;
     uint64_t elapsedRealTime;    // in ns
@@ -1018,22 +1022,31 @@ typedef struct {
     float yawRate;                             // Heading Rate (Radians/second)
     float pitch;                               // Body pitch (Radians)
     float longAccelUnc;   // Uncertainty of Forward Acceleration in body frame
+                          // Confidence level is at 68%
     float latAccelUnc;    // Uncertainty of Side-ward Acceleration in body frame
+                          // Confidence level is at 68%
     float vertAccelUnc;   // Uncertainty of Vertical Acceleration in body frame
+                          // Confidence level is at 68%
     float yawRateUnc;     // Uncertainty of Heading Rate
+                          // Confidence level is at 68%
     float pitchUnc;       // Uncertainty of Body pitch
+                          // Confidence level is at 68%
 } GnssLocationPositionDynamics;
 
 typedef struct {
     GnssLocationPosDataMaskExt bodyFrameDataMask; // Contains Ext Body frame LocPosDataMask bits
     float pitchRate;      // Body pitch rate (Radians/second)
     float pitchRateUnc;   // Uncertainty of pitch rate (Radians/second)
+                          // Confidence level is at 68%
     float roll;           // Roll of body frame. Clockwise positive. (radian
-    float rollUnc;        // Uncertainty of Roll, 68% confidence level (radian)
+    float rollUnc;        // Uncertainty of Roll (radian)
+                          // Confidence level is at 68%
     float rollRate;       // Roll rate of body frame. Clockwise positive. (radian/second)
-    float rollRateUnc;    // Uncertainty of Roll rate, 68% confidence level (radian/second)
+    float rollRateUnc;    // Uncertainty of Roll rate (radian/second)
+                          // Confidence level is at 68%
     float yaw;            // Yaw of body frame. Clockwise positive (radian)
-    float yawUnc;         // Uncertainty of Yaw, 68% confidence level (radian)
+    float yawUnc;         // Uncertainty of Yaw (radian)
+                          // Confidence level is at 68%
 } GnssLocationPositionDynamicsExt;
 
 typedef struct {
@@ -1155,16 +1168,20 @@ typedef struct {
     LocationReliability horReliability; // horizontal reliability
     LocationReliability verReliability; // vertical reliability
     float horUncEllipseSemiMajor;       // horizontal elliptical accuracy semi-major axis
+                                        // Confidence level is at 39%
     float horUncEllipseSemiMinor;       // horizontal elliptical accuracy semi-minor axis
+                                        // Confidence level is at 39%
     float horUncEllipseOrientAzimuth;   // horizontal elliptical accuracy azimuth
     float northStdDeviation;            // North standard deviation Unit: Meters
+                                        // Confidence level is at 68%
     float eastStdDeviation;             // East standard deviation. Unit: Meters
+                                        // Confidence level is at 68%
     float northVelocity;                // North Velocity.Unit: Meters/sec
     float eastVelocity;                 // East Velocity Unit Meters/sec
     float upVelocity;                   // Up Velocity. Unit Meters/sec
-    float northVelocityStdDeviation;
-    float eastVelocityStdDeviation;
-    float upVelocityStdDeviation;
+    float northVelocityStdDeviation;    // Confidence level is at 68%
+    float eastVelocityStdDeviation;     // Confidence level is at 68%
+    float upVelocityStdDeviation;       // Confidence level is at 68%
     uint16_t numSvUsedInPosition;
     GnssLocationSvUsedInPosition svUsedInPosition;// Gnss sv used in position data
     GnssLocationNavSolutionMask navSolutionMask;  // Nav solution mask to indicate sbas corrections
@@ -1175,6 +1192,8 @@ typedef struct {
     GnssMeasUsageInfo measUsageInfo[GNSS_SV_MAX]; // GNSS Measurement Usage info
     uint8_t leapSeconds;                          // leap second
     float timeUncMs;                              // Time uncertainty in milliseconds
+                                                  // SPE report: confidence level is 99%
+                                                  // Other engine report: confidence not unspecified
     uint8_t calibrationConfidence;                // Sensor calibration confidence percent,
                                                   // in range of [0, 100]
     DrCalibrationStatusMask calibrationStatus;    // Sensor calibration status

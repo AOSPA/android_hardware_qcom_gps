@@ -721,21 +721,26 @@ typedef struct {
     float           vdop;
     /** Contains Magnetic Deviation. */
     float           magneticDeviation;
-    /** vertical uncertainty in meters */
+    /** vertical uncertainty in meters
+     *  confidence level is at 68% */
     float           vert_unc;
-    /** speed uncertainty in m/s */
+    /** horizontal speed uncertainty in m/s
+     *  confidence level is at 68% */
     float           speed_unc;
-    /** heading uncertainty in degrees (0 to 359.999) */
+    /** heading uncertainty in degrees (0 to 359.999)
+     *  confidence level is at 68% */
     float           bearing_unc;
     /** horizontal reliability. */
     LocReliability  horizontal_reliability;
     /** vertical reliability. */
     LocReliability  vertical_reliability;
-    /*  Horizontal Elliptical Uncertainty (Semi-Major Axis) */
+    /**  Horizontal Elliptical Uncertainty (Semi-Major Axis)
+     *   Confidence level is at 39% */
     float           horUncEllipseSemiMajor;
-    /*  Horizontal Elliptical Uncertainty (Semi-Minor Axis) */
+    /**  Horizontal Elliptical Uncertainty (Semi-Minor Axis)
+     *   Confidence level is at 39% */
     float           horUncEllipseSemiMinor;
-    /*    Elliptical Horizontal Uncertainty Azimuth */
+    /**  Elliptical Horizontal Uncertainty Azimuth */
     float           horUncEllipseOrientAzimuth;
 
     Gnss_ApTimeStampStructType               timeStamp;
@@ -772,13 +777,16 @@ typedef struct {
         Unit: Meters/sec */
     float upVelocity;
     /** North Velocity standard deviation.
-        Unit: Meters/sec */
+     *  Unit: Meters/sec.
+     *  Confidence level is at 68% */
     float northVelocityStdDeviation;
     /** East Velocity standard deviation.
-        Unit: Meters/sec */
+     *  Unit: Meters/sec
+     *  Confidence level is at 68%   */
     float eastVelocityStdDeviation;
     /** Up Velocity standard deviation
-        Unit: Meters/sec */
+     *  Unit: Meters/sec
+     *  Confidence level is at 68% */
     float upVelocityStdDeviation;
     /** Estimated clock bias. Unit: Nano seconds */
     float clockbiasMeter;
@@ -801,7 +809,9 @@ typedef struct {
     GpsMeasUsageInfo measUsageInfo[GNSS_SV_MAX];
     /** Leap Seconds */
     uint8_t leapSeconds;
-    /** Time uncertainty in milliseconds   */
+    /** Time uncertainty in milliseconds,
+     *  SPE engine: confidence level is 99%
+     *  all other engines: confidence level is not specified */
     float timeUncMs;
     /** Heading Rate is in NED frame.
         Range: 0 to 359.999. 946
