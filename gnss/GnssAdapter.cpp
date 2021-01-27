@@ -132,7 +132,6 @@ GnssAdapter::GnssAdapter() :
     mLocConfigInfo{},
     mNiData(),
     mAgpsManager(),
-    mOdcpiRequestCb(nullptr),
     mOdcpiRequestActive(false),
     mOdcpiTimer(this),
     mOdcpiRequest(),
@@ -144,12 +143,10 @@ GnssAdapter::GnssAdapter() :
     mBlockCPIInfo{},
     mDreIntEnabled(false),
     mLocSystemInfo{},
-    mNfwCb(NULL),
     mPowerOn(false),
     mAllowFlpNetworkFixes(0),
     mGnssEnergyConsumedCb(nullptr),
     mPowerStateCb(nullptr),
-    mIsE911Session(NULL),
     mGnssMbSvIdUsedInPosition{},
     mGnssMbSvIdUsedInPosAvail(false),
     mSupportNfwControl(true),
@@ -209,7 +206,15 @@ GnssAdapter::setControlCallbacksCommand(LocationControlCallbacks& controlCallbac
             mAdapter(adapter),
             mControlCallbacks(controlCallbacks) {}
         inline virtual void proc() const {
-            mAdapter.setControlCallbacks(mControlCallbacks);
+        if (mControlCallbacks.responseCb != NULL)
+            mAdapter.mControlCallbacks.responseCb = mControlCallbacks.responseCb;
+        if (mControlCallbacks.collectiveResponseCb != NULL)
+            mAdapter.mControlCallbacks.collectiveResponseCb =
+                     mControlCallbacks.collectiveResponseCb;
+        if (mControlCallbacks.gnssConfigCb != NULL)
+            mAdapter.mControlCallbacks.gnssConfigCb = mControlCallbacks.gnssConfigCb;
+        if (mControlCallbacks.odcpiReqCb != NULL)
+            mAdapter.mControlCallbacks.odcpiReqCb = mControlCallbacks.odcpiReqCb;
         }
     };
 
@@ -239,7 +244,7 @@ GnssAdapter::convertOptions(LocPosMode& out, const TrackingOptions& trackingOpti
 bool
 GnssAdapter::checkAndSetSPEToRunforNHz(TrackingOptions & out) {
 
-    // first check if NHz meas is needed at all, if not, just return false
+    // first check if NHz meas is needed a all, if not, just return false
     // if a NHz capable engine is subscribed for NHz measurement or NHz positions,
     // always run the SPE only session at 100ms TBF.
     // If SPE session is already set to highest interval, no need to start it again.
@@ -2620,7 +2625,7 @@ GnssAdapter::updateClientsEventMask()
         mask |= LOC_API_ADAPTER_BIT_LOCATION_SERVER_REQUEST;
     }
     // Add ODCPI handling
-    if (nullptr != mOdcpiRequestCb) {
+    if (nullptr != mControlCallbacks.odcpiReqCb) {
         mask |= LOC_API_ADAPTER_BIT_REQUEST_WIFI;
     }
 
@@ -4928,7 +4933,7 @@ GnssAdapter::requestOdcpiEvent(OdcpiRequestInfo& request)
 
 void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
 {
-    if (nullptr != mOdcpiRequestCb) {
+    if (nullptr != mControlCallbacks.odcpiReqCb) {
         LOC_LOGd("request: type %d, tbf %d, isEmergency %d"
                  " requestActive: %d timerActive: %d",
                  request.type, request.tbfMillis, request.isEmergencyMode,
@@ -4938,7 +4943,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         // extending the odcpi session past 30 seconds if needed
         if (ODCPI_REQUEST_TYPE_START == request.type) {
             if (false == mOdcpiRequestActive && false == mOdcpiTimer.isActive()) {
-                mOdcpiRequestCb(request);
+                mControlCallbacks.odcpiReqCb(request);
                 if (nullptr != mEsStatusCb) {
                     mEsStatusCb(request.isEmergencyMode);
                 }
@@ -4949,7 +4954,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             // and restart the timer
             } else if (false == mOdcpiRequest.isEmergencyMode &&
                        true == request.isEmergencyMode) {
-                mOdcpiRequestCb(request);
+                 mControlCallbacks.odcpiReqCb(request);
                 if (nullptr != mEsStatusCb) {
                     mEsStatusCb(request.isEmergencyMode);
                 }
@@ -4971,7 +4976,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         // to avoid spamming more odcpi requests to the framework
         } else if (ODCPI_REQUEST_TYPE_STOP == request.type) {
             LOC_LOGd("request: type %d, isEmergency %d", request.type, request.isEmergencyMode);
-            mOdcpiRequestCb(request);
+            mControlCallbacks.odcpiReqCb(request);
             if (nullptr != mEsStatusCb) {
                 mEsStatusCb(false);
             }
@@ -5031,15 +5036,15 @@ bool GnssAdapter::reportQwesCapabilities(
     return true;
 }
 
-void GnssAdapter::initOdcpiCommand(const OdcpiRequestCallback& callback,
+void GnssAdapter::initOdcpiCommand(const odcpiRequestCallback& callback,
                                    OdcpiPrioritytype priority)
 {
     struct MsgInitOdcpi : public LocMsg {
         GnssAdapter& mAdapter;
-        OdcpiRequestCallback mOdcpiCb;
+        odcpiRequestCallback mOdcpiCb;
         OdcpiPrioritytype mPriority;
         inline MsgInitOdcpi(GnssAdapter& adapter,
-                const OdcpiRequestCallback& callback,
+                const odcpiRequestCallback& callback,
                 OdcpiPrioritytype priority) :
                 LocMsg(),
                 mAdapter(adapter),
@@ -5052,12 +5057,12 @@ void GnssAdapter::initOdcpiCommand(const OdcpiRequestCallback& callback,
     sendMsg(new MsgInitOdcpi(*this, callback, priority));
 }
 
-void GnssAdapter::initOdcpi(const OdcpiRequestCallback& callback,
+void GnssAdapter::initOdcpi(const odcpiRequestCallback& callback,
             OdcpiPrioritytype priority)
 {
     LOC_LOGd("In priority: %d, Curr priority: %d", priority, mCallbackPriority);
     if (priority >= mCallbackPriority) {
-        mOdcpiRequestCb = callback;
+        mControlCallbacks.odcpiReqCb = callback;
         mCallbackPriority = priority;
         /* Register for WIFI request */
         updateEvtMask(LOC_API_ADAPTER_BIT_REQUEST_WIFI,
@@ -5127,7 +5132,7 @@ void GnssAdapter::odcpiTimerExpire()
     // if ODCPI request is still active after timer
     // expires, request again and restart timer
     if (mOdcpiRequestActive) {
-        mOdcpiRequestCb(mOdcpiRequest);
+        mControlCallbacks.odcpiReqCb(mOdcpiRequest);
         mOdcpiTimer.restart();
     } else {
         mOdcpiTimer.stop();
@@ -5299,7 +5304,7 @@ void GnssAdapter::reportNfwNotificationEvent(GnssNfwNotification& notification) 
  * eQMI_LOC_WWAN_TYPE_AGNSS_V02
  * eQMI_LOC_WWAN_TYPE_AGNSS_EMERGENCY_V02 */
 bool GnssAdapter::requestATL(int connHandle, LocAGpsType agpsType,
-                             LocApnTypeMask apnTypeMask, LocSubId subId){
+                             LocApnTypeMask apnTypeMask, SubId subId){
 
     LOC_LOGi("GnssAdapter::requestATL handle=%d agpsType=0x%X apnTypeMask=0x%X subId=%d",
              connHandle, agpsType, apnTypeMask, subId);
@@ -6314,7 +6319,7 @@ bool GnssAdapter::initMeasCorr(bool bSendCbWhenNotSupported) {
         inline virtual void proc() const {
             LOC_LOGv("MsgInitMeasCorr::proc()");
 
-            mAdapter.mMeasCorrSetCapabilitiesCb(mCapMask);
+            mAdapter.mControlCallbacks.measCorrSetCapabilitiesCb(mCapMask);
         }
     };
     if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION)) {
@@ -6330,11 +6335,11 @@ bool GnssAdapter::initMeasCorr(bool bSendCbWhenNotSupported) {
     }
 }
 
-bool GnssAdapter::openMeasCorrCommand(const measCorrSetCapabilitiesCb setCapabilitiesCb) {
+bool GnssAdapter::openMeasCorrCommand(const measCorrSetCapabilitiesCallback setCapabilitiesCb) {
     LOC_LOGi("GnssAdapter::openMeasCorrCommand");
 
     /* Send message to initialize Measurement Corrections */
-        mMeasCorrSetCapabilitiesCb = setCapabilitiesCb;
+        mControlCallbacks.measCorrSetCapabilitiesCb = setCapabilitiesCb;
         mIsMeasCorrInterfaceOpen = true;
         if (isEngineCapabilitiesKnown()) {
         LOC_LOGv("Capabilities are known, proceed with measurement corrections init");
@@ -6379,31 +6384,49 @@ bool GnssAdapter::measCorrSetCorrectionsCommand(const GnssMeasurementCorrections
         return false;
     }
 }
-uint32_t GnssAdapter::antennaInfoInitCommand(const antennaInfoCb antennaInfoCallback) {
+uint32_t GnssAdapter::antennaInfoInitCommand(const antennaInfoCallback antennaInfoCb) {
     LOC_LOGi("GnssAdapter::antennaInfoInitCommand");
 
     /* Message to initialize Antenna Information */
     struct MsgInitAi : public LocMsg {
-        const antennaInfoCb mAntennaInfoCb;
+        const antennaInfoCallback mAntennaInfoCb;
         GnssAdapter& mAdapter;
 
-        inline MsgInitAi(const antennaInfoCb antennaInfoCallback, GnssAdapter& adapter) :
-            LocMsg(), mAntennaInfoCb(antennaInfoCallback), mAdapter(adapter) {
+        inline MsgInitAi(const antennaInfoCallback antennaInfoCb, GnssAdapter& adapter) :
+            LocMsg(), mAntennaInfoCb(antennaInfoCb), mAdapter(adapter) {
             LOC_LOGv("MsgInitAi");
         }
 
         inline virtual void proc() const {
-            LOC_LOGv("MsgInitAi::proc()");
-            mAdapter.reportGnssAntennaInformation(mAntennaInfoCb);
+            mAdapter.mControlCallbacks.antennaInfoCb = mAntennaInfoCb;
         }
     };
     if (mIsAntennaInfoInterfaceOpened) {
         return ANTENNA_INFO_ERROR_ALREADY_INIT;
     } else {
         mIsAntennaInfoInterfaceOpened = true;
-        sendMsg(new MsgInitAi(antennaInfoCallback, *this));
+        sendMsg(new MsgInitAi(antennaInfoCb, *this));
         return ANTENNA_INFO_SUCCESS;
     }
+}
+
+void GnssAdapter::getGnssAntennaeInfoCommand()
+{
+    /* Message to initialize Antenna Information */
+    struct MsgReportAi : public LocMsg {
+        GnssAdapter& mAdapter;
+
+        inline MsgReportAi(GnssAdapter& adapter) :
+            LocMsg(), mAdapter(adapter) {
+            LOC_LOGv("MsgReportAi");
+        }
+
+        inline virtual void proc() const {
+            mAdapter.reportGnssAntennaInformation();
+        }
+    };
+
+    sendMsg(new MsgReportAi(*this));
 }
 
 void
@@ -6791,7 +6814,7 @@ GnssAdapter::parseDoublesString(char* dString) {
 }
 
 void
-GnssAdapter::reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallback)
+GnssAdapter::reportGnssAntennaInformation()
 {
 #define MAX_TEXT_WIDTH      50
 #define MAX_COLUMN_WIDTH    20
@@ -6914,7 +6937,7 @@ GnssAdapter::reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallbac
         gnssAntennaInformations.push_back(std::move(gnssAntennaInfo));
     }
     if (antennaInfoVectorSize > 0) {
-        antennaInfoCallback(gnssAntennaInformations);
+        mControlCallbacks.antennaInfoCb(gnssAntennaInformations);
     }
 }
 

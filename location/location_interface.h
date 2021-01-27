@@ -79,7 +79,7 @@ struct GnssInterface {
     void (*getDebugReport)(GnssDebugReport& report);
     void (*updateConnectionStatus)(bool connected, int8_t type, bool roaming,
                                    NetworkHandle networkHandle, std::string& apn);
-    void (*odcpiInit)(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
+    void (*odcpiInit)(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
     void (*odcpiInject)(const Location& location);
     void (*blockCPI)(double latitude, double longitude, float accuracy,
                      int blockDurationMsec, double latLonDiffThreshold);
@@ -96,10 +96,11 @@ struct GnssInterface {
     uint32_t (*gnssUpdateSvConfig)(const GnssSvTypeConfig& constellationEnablementConfig,
                                    const GnssSvIdConfig&   blacklistSvConfig);
     uint32_t (*configLeverArm)(const LeverArmConfigInfo& configInfo);
-    bool (*measCorrInit)(const measCorrSetCapabilitiesCb setCapabilitiesCb);
+    bool (*measCorrInit)(const measCorrSetCapabilitiesCallback setCapabilitiesCb);
     bool (*measCorrSetCorrections)(const GnssMeasurementCorrections gnssMeasCorr);
     void (*measCorrClose)();
-    uint32_t (*antennaInfoInit)(const antennaInfoCb antennaInfoCallback);
+    uint32_t (*antennaInfoInit)(const antennaInfoCallback antennaInfoCallback);
+    void (*getGnssAntennaeInfo)();
     void (*antennaInfoClose) ();
     uint32_t (*configRobustLocation)(bool enable, bool enableForE911);
     uint32_t (*configMinGpsWeek)(uint16_t minGpsWeek);

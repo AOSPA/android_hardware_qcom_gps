@@ -150,6 +150,8 @@ typedef struct {
     unsigned int    len;
 } UlpNmea;
 
+/** SSID length */
+#define SSID_BUF_SIZE (32+1)
 
 /** AGPS type */
 typedef int8_t AGpsExtType;
@@ -160,9 +162,6 @@ typedef int8_t AGpsExtType;
 #define LOC_AGPS_TYPE_WWAN_ANY      3
 #define LOC_AGPS_TYPE_WIFI          4
 #define LOC_AGPS_TYPE_SUPL_ES       5
-
-/** SSID length */
-#define SSID_BUF_SIZE (32+1)
 
 typedef int16_t AGpsBearerType;
 #define AGPS_APN_BEARER_INVALID     0
@@ -192,19 +191,15 @@ typedef uint32_t LocApnTypeMask;
 /**<  Denotes APN type for emergency  */
 #define LOC_APN_TYPE_MASK_EMERGENCY ((LocApnTypeMask)0x00000200)
 
-typedef uint32_t AGpsTypeMask;
-#define AGPS_ATL_TYPE_SUPL       ((AGpsTypeMask)0x00000001)
-#define AGPS_ATL_TYPE_SUPL_ES   ((AGpsTypeMask)0x00000002)
-#define AGPS_ATL_TYPE_WWAN       ((AGpsTypeMask)0x00000004)
 
 typedef struct {
-    void* statusV4Cb;
+    agnssStatusIpV4Callback statusV4Cb;
     AGpsTypeMask atlType;
 } AgpsCbInfo;
 
 typedef struct {
-    void* visibilityControlCb;
-    void* isInEmergencySession;
+    nfwStatusCallback visibilityControlCb;
+    isInEmergencySessionCallback isInEmergencySession;
 } NfwCbInfo;
 
 /** GPS extended callback structure. */
@@ -2191,81 +2186,6 @@ typedef std::function<void(
     const GnssSvTypeConfig& config
 )> GnssSvTypeConfigCallback;
 
-/*
- * Represents the status of AGNSS augmented to support IPv4.
- */
-struct AGnssExtStatusIpV4 {
-    AGpsExtType         type;
-    LocApnTypeMask      apnTypeMask;
-    LocAGpsStatusValue  status;
-    /*
-     * 32-bit IPv4 address.
-     */
-    uint32_t            ipV4Addr;
-    LocSubId            subId;
-};
-
-/*
- * Represents the status of AGNSS augmented to support IPv6.
- */
-struct AGnssExtStatusIpV6 {
-    AGpsExtType         type;
-    LocApnTypeMask      apnTypeMask;
-    LocAGpsStatusValue  status;
-    /*
-     * 128-bit IPv6 address.
-     */
-    uint8_t             ipV6Addr[16];
-};
-
-/*
-* Represents the the Nfw Notification structure
-*/
-#define GNSS_MAX_NFW_APP_STRING_LEN 64
-#define GNSS_MAX_NFW_STRING_LEN  20
-
-typedef enum {
-    GNSS_NFW_CTRL_PLANE = 0,
-    GNSS_NFW_SUPL = 1,
-    GNSS_NFW_IMS = 10,
-    GNSS_NFW_SIM = 11,
-    GNSS_NFW_OTHER_PROTOCOL_STACK = 100
-} GnssNfwProtocolStack;
-
-typedef enum {
-    GNSS_NFW_CARRIER = 0,
-    GNSS_NFW_OEM = 10,
-    GNSS_NFW_MODEM_CHIPSET_VENDOR = 11,
-    GNSS_NFW_GNSS_CHIPSET_VENDOR = 12,
-    GNSS_NFW_OTHER_CHIPSET_VENDOR = 13,
-    GNSS_NFW_AUTOMOBILE_CLIENT = 20,
-    GNSS_NFW_OTHER_REQUESTOR = 100
-} GnssNfwRequestor;
-
-typedef enum {
-    GNSS_NFW_REJECTED = 0,
-    GNSS_NFW_ACCEPTED_NO_LOCATION_PROVIDED = 1,
-    GNSS_NFW_ACCEPTED_LOCATION_PROVIDED = 2,
-} GnssNfwResponseType;
-
-typedef struct {
-    char                    proxyAppPackageName[GNSS_MAX_NFW_APP_STRING_LEN];
-    GnssNfwProtocolStack    protocolStack;
-    char                    otherProtocolStackName[GNSS_MAX_NFW_STRING_LEN];
-    GnssNfwRequestor        requestor;
-    char                    requestorId[GNSS_MAX_NFW_STRING_LEN];
-    GnssNfwResponseType     responseType;
-    bool                    inEmergencyMode;
-    bool                    isCachedLocation;
-} GnssNfwNotification;
-
-typedef uint16_t GnssMeasurementCorrectionsCapabilitiesMask;
-typedef enum {
-    GNSS_MEAS_CORR_LOS_SATS            = 1 << 0,
-    GNSS_MEAS_CORR_EXCESS_PATH_LENGTH  = 1 << 1,
-    GNSS_MEAS_CORR_REFLECTING_PLANE    = 1 << 2,
-} GnssMeasurementCorrectionsCapabilities;
-
 /* Represents GNSS NMEA Report Rate Configuration */
 typedef enum {
     GNSS_NMEA_REPORT_RATE_UNKNOWN  = 0,
@@ -2273,68 +2193,11 @@ typedef enum {
     GNSS_NMEA_REPORT_RATE_NHZ  = 2
 } GnssNMEARptRate;
 
-/* ODCPI Request Info */
-enum OdcpiRequestType {
-    ODCPI_REQUEST_TYPE_START,
-    ODCPI_REQUEST_TYPE_STOP
-};
-struct OdcpiRequestInfo {
-    uint32_t size;
-    OdcpiRequestType type;
-    uint32_t tbfMillis;
-    bool isEmergencyMode;
-};
-/* Callback to send ODCPI request to framework */
-typedef std::function<void(const OdcpiRequestInfo& request)> OdcpiRequestCallback;
-
-/* ODCPI callback priorities*/
-enum OdcpiPrioritytype {
-    ODCPI_HANDLER_PRIORITY_LOW,
-    ODCPI_HANDLER_PRIORITY_HIGH
-};
-
-/*
- * Callback with AGNSS(IpV4) status information.
- *
- * @param status Will be of type AGnssExtStatusIpV4.
- */
-typedef void (*AgnssStatusIpV4Cb)(AGnssExtStatusIpV4 status);
-
-/*
-* Callback with AGNSS(IpV6) status information.
-*
-* @param status Will be of type AGnssExtStatusIpV6.
-*/
-typedef void (*AgnssStatusIpV6Cb)(AGnssExtStatusIpV6 status);
-
-/*
-* Callback with NFW information.
-*/
-typedef void(*NfwStatusCb)(GnssNfwNotification notification);
-typedef bool(*IsInEmergencySession)(void);
-
 enum AntennaInfoStatus {
     ANTENNA_INFO_SUCCESS = 0,
     ANTENNA_INFO_ERROR_ALREADY_INIT = 1,
     ANTENNA_INFO_ERROR_GENERIC = 2
 };
-
-/*
-* Callback with Measurement corrections information.
-*/
-typedef void(*measCorrSetCapabilitiesCb)(GnssMeasurementCorrectionsCapabilitiesMask capabilities);
-
-/*
- * Callback with AGNSS(IpV6) status information.
- *
- * @param status Will be of type AGnssExtStatusIpV6.
- */
-typedef void (*AgnssStatusIpV6Cb)(AGnssExtStatusIpV6 status);
-
-/*
-* Callback with Antenna information.
-*/
-typedef void(*antennaInfoCb)(std::vector<GnssAntennaInformation> gnssAntennaInformations);
 
 /* Constructs for interaction with loc_net_iface library */
 typedef void (*LocAgpsOpenResultCb)(bool isSuccess, AGpsExtType agpsType, const char* apn,
@@ -2359,10 +2222,6 @@ typedef void (*LocAgpsCloseResultCb)(bool isSuccess, AGpsExtType agpsType, void*
 // to start with LOC_CLIENT_NAME_PREFIX so that upon hal daemon restarts,
 // every client can get the notification that hal daemon has restarted.
 #define LOC_INTAPI_NAME_PREFIX         LOC_CLIENT_NAME_PREFIX "_intapi"
-
-typedef uint64_t NetworkHandle;
-#define NETWORK_HANDLE_UNKNOWN  ~0
-#define MAX_NETWORK_HANDLES 10
 
 #ifdef __cplusplus
 }

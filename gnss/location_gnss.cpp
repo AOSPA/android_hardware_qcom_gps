@@ -75,7 +75,7 @@ static void enableNfwLocationAccess(bool enable);
 static void nfwInit(const NfwCbInfo& cbInfo);
 static void getPowerStateChanges(std::function<void(bool)> powerStateCb);
 
-static void odcpiInit(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
+static void odcpiInit(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
 static void odcpiInject(const Location& location);
 
 static void blockCPI(double latitude, double longitude, float accuracy,
@@ -101,10 +101,11 @@ static void updateNTRIPGGAConsent(bool consentAccepted);
 static void enablePPENtripStream(const GnssNtripConnectionParams& params, bool enableRTKEngine);
 static void disablePPENtripStream();
 
-static bool measCorrInit(const measCorrSetCapabilitiesCb setCapabilitiesCb);
+static bool measCorrInit(const measCorrSetCapabilitiesCallback setCapabilitiesCb);
 static bool measCorrSetCorrections(const GnssMeasurementCorrections gnssMeasCorr);
 static void measCorrClose();
-static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback);
+static uint32_t antennaInfoInit(const antennaInfoCallback antennaInfoCallback);
+static void getGnssAntennaeInfo();
 static void antennaInfoClose();
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState);
 static uint32_t configOutputNmeaTypes(GnssNmeaTypesMask enabledNmeaTypes);
@@ -158,6 +159,7 @@ static const GnssInterface gGnssInterface = {
     measCorrSetCorrections,
     measCorrClose,
     antennaInfoInit,
+    getGnssAntennaeInfo,
     antennaInfoClose,
     configRobustLocation,
     configMinGpsWeek,
@@ -399,7 +401,7 @@ static void updateConnectionStatus(bool connected, int8_t type,
     }
 }
 
-static void odcpiInit(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority)
+static void odcpiInit(const odcpiRequestCallback& callback, OdcpiPrioritytype priority)
 {
     if (NULL != gGnssAdapter) {
         gGnssAdapter->initOdcpiCommand(callback, priority);
@@ -513,7 +515,7 @@ static uint32_t configLeverArm(const LeverArmConfigInfo& configInfo){
     }
 }
 
-static bool measCorrInit(const measCorrSetCapabilitiesCb setCapabilitiesCb) {
+static bool measCorrInit(const measCorrSetCapabilitiesCallback setCapabilitiesCb) {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->openMeasCorrCommand(setCapabilitiesCb);
     } else {
@@ -535,11 +537,17 @@ static void measCorrClose() {
     }
 }
 
-static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback) {
+static uint32_t antennaInfoInit(const antennaInfoCallback antennaInfoCallback) {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->antennaInfoInitCommand(antennaInfoCallback);
     } else {
         return ANTENNA_INFO_ERROR_GENERIC;
+    }
+}
+
+static void getGnssAntennaeInfo() {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->getGnssAntennaeInfoCommand();
     }
 }
 

@@ -330,7 +330,7 @@ void LocApiBase::reportPosition(UlpLocation& location,
              "altitude: %f\n  speed: %f\n  bearing: %f\n  accuracy: %f\n  "
              "timestamp: %" PRId64 "\n"
              "Session status: %d\n Technology mask: %u\n "
-             "SV used in fix (gps/glo/bds/gal/qzss) : \
+             "SV used in fix (gps/glo/bds/gal/qzss/navic) : \
              (0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
              location.gpsLocation.flags, location.position_source,
              location.gpsLocation.latitude, location.gpsLocation.longitude,
@@ -511,7 +511,7 @@ void LocApiBase::requestLocation()
 }
 
 void LocApiBase::requestATL(int connHandle, LocAGpsType agps_type,
-                            LocApnTypeMask apn_type_mask, LocSubId sub_id)
+                            LocApnTypeMask apn_type_mask, SubId sub_id)
 {
     // loop through adapters, and deliver to the first handling adapter.
     TO_1ST_HANDLING_LOCADAPTERS(

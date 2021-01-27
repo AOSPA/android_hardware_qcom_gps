@@ -42,7 +42,7 @@ public:
     /* creates an instance to LocationAPI object.
        Will return NULL if mandatory parameters are invalid or if the maximum number
        of instances have been reached */
-    static LocationAPI* createInstance(LocationCallbacks&);
+    static ILocationAPI* createInstance(LocationCallbacks&);
 
     /* destroy/cleans up the instance, which should be called when LocationControlAPI object is
        no longer needed. LocationControlAPI* returned from createInstance will no longer valid
@@ -51,7 +51,7 @@ public:
        LocationControlAPI::createInstance, then the caller must ensure that the memory still remains
        valid until destroyCompleteCb is invoked.
     */
-    void destroy(locationApiDestroyCompleteCallback destroyCompleteCb=nullptr);
+    virtual void destroy(locationApiDestroyCompleteCallback destroyCompleteCb=nullptr);
 
     void onRemoveClientCompleteCb (LocationAdapterTypeMask adapterType);
 
@@ -197,13 +197,6 @@ public:
     virtual void stopNetworkLocation(trackingCallback* callback);
 };
 
-typedef struct {
-    size_t size; // set to sizeof(LocationControlCallbacks)
-    responseCallback responseCb;                     // mandatory
-    collectiveResponseCallback collectiveResponseCb; // mandatory
-    gnssConfigCallback gnssConfigCb;                 // optional
-} LocationControlCallbacks;
-
 class LocationControlAPI : public ILocationControlAPI
 {
 private:
@@ -211,16 +204,14 @@ private:
     ~LocationControlAPI();
 
 public:
-    /* creates an instance to LocationControlAPI object.
-       Will return NULL if mandatory parameters are invalid or if the maximum number
-       of instances have been reached. Only once instance allowed */
-    static LocationControlAPI* createInstance(LocationControlCallbacks&);
-    static LocationControlAPI* getInstance();
+    /* creates an instance to LocationControlAPI object or returns an existing instance.*/
+    static ILocationControlAPI* getInstance(LocationControlCallbacks&);
+    static ILocationControlAPI* getInstance();
 
     /* destroy/cleans up the instance, which should be called when LocationControlAPI object is
        no longer needed. LocationControlAPI* returned from createInstance will no longer valid
        after destroy is called */
-    void destroy();
+    virtual void destroy() override;
 
     /* enable will enable specific location technology to be used for calculation locations and
        will effectively start a control session if call is successful, which returns a session id
@@ -232,7 +223,7 @@ public:
                 LOCATION_ERROR_ALREADY_STARTED if an enable was already called for this techType
                 LOCATION_ERROR_INVALID_PARAMETER if any parameters are invalid
                 LOCATION_ERROR_GENERAL_FAILURE if failure for any other reason */
-    uint32_t enable(LocationTechnologyType techType);
+    virtual uint32_t enable(LocationTechnologyType techType) override;
 
     /* disable will disable specific location technology to be used for calculation locations and
        effectively ends the control session if call is successful.
@@ -243,7 +234,7 @@ public:
                 LOCATION_ERROR_SUCCESS if successful
                 LOCATION_ERROR_ID_UNKNOWN if id was not returned from responseCallback from enable
                 LOCATION_ERROR_GENERAL_FAILURE if failure for any other reason */
-    void disable(uint32_t id);
+    virtual void disable(uint32_t id) override;
 
     /* gnssUpdateConfig updates the gnss specific configuration, which returns a session id array
        with an id for each of the bits set in GnssConfig.flags, order from low bits to high bits.
@@ -275,7 +266,7 @@ public:
 
       PLEASE NOTE: It is caller's resposibility to FREE the memory of the return value.
                    The memory must be freed by delete [].*/
-    uint32_t* gnssGetConfig(GnssConfigFlagsMask mask);
+    virtual uint32_t* gnssGetConfig(GnssConfigFlagsMask mask) override;
 
     /* delete specific gnss aiding data for testing, which returns a session id
        that will be returned in responseCallback to match command with response.
@@ -461,7 +452,7 @@ public:
     virtual uint32_t configDeadReckoningEngineParams(
             const DeadReckoningEngineConfig& dreConfig) override;
 
-        /** @brief
+    /** @brief
         This API is used to instruct the specified engine to be in
         the pause/resume state. <br/>
 
@@ -499,7 +490,7 @@ public:
     virtual uint32_t configEngineRunState(PositioningEngineMask engType,
                                           LocEngineRunState engState) override;
 
-      /** @brief
+    /** @brief
         Set the EULA opt-in status from system user. This is used as consent to
         use network-based positioning.
 
@@ -556,6 +547,128 @@ public:
         No return value.
     */
     virtual void powerStateEvent(PowerStateType powerState) override;
+
+    /*API to update LocationControlCallbacks.
+
+        @param
+        callbacks: LocationControlCallbacks structure.
+
+        @return
+        Returns success or failure, i.e. zero or non-zero respectively.
+    */
+    virtual uint32_t updateCallbacks(LocationControlCallbacks& callbacks) override;
+
+    /** @brief
+        Inject on-demand coarse position
+
+        @param
+        location: Location structure
+    */
+    virtual void odcpiInject(const ::Location& location) override;
+
+    /** @brief
+        Resets all cached network info in HAL.
+    */
+    virtual void resetNetworkInfo() override;
+
+    /** @brief
+        Updates battery status in HAL as indicated by framework
+
+        @param
+        charging: Battery charging status
+    */
+    virtual void updateBatteryStatus(bool charging) override;
+
+    /** @brief
+        Inject location
+
+        @param
+        latitude : Location latitude in degree
+        longitude : Location longitude in degree
+        accuracy : Location accuracy in meters
+    */
+    virtual void injectLocation(double latitude, double longitude, float accuracy) override;
+
+     /** @brief
+        Request to open AGPS Data Connection
+
+        @param
+        apgpsType: Type of agps data connection to open
+        apnName: Access Point Name
+        apnLen: Length of apName string
+        ipType: APN Bearer Type
+    */
+    virtual void agpsDataConnOpen(AGpsType agpsType, const char* apnName,
+            int apnLen, int ipType) override;
+
+    /** @brief
+        Request to close AGPS data connection
+
+        @param
+        apgpsType: Type of agps data connection to close
+    */
+    virtual void agpsDataConnClosed(AGpsType agpsType) override;
+
+    /** @brief
+        Inform AGPS data connection failure
+
+        @param
+        apgpsType: Type of agps data connection that failed
+    */
+    virtual void agpsDataConnFailed(AGpsType agpsType) override;
+
+    /** @brief
+        Update connection status
+
+        @param
+        connected: Connected Status
+        type: Type of connection, Eth, wifi, mobile etc
+        roaming: Roaming status
+        networkHandle: NetworkHandle type.
+        apn: Access Point Name if needed
+
+    */
+    virtual void updateConnectionStatus(bool connected, int8_t type, bool roaming,
+            NetworkHandle networkHandle, std::string& apn) override;
+
+    /** @brief
+        Set measurement correction
+
+        @param
+        gnssMeasCorr GnssMeasurementCorrections structure
+    */
+    virtual bool measCorrSetCorrections(const GnssMeasurementCorrections gnssMeasCorr) override;
+
+    /** @brief
+        Close measurement corrections interface
+    */
+    virtual void measCorrClose() override;
+
+    /** @brief
+         Fetch antenna info from HAL
+     */
+    virtual void getGnssAntennaeInfo() override;
+
+    /** @brief
+        Close antenna info interface
+    */
+    virtual void antennaInfoClose() override;
+
+    /** @brief
+        Get Debug Report from HAL
+
+        @param
+        report: GnssDebugReport structure
+    */
+    virtual void getDebugReport(GnssDebugReport& report) override;
+
+    /** @brief
+        Enables/disables permissions to non-framework application use of GNSS
+
+        @param
+        enable: true/false to enable / disable permission
+    */
+    virtual void enableNfwLocationAccess(bool enable) override;
 };
 
 #endif /* LOCATIONAPI_H */
