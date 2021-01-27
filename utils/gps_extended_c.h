@@ -2305,6 +2305,7 @@ struct OdcpiRequestInfo {
     OdcpiRequestType type;
     uint32_t tbfMillis;
     bool isEmergencyMode;
+    bool isCivicAddressRequired;
 };
 
 struct EngineServiceInfo {

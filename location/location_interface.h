@@ -114,6 +114,8 @@ struct GnssInterface {
     uint32_t (*configOutputNmeaTypes)(GnssNmeaTypesMask enabledNmeaTypes);
     void (*powerIndicationInit)(const powerIndicationCb powerIndicationCallback);
     void (*powerIndicationRequest)();
+    void (*setAddressRequestCb)(std::function<void(const Location&)> addressRequestCb);
+    void (*injectLocationAndAddr)(const Location& location, const GnssCivicAddress& addr);
 };
 
 struct BatchingInterface {

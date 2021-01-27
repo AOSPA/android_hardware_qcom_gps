@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -232,6 +232,8 @@ public:
     virtual void injectPosition(const GnssLocationInfoNotification &locationInfo,
             bool onDemandCpi=false);
     virtual void injectPosition(const Location& location, bool onDemandCpi);
+    virtual void injectPositionAndCivicAddress(const Location& location,
+                                               const GnssCivicAddress& addr);
     virtual void setTime(LocGpsUtcTime time, int64_t timeReference, int uncertainty);
     virtual void atlOpenStatus(int handle, int is_succ, char* apn, uint32_t apnLen,
             AGpsBearerType bear, LocAGpsType agpsType, LocApnTypeMask mask);
