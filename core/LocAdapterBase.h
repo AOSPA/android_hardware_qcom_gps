@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2018, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2018, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -163,8 +163,7 @@ public:
         (void)count;
         (void)locationArr;
     }
-    virtual void reportSvEvent(const GnssSvNotification& svNotify,
-                               bool fromEngineHub=false);
+    virtual void reportSvEvent(const GnssSvNotification& svNotify);
     virtual void reportDataEvent(const GnssDataNotification& dataNotify, int msInWeek);
     virtual void reportNmeaEvent(const char* nmea, size_t length);
     virtual void reportSvMeasurementEvent(GnssSvMeasurementSet &svMeasurementSet);
