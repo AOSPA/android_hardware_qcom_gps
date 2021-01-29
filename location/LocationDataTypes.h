@@ -1364,6 +1364,7 @@ typedef struct {
 
 typedef struct {
     uint32_t size;         // set to sizeof(GnssMeasurementsNotification)
+    bool isNhz;            // NHz indicator
     uint32_t count;        // number of items in GnssMeasurements array
     GnssMeasurementsData measurements[GNSS_MEASUREMENTS_MAX];
     GnssMeasurementsClock clock; // clock
