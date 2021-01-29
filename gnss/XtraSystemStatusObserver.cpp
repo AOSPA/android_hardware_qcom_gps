@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -75,16 +75,11 @@ public:
             char clientName[30] = {0};
             uint16_t prefSub;
             char prefApnName[30] = {0};
-            string prefApn;
             uint16_t prefIpType;
             int ret = sscanf(data, "%*s %29s %u %29s %u",
                              clientName, &prefSub, prefApnName, &prefIpType);
-            if (0 == strcmp(prefApnName, "EMPTY")) {
-                prefApn = "";
-            } else {
-                prefApn = string(prefApnName);
-            }
-            BackhaulContext ctx = { string(clientName), prefSub, prefApn, prefIpType };
+            BackhaulContext ctx = { clientName, prefSub,
+                    (0 == STRNCMP(prefApnName, "EMPTY")) ? "" : prefApnName, prefIpType };
 
             if (!STRNCMP(data, "connectBackhaul")) {
                 mSystemStatusObsrvr->connectBackhaul(ctx);
