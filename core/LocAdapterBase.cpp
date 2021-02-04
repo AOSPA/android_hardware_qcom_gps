@@ -343,7 +343,7 @@ LocAdapterBase::updateClientsEventMask()
 DEFAULT_IMPL()
 
 void
-LocAdapterBase::stopClientSessions(LocationAPI* client)
+LocAdapterBase::stopClientSessions(LocationAPI* client, bool eraseSession)
 DEFAULT_IMPL()
 
 void

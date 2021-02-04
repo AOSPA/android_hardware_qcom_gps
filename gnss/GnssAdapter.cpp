@@ -2407,7 +2407,25 @@ void
 GnssAdapter::updateSystemPowerState(PowerStateType systemPowerState) {
     if (POWER_STATE_UNKNOWN != systemPowerState) {
         mSystemPowerState = systemPowerState;
+
+        /*Manage active GNSS sessions based on power event*/
+        switch (systemPowerState){
+
+            case POWER_STATE_SUSPEND:
+            case POWER_STATE_SHUTDOWN:
+                suspendSessions();
+                LOC_LOGd("Suspending all active sessions -- powerState: %d", systemPowerState);
+                break;
+            case POWER_STATE_RESUME:
+                restartSessions(false);
+                LOC_LOGd("Re-starting all active sessions -- powerState: %d", systemPowerState);
+                break;
+            default:
+                break;
+        } // switch
+
         mLocApi->updateSystemPowerState(mSystemPowerState);
+
     }
 }
 
@@ -2459,7 +2477,7 @@ GnssAdapter::addClientCommand(LocationAPI* client, const LocationCallbacks& call
 }
 
 void
-GnssAdapter::stopClientSessions(LocationAPI* client)
+GnssAdapter::stopClientSessions(LocationAPI* client, bool eraseSession)
 {
     LOC_LOGD("%s]: client %p", __func__, client);
 
@@ -2472,7 +2490,8 @@ GnssAdapter::stopClientSessions(LocationAPI* client)
     }
     for (auto key : vTimeBasedTrackingClient) {
         stopTimeBasedTrackingMultiplex(key.client, key.id);
-        eraseTrackingSession(key.client, key.id);
+        if (eraseSession)
+            eraseTrackingSession(key.client, key.id);
     }
 
     /* Distance-based Tracking */
@@ -2480,9 +2499,10 @@ GnssAdapter::stopClientSessions(LocationAPI* client)
               it != mDistanceBasedTrackingSessions.end(); /* no increment here*/) {
         if (client == it->first.client) {
             mLocApi->stopDistanceBasedTracking(it->first.id, new LocApiResponse(*getContext(),
-                          [this, client, id=it->first.id] (LocationError err) {
+                          [this, client, id=it->first.id, eraseSession] (LocationError err) {
                     if (LOCATION_ERROR_SUCCESS == err) {
-                        eraseTrackingSession(client, id);
+                        if (eraseSession)
+                            eraseTrackingSession(client, id);
                     }
                 }
             ));
@@ -2591,8 +2611,11 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSecondaryBandConfigUpdate();
             // start CDFW service
             mAdapter.initCDFWService();
-            // restart sessions
-            mAdapter.restartSessions(true);
+            // restart sessions only in power state resume
+            if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
+                 POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
+                mAdapter.restartSessions(true);
+            }
             for (auto msg: mAdapter.mPendingMsgs) {
                 mAdapter.sendMsg(msg);
             }

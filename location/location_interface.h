@@ -126,6 +126,7 @@ struct BatchingInterface {
     void (*stopBatching)(LocationAPI* client, uint32_t id);
     void (*updateBatchingOptions)(LocationAPI* client, uint32_t id, BatchingOptions&);
     void (*getBatchedLocations)(LocationAPI* client, uint32_t id, size_t count);
+    void (*updateSystemPowerState)(PowerStateType systemPowerState);
 };
 
 struct GeofenceInterface {
@@ -141,6 +142,7 @@ struct GeofenceInterface {
                             GeofenceOption* options);
     void (*pauseGeofences)(LocationAPI* client, size_t count, uint32_t* ids);
     void (*resumeGeofences)(LocationAPI* client, size_t count, uint32_t* ids);
+    void (*updateSystemPowerState)(PowerStateType systemPowerState);
 };
 
 #endif /* LOCATION_INTERFACE_H */

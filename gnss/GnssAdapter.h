@@ -316,7 +316,7 @@ protected:
 
     /* ==== CLIENT ========================================================================= */
     virtual void updateClientsEventMask();
-    virtual void stopClientSessions(LocationAPI* client);
+    virtual void stopClientSessions(LocationAPI* client, bool eraseSession = true);
     inline void setNmeaReportRateConfig();
     void logLatencyInfo();
 
