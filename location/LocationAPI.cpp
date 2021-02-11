@@ -39,7 +39,6 @@
 typedef const GnssInterface* (getGnssInterface)();
 typedef const GeofenceInterface* (getGeofenceInterface)();
 typedef const BatchingInterface* (getBatchingInterface)();
-typedef void (createOSFramework)();
 
 // GTP services
 typedef uint32_t (setOptInStatusGetter)(bool userConsent, responseCallback* callback);
@@ -76,7 +75,6 @@ static pthread_mutex_t gDataMutex = PTHREAD_MUTEX_INITIALIZER;
 static bool gGnssLoadFailed = false;
 static bool gBatchingLoadFailed = false;
 static bool gGeofenceLoadFailed = false;
-static bool gOSFrameworkLoadAttempted = false;
 
 template <typename T1, typename T2>
 static const T1* loadLocationInterface(const char* library, const char* name) {
@@ -86,17 +84,6 @@ static const T1* loadLocationInterface(const char* library, const char* name) {
         return (const T1*) getter;
     }else {
         return (*getter)();
-    }
-}
-
-static void createOSFrameworkInstance() {
-    void* libHandle = nullptr;
-    createOSFramework* getter = (createOSFramework*)dlGetSymFromLib(libHandle,
-            "liblocationservice_glue.so", "createOSFramework");
-    if (getter != nullptr) {
-        (*getter)();
-    } else {
-        LOC_LOGe("dlGetSymFromLib failed for liblocationservice_glue.so");
     }
 }
 
@@ -191,11 +178,6 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
     bool requestedCapabilities = false;
 
     pthread_mutex_lock(&gDataMutex);
-
-    if (!gOSFrameworkLoadAttempted) {
-        gOSFrameworkLoadAttempted = true;
-        createOSFrameworkInstance();
-    }
 
     if (isGnssClient(locationCallbacks)) {
         if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
