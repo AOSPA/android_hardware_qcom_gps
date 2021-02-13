@@ -65,6 +65,7 @@
 #define NETWORKINFO_FIELD_NETWORKHANDLE_7 "NETWORK_HANDLE_7"
 #define NETWORKINFO_FIELD_NETWORKHANDLE_8 "NETWORK_HANDLE_8"
 #define NETWORKINFO_FIELD_NETWORKHANDLE_9 "NETWORK_HANDLE_9"
+#define NETWORKINFO_FIELD_APN_NAME "APN_NAME"
 
 #define SERVICESTATUS_FIELD_STATE "CELL_NETWORK_STATUS"
 #define MODEL_FIELD_NAME "MODEL"
@@ -347,6 +348,10 @@ void NetworkInfoDataItem::stringify(string& valueStr) {
         valueStr += NETWORKINFO_FIELD_NETWORKHANDLE_9;
         valueStr += ": ";
         valueStr += d->mAllNetworkHandles[9].toString();
+        valueStr += ", ";
+        valueStr += NETWORKINFO_FIELD_APN_NAME;
+        valueStr += ": ";
+        valueStr += d->mApn;
     } while (0);
     EXIT_LOG_WITH_ERROR("%d", result);
 }
@@ -706,7 +711,7 @@ int32_t NetworkInfoDataItem::copyFrom(IDataItemCore* src) {
     do {
         COPIER_ERROR_CHECK_AND_DOWN_CAST(NetworkInfoDataItem, NETWORKINFO_DATA_ITEM_ID);
         NetworkType type = ((NetworkInfoDataItem*)d)->getType();
-        if ( (s->mAllTypes == d->mAllTypes) &&
+        if ((s->mAllTypes == d->mAllTypes) &&
             (s->getType() == type) && (0 == s->mTypeName.compare(d->mTypeName)) &&
             (0 == s->mSubTypeName.compare(d->mSubTypeName)) &&
             (s->mAvailable == d->mAvailable) &&
@@ -714,7 +719,8 @@ int32_t NetworkInfoDataItem::copyFrom(IDataItemCore* src) {
             (s->mRoaming == d->mRoaming) &&
             (memcmp(s->mAllNetworkHandles, d->mAllNetworkHandles,
                     sizeof(s->mAllNetworkHandles)) == 0) &&
-            (s->mNetworkHandle == d->mNetworkHandle) ) {
+            (s->mNetworkHandle == d->mNetworkHandle) &&
+            (s->mApn.compare(d->mApn))) {
             result = 0;
             break;
         }
@@ -723,6 +729,7 @@ int32_t NetworkInfoDataItem::copyFrom(IDataItemCore* src) {
         if (s->getType() != type) { s->setType(type);}
         if (0 != s->mTypeName.compare(d->mTypeName)) { s->mTypeName = d->mTypeName;}
         if (0 != s->mSubTypeName.compare(d->mSubTypeName)) {s->mSubTypeName = d->mSubTypeName;}
+        if (0 != s->mApn.compare(d->mApn)) {s->mApn = d->mApn;}
         if (s->mAvailable != d->mAvailable) {s->mAvailable = d->mAvailable;}
         if (s->mConnected != d->mConnected) {s->mConnected = d->mConnected;}
         if (s->mRoaming != d->mRoaming) {s->mRoaming = d->mRoaming;}

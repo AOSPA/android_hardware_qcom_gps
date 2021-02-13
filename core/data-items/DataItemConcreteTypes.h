@@ -49,6 +49,7 @@
 #define TIMEZONE_DEFAULT_DSTOFFSET 0
 
 #define NETWORKINFO_DEFAULT_TYPE 300
+#define NETWORKINFO_DEFAULT_APN_NAME ""
 #define SERVICESTATUS_DEFAULT_STATE 3 /// OOO
 
 #define BATTERY_PCT_DEFAULT 50
@@ -271,12 +272,13 @@ public:
             bool available = false,
             bool connected = false,
             bool roaming = false,
-            uint64_t networkHandle = NETWORK_HANDLE_UNKNOWN):
+            uint64_t networkHandle = NETWORK_HANDLE_UNKNOWN,
+            std::string apn = NETWORKINFO_DEFAULT_APN_NAME):
         NetworkInfoDataItem(getNormalizedType(type), type, typeName, subTypeName, available,
-        connected, roaming, networkHandle) {}
+                            connected, roaming, networkHandle, apn) {}
     NetworkInfoDataItem(NetworkType initialType, int32_t type, string typeName,
-            string subTypeName, bool available, bool connected, bool roaming,
-            uint64_t networkHandle ):
+                        string subTypeName, bool available, bool connected, bool roaming,
+                        uint64_t networkHandle, std::string apn):
             mAllTypes(typeToAllTypes(initialType)),
             mType(type),
             mTypeName(typeName),
@@ -284,7 +286,8 @@ public:
             mAvailable(available),
             mConnected(connected),
             mRoaming(roaming),
-            mNetworkHandle(networkHandle) {
+            mNetworkHandle(networkHandle),
+            mApn(apn) {
                 mId = NETWORKINFO_DATA_ITEM_ID;
                 mAllNetworkHandles[0].networkHandle = networkHandle;
                 mAllNetworkHandles[0].networkType = initialType;
@@ -346,6 +349,7 @@ public:
     bool mRoaming;
     NetworkInfoType mAllNetworkHandles[MAX_NETWORK_HANDLES];
     uint64_t mNetworkHandle;
+    std::string mApn;
 protected:
     inline uint64_t typeToAllTypes(NetworkType type) {
         return (type >= TYPE_UNKNOWN || type < TYPE_MOBILE) ?  0 : (1<<type);
