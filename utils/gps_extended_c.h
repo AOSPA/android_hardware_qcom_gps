@@ -1151,7 +1151,6 @@ enum ulp_gnss_sv_measurement_valid_flags{
 #define ULP_GNSS_SV_POLY_BIT_BDS_TGD_B1C            (0x080000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_ISC_B1C            (0x100000000)
 
-
 typedef enum
 {
     GNSS_LOC_FREQ_SOURCE_INVALID = 0,

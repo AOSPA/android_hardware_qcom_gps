@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -103,6 +103,9 @@ public:
     inline virtual void* getSibling2() { return NULL; }
     inline virtual double getGloRfLoss(uint32_t left,
             uint32_t center, uint32_t right, uint8_t gloFrequency) { return 0.0; }
+    inline virtual bool getSatellitePVT(GnssSvPolynomial& svPolynomial,
+            GnssSvMeasurementHeader& svMeasSetHeader,
+            GnssMeasurementsData& measurementData) { return false; }
 };
 
 class LocApiBase {

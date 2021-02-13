@@ -2513,6 +2513,14 @@ GnssAdapter::updateClientsEventMask()
         }
         if (it->second.gnssMeasurementsCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_GNSS_MEASUREMENT;
+            if (nullptr != mPowerIndicationCb) {
+                /* If power reporting is requested this implies Android 'S' or higher,
+                   meaning we need to enable poly message (necessary for satellite
+                   PVT report). We do it this way since satellite PVT are reported
+                   in the measurements cb, they don't have their own cb, and we want
+                   to enable poly message only for Android 'S' or higher */
+                mask |= LOC_API_ADAPTER_BIT_GNSS_SV_POLYNOMIAL_REPORT;
+            }
         }
         if (it->second.gnssDataCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_PARSED_POSITION_REPORT;
