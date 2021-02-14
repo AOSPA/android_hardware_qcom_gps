@@ -91,6 +91,7 @@ static uint32_t gnssUpdateSecondaryBandConfig(const GnssSvTypeConfig& secondaryB
 static uint32_t gnssGetSecondaryBandConfig();
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState);
 static uint32_t configOutputNmeaTypes(GnssNmeaTypesMask enabledNmeaTypes);
+static uint32_t setOptInStatus(bool userConsent);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -139,6 +140,7 @@ static const GnssInterface gGnssInterface = {
     gnssGetSecondaryBandConfig,
     configEngineRunState,
     configOutputNmeaTypes,
+    setOptInStatus,
 };
 
 #ifndef DEBUG_X86
@@ -497,6 +499,26 @@ static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRun
 static uint32_t configOutputNmeaTypes (GnssNmeaTypesMask enabledNmeaTypes) {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->configOutputNmeaTypesCommand(enabledNmeaTypes);
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t setOptInStatus(bool userConsent) {
+    if (NULL != gGnssAdapter) {
+        struct RespMsg : public LocMsg {
+            uint32_t mSessionId;
+            inline RespMsg(uint32_t id) : LocMsg(), mSessionId(id) {}
+            inline void proc() const override {
+                gGnssAdapter->reportResponse(LOCATION_ERROR_SUCCESS, mSessionId);
+            }
+        };
+
+        uint32_t sessionId = gGnssAdapter->generateSessionId();
+        gGnssAdapter->getSystemStatus()->eventOptInStatus(userConsent);
+        gGnssAdapter->sendMsg(new RespMsg(sessionId));
+
+        return sessionId;
     } else {
         return 0;
     }
