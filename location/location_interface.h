@@ -116,6 +116,7 @@ struct GnssInterface {
     void (*powerIndicationRequest)();
     void (*setAddressRequestCb)(std::function<void(const Location&)> addressRequestCb);
     void (*injectLocationAndAddr)(const Location& location, const GnssCivicAddress& addr);
+    uint32_t (*setOptInStatus)(bool userConsent);
 };
 
 struct BatchingInterface {

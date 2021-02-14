@@ -111,6 +111,7 @@ static void powerIndicationInit(const powerIndicationCb powerIndicationCallback)
 static void powerIndicationRequest();
 static void setAddressRequestCb(const std::function<void(const Location&)> addressRequestCb);
 static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr);
+static uint32_t setOptInStatus(bool userConsent);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -174,7 +175,8 @@ static const GnssInterface gGnssInterface = {
     powerIndicationInit,
     powerIndicationRequest,
     setAddressRequestCb,
-    injectLocationAndAddr
+    injectLocationAndAddr,
+    setOptInStatus,
 };
 
 #ifndef DEBUG_X86
@@ -645,5 +647,25 @@ static void setAddressRequestCb(const std::function<void(const Location&)> addre
 static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr) {
     if (NULL != gGnssAdapter) {
         gGnssAdapter->injectLocationAndAddrCommand(location, addr);
+    }
+}
+
+static uint32_t setOptInStatus(bool userConsent) {
+    if (NULL != gGnssAdapter) {
+        struct RespMsg : public LocMsg {
+            uint32_t mSessionId;
+            inline RespMsg(uint32_t id) : LocMsg(), mSessionId(id) {}
+            inline void proc() const override {
+                gGnssAdapter->reportResponse(LOCATION_ERROR_SUCCESS, mSessionId);
+            }
+        };
+
+        uint32_t sessionId = gGnssAdapter->generateSessionId();
+        gGnssAdapter->getSystemStatus()->eventOptInStatus(userConsent);
+        gGnssAdapter->sendMsg(new RespMsg(sessionId));
+
+        return sessionId;
+    } else {
+        return 0;
     }
 }

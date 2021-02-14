@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1753,6 +1753,20 @@ bool SystemStatus::eventConnectionStatus(bool connected, int8_t type,
 bool SystemStatus::updatePowerConnectState(bool charging)
 {
     SystemStatusPowerConnectState s(charging);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
+/******************************************************************************
+@brief      API to update ENH
+
+@param[In]  user consent
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventOptInStatus(bool userConsent)
+{
+    SystemStatusENH s(userConsent);
     mSysStatusObsvr.notify({&s.mDataItem});
     return true;
 }
