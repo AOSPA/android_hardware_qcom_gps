@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1337,6 +1337,13 @@ void loc_nmea_generate_pos(const UlpLocation &location,
     LocLla  ref_lla;
     LocLla  local_lla;
 
+    memset(&ecef_w84, 0, sizeof(ecef_w84));
+    memset(&ecef_p90, 0, sizeof(ecef_p90));
+    memset(&lla_w84, 0, sizeof(lla_w84));
+    memset(&lla_p90, 0, sizeof(lla_p90));
+    memset(&ref_lla, 0, sizeof(ref_lla));
+    memset(&local_lla, 0, sizeof(local_lla));
+
     if (inLsTransition) {
         // During leap second transition, we need to display the extra
         // leap second of hour, minute, second as (23:59:60)
@@ -1516,12 +1523,6 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             length = loc_nmea_put_checksum(sentence, sizeof(sentence));
             nmeaArraystr.push_back(sentence);
 
-            memset(&ecef_w84, 0, sizeof(ecef_w84));
-            memset(&ecef_p90, 0, sizeof(ecef_p90));
-            memset(&lla_w84, 0, sizeof(lla_w84));
-            memset(&lla_p90, 0, sizeof(lla_p90));
-            memset(&ref_lla, 0, sizeof(ref_lla));
-            memset(&local_lla, 0, sizeof(local_lla));
             lla_w84.lat = location.gpsLocation.latitude / 180.0 * M_PI;
             lla_w84.lon = location.gpsLocation.longitude / 180.0 * M_PI;
             lla_w84.alt = location.gpsLocation.altitude;
