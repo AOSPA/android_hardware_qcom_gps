@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -3828,14 +3828,13 @@ GnssAdapter::needReportForGnssClient(const UlpLocation& ulpLocation,
                                      LocPosTechMask techMask) {
     bool reported = false;
 
-    // if engine hub is enabled, aka, any of the engine services is enabled,
-    // then always output position reported by engine hub to requesting client
+#ifdef USE_GLIB
     if (true == initEngHubProxy()) {
         reported = true;
-    } else {
-        reported = LocApiBase::needReport(ulpLocation, status, techMask);
     }
-    return reported;
+#endif
+
+    return reported || LocApiBase::needReport(ulpLocation, status, techMask);
 }
 
 bool
@@ -6484,6 +6483,7 @@ GnssAdapter::initEngHubProxy() {
             break;
         }
 
+        EngineServiceInfo engServiceInfo = {};
         bool pluginDaemonEnabled = false;
         // go over the conf table to see whether any plugin daemon is enabled
         for (unsigned int i = 0; i < processListLength; i++) {
@@ -6491,11 +6491,15 @@ GnssAdapter::initEngHubProxy() {
                          strlen(PROCESS_NAME_ENGINE_SERVICE)) == 0) &&
                 (processInfoList[i].proc_status == ENABLED)) {
                 pluginDaemonEnabled = true;
-                // check if this is DRE-INT engine
-                if ((processInfoList[i].args[1]!= nullptr) &&
-                    (strncmp(processInfoList[i].args[1], "DRE-INT", sizeof("DRE-INT")) == 0)) {
-                    mDreIntEnabled = true;
-                    break;
+                if (processInfoList[i].args[1]!= nullptr) {
+                    // check if this is DRE-INT engine
+                    if (strncmp(processInfoList[i].args[1], "DRE-INT", sizeof("DRE-INT")) == 0) {
+                        mDreIntEnabled = true;
+                    } else if (strncmp(processInfoList[i].args[1], "PPE-INT",
+                                       sizeof("PPE-INT")) == 0) {
+                        // check if this is PPE-INT engine
+                        engServiceInfo.ppeIntEnabled = true;
+                    }
                 }
             }
         }
@@ -6566,7 +6570,7 @@ GnssAdapter::initEngHubProxy() {
         getEngHubProxyFn* getter = (getEngHubProxyFn*) dlsym(handle, "getEngHubProxy");
         if(getter != nullptr) {
             EngineHubProxyBase* hubProxy = (*getter) (mMsgTask, mSystemStatus->getOsObserver(),
-                      reportPositionEventCb,
+                      engServiceInfo, reportPositionEventCb,
                       reportSvEventCb, reqAidingDataCb,
                       updateNHzRequirementCb,
                       updateQwesFeatureStatusCb);
