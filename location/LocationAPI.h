@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -187,10 +187,12 @@ public:
     /* disableNetworkProvider disables Network Provider */
     virtual void disableNetworkProvider();
 
-    /* startNetworkLocation start a single shot network location request */
+    /* startNetworkLocation starts tracking session for
+       network location request */
     virtual void startNetworkLocation(trackingCallback* callback);
 
-    /* stopNetworkLocation stop any ongoing network location request */
+    /* stopNetworkLocation stops the ongoing tracking session for
+       network location request */
     virtual void stopNetworkLocation(trackingCallback* callback);
 };
 
