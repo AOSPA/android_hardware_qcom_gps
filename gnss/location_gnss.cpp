@@ -533,7 +533,7 @@ static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback) {
 static void antennaInfoClose() {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->antennaInfoCloseCommand();
-	}
+    }
 }
 
 static uint32_t configRobustLocation(bool enable, bool enableForE911){
