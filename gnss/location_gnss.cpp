@@ -80,6 +80,7 @@ static void odcpiInject(const Location& location);
 
 static void blockCPI(double latitude, double longitude, float accuracy,
                      int blockDurationMsec, double latLonDiffThreshold);
+static void setEsStatusCallback(std::function<void(bool)> esStatusCb);
 static void updateBatteryStatus(bool charging);
 static void updateSystemPowerState(PowerStateType systemPowerState);
 static uint32_t setConstrainedTunc (bool enable, float tuncConstraint,
@@ -140,6 +141,7 @@ static const GnssInterface gGnssInterface = {
     odcpiInit,
     odcpiInject,
     blockCPI,
+    setEsStatusCallback,
     getGnssEnergyConsumed,
     enableNfwLocationAccess,
     nfwInit,
@@ -414,6 +416,13 @@ static void blockCPI(double latitude, double longitude, float accuracy,
     if (NULL != gGnssAdapter) {
         gGnssAdapter->blockCPICommand(latitude, longitude, accuracy,
                                       blockDurationMsec, latLonDiffThreshold);
+    }
+}
+
+static void setEsStatusCallback(std::function<void(bool)> esStatusCb)
+{
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->setEsStatusCallbackCommand(esStatusCb);
     }
 }
 
