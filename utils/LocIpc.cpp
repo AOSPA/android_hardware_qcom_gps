@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -228,11 +228,19 @@ protected:
     mutable bool mFirstTime;
 
     virtual ssize_t send(const uint8_t data[], uint32_t length, int32_t /* msgId */) const {
+        int connStatus = 0;
         if (mFirstTime) {
-            mFirstTime = false;
-            ::connect(mSock->mSid, (const struct sockaddr*)&mAddr, sizeof(mAddr));
+            connStatus = ::connect(mSock->mSid, (const struct sockaddr*)&mAddr, sizeof(mAddr));
+            if (0 == connStatus) {
+                mFirstTime = false;
+            }
         }
-        return mSock->send(data, length, 0, (struct sockaddr*)&mAddr, sizeof(mAddr));
+
+        if (0 == connStatus) {
+            return mSock->send(data, length, 0, (struct sockaddr*)&mAddr, sizeof(mAddr));
+        }
+
+        return 0;
     }
 
 public:
