@@ -511,11 +511,11 @@ void LocApiBase::requestLocation()
 }
 
 void LocApiBase::requestATL(int connHandle, LocAGpsType agps_type,
-                            LocApnTypeMask apn_type_mask)
+                            LocApnTypeMask apn_type_mask, LocSubId sub_id)
 {
     // loop through adapters, and deliver to the first handling adapter.
     TO_1ST_HANDLING_LOCADAPTERS(
-            mLocAdapters[i]->requestATL(connHandle, agps_type, apn_type_mask));
+            mLocAdapters[i]->requestATL(connHandle, agps_type, apn_type_mask, sub_id));
 }
 
 void LocApiBase::releaseATL(int connHandle)

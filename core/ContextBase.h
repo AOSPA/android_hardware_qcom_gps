@@ -31,12 +31,14 @@
 
 #include <stdbool.h>
 #include <ctype.h>
+#include <loc_pla.h>
 #include <MsgTask.h>
 #include <LocApiBase.h>
 #include <LBSProxyBase.h>
 #include <loc_cfg.h>
 #ifdef NO_UNORDERED_SET_OR_MAP
     #include <map>
+    #define unordered_map map
 #else
     #include <unordered_map>
 #endif

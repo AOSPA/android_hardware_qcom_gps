@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -465,6 +465,7 @@ public:
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
+    uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes);
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
@@ -496,8 +497,7 @@ public:
     virtual void reportEnginePositionsEvent(unsigned int count,
                                             EngineLocationInfo* locationArr);
 
-    virtual void reportSvEvent(const GnssSvNotification& svNotify,
-                               bool fromEngineHub=false);
+    virtual void reportSvEvent(const GnssSvNotification& svNotify);
     virtual void reportNmeaEvent(const char* nmea, size_t length);
     virtual void reportDataEvent(const GnssDataNotification& dataNotify, int msInWeek);
     virtual bool requestNiNotifyEvent(const GnssNiNotification& notify, const void* data,
@@ -512,7 +512,9 @@ public:
     virtual bool reportGnssEngEnergyConsumedEvent(uint64_t energyConsumedSinceFirstBoot);
     virtual void reportLocationSystemInfoEvent(const LocationSystemInfo& locationSystemInfo);
 
-    virtual bool requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask apn_type_mask);
+    virtual bool requestATL(int connHandle, LocAGpsType agps_type,
+                            LocApnTypeMask apn_type_mask,
+                            LocSubId sub_id=LOC_DEFAULT_SUB);
     virtual bool releaseATL(int connHandle);
     virtual bool requestOdcpiEvent(OdcpiRequestInfo& request);
     virtual bool reportDeleteAidingDataEvent(GnssAidingData& aidingData);

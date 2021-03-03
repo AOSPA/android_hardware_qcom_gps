@@ -106,6 +106,7 @@ static void measCorrClose();
 static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback);
 static void antennaInfoClose();
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState);
+static uint32_t configOutputNmeaTypes(GnssNmeaTypesMask enabledNmeaTypes);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -164,7 +165,8 @@ static const GnssInterface gGnssInterface = {
     gnssUpdateSecondaryBandConfig,
     gnssGetSecondaryBandConfig,
     resetNetworkInfo,
-    configEngineRunState
+    configEngineRunState,
+    configOutputNmeaTypes,
 };
 
 #ifndef DEBUG_X86
@@ -601,6 +603,14 @@ static void disablePPENtripStream(){
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState) {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->configEngineRunStateCommand(engType, engState);
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t configOutputNmeaTypes (GnssNmeaTypesMask enabledNmeaTypes) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->configOutputNmeaTypesCommand(enabledNmeaTypes);
     } else {
         return 0;
     }
