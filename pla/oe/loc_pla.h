@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014 - 2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -108,6 +108,8 @@ extern "C" {
 #define LOC_PATH_SLIM_CONF_STR     "/etc/slim.conf"
 #define LOC_PATH_VPE_CONF_STR      "/etc/vpeglue.conf"
 
+extern char *program_invocation_short_name;
+
 #ifdef FEATURE_EXTERNAL_AP
 #define PROPERTY_VALUE_MAX 92
 
@@ -159,6 +161,11 @@ static inline int loc_boot_kpi_marker(const char * pFmt, ...)
     }
     va_end(ap);
     return result;
+}
+
+/* API to get name of current program */
+static inline const char* getprogname() {
+    return program_invocation_short_name;
 }
 
 #ifdef __cplusplus
