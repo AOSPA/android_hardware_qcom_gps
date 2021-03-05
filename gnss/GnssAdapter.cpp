@@ -153,7 +153,8 @@ GnssAdapter::GnssAdapter() :
     /* Set ATL open/close callbacks */
     AgpsAtlOpenStatusCb atlOpenStatusCb =
             [this](int handle, int isSuccess, char* apn, uint32_t apnLen,
-                    AGpsBearerType bearerType, AGpsExtType agpsType, LocApnTypeMask mask) {
+                    AGpsBearerType bearerType, AGpsExtType agpsType,
+                    LocApnTypeMask mask) {
 
                 mLocApi->atlOpenStatus(
                         handle, isSuccess, apn, apnLen, bearerType, agpsType, mask);
@@ -1045,7 +1046,9 @@ std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldM
         gnssConfigRequested.flags &= ~(GNSS_CONFIG_FLAGS_SET_ASSISTANCE_DATA_VALID_BIT |
                 GNSS_CONFIG_FLAGS_SUPL_VERSION_VALID_BIT |
                 GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT |
-                GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT);
+                GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT |
+                GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT |
+                GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT);
     }
 
     if (gnssConfigRequested.flags & GNSS_CONFIG_FLAGS_GPS_LOCK_VALID_BIT) {
@@ -1341,6 +1344,7 @@ GnssAdapter::gnssUpdateConfigCommand(const GnssConfig& config)
                 mAdapter.mSupportNfwControl = false;
                 index++;
             }
+
             if (gnssConfigRequested.flags & GNSS_CONFIG_FLAGS_SUPL_VERSION_VALID_BIT) {
                 uint32_t newSuplVersion =
                         mAdapter.convertSuplVersion(gnssConfigRequested.suplVersion);
@@ -1350,11 +1354,11 @@ GnssAdapter::gnssUpdateConfigCommand(const GnssConfig& config)
             if (gnssConfigRequested.flags & GNSS_CONFIG_FLAGS_SET_ASSISTANCE_DATA_VALID_BIT) {
                 if (GNSS_ASSISTANCE_TYPE_SUPL == mConfig.assistanceServer.type) {
                     mAdapter.setSuplHostServer(mConfig.assistanceServer.hostName,
-                                                     mConfig.assistanceServer.port,
-                                                     LOC_AGPS_SUPL_SERVER);
+                            mConfig.assistanceServer.port,
+                            LOC_AGPS_SUPL_SERVER);
                 } else {
-                    LOC_LOGE("%s]: Not a valid gnss assistance type %u",
-                            __func__, mConfig.assistanceServer.type);
+                    LOC_LOGe("Not a valid gnss assistance type %u",
+                             mConfig.assistanceServer.type);
                     errs.at(index) = LOCATION_ERROR_INVALID_PARAMETER;
                     gnssConfigNeedEngineUpdate.flags &=
                             ~(GNSS_CONFIG_FLAGS_SET_ASSISTANCE_DATA_VALID_BIT);
@@ -1379,7 +1383,7 @@ GnssAdapter::gnssUpdateConfigCommand(const GnssConfig& config)
                 index++;
             }
             if (gnssConfigRequested.flags &
-                    GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT) {
+                GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT) {
                 uint32_t newAGloProtMask =
                         mAdapter.convertAGloProt(gnssConfigRequested.aGlonassPositionProtocolMask);
                 ContextBase::mGps_conf.A_GLONASS_POS_PROTOCOL_SELECT = newAGloProtMask;
@@ -4126,16 +4130,8 @@ GnssAdapter::reportEnginePositions(unsigned int count,
 }
 
 void
-GnssAdapter::reportSvEvent(const GnssSvNotification& svNotify,
-                           bool fromEngineHub)
+GnssAdapter::reportSvEvent(const GnssSvNotification& svNotify)
 {
-    if (!fromEngineHub) {
-        mEngHubProxy->gnssReportSv(svNotify);
-        if (true == initEngHubProxy()){
-            return;
-        }
-    }
-
     struct MsgReportSv : public LocMsg {
         GnssAdapter& mAdapter;
         const GnssSvNotification mSvNotify;
@@ -4158,6 +4154,7 @@ GnssAdapter::reportSv(GnssSvNotification& svNotify)
     int numSv = svNotify.count;
     uint16_t gnssSvId = 0;
     uint64_t svUsedIdMask = 0;
+
     for (int i=0; i < numSv; i++) {
         svUsedIdMask = 0;
         gnssSvId = svNotify.gnssSvs[i].svId;
@@ -4311,6 +4308,9 @@ GnssAdapter::reportSv(GnssSvNotification& svNotify)
 
     mGnssSvIdUsedInPosAvail = false;
     mGnssMbSvIdUsedInPosAvail = false;
+
+    // report to engine hub to deliver to registered plugin
+    mEngHubProxy->gnssReportSv(svNotify);
 }
 
 void
@@ -5170,14 +5170,13 @@ void GnssAdapter::reportNfwNotificationEvent(GnssNfwNotification& notification) 
  * eQMI_LOC_WWAN_TYPE_AGNSS_V02
  * eQMI_LOC_WWAN_TYPE_AGNSS_EMERGENCY_V02 */
 bool GnssAdapter::requestATL(int connHandle, LocAGpsType agpsType,
-                             LocApnTypeMask apnTypeMask){
+                             LocApnTypeMask apnTypeMask, LocSubId subId){
 
-    LOC_LOGI("GnssAdapter::requestATL handle=%d agpsType=0x%X apnTypeMask=0x%X",
-        connHandle, agpsType, apnTypeMask);
+    LOC_LOGi("GnssAdapter::requestATL handle=%d agpsType=0x%X apnTypeMask=0x%X subId=%d",
+             connHandle, agpsType, apnTypeMask, subId);
 
-    sendMsg( new AgpsMsgRequestATL(
-             &mAgpsManager, connHandle, (AGpsExtType)agpsType,
-             apnTypeMask));
+    sendMsg( new AgpsMsgRequestATL( &mAgpsManager, connHandle, (AGpsExtType)agpsType,
+                                    apnTypeMask, subId));
 
     return true;
 }
@@ -6075,9 +6074,21 @@ GnssAdapter::configLeverArm(uint32_t sessionId,
                             const LeverArmConfigInfo& configInfo) {
 
     LocationError err = LOCATION_ERROR_NOT_SUPPORTED;
-    if (true == mEngHubProxy->configLeverArm(configInfo)) {
+    // save the lever ARM config info for translating SPE positions from
+    // GNSS antenna based to VRP based
+    if (configInfo.leverArmValidMask & LEVER_ARM_TYPE_GNSS_TO_VRP_BIT) {
+        mLocConfigInfo.leverArmConfigInfo.leverArmValidMask |=
+                LEVER_ARM_TYPE_GNSS_TO_VRP_BIT;
+        mLocConfigInfo.leverArmConfigInfo.gnssToVRP = configInfo.gnssToVRP;
         err = LOCATION_ERROR_SUCCESS;
     }
+
+    if (configInfo.leverArmValidMask & LEVER_ARM_TYPE_DR_IMU_TO_GNSS_BIT) {
+        if (mDreIntEnabled && mEngHubProxy->configLeverArm(configInfo)) {
+        err = LOCATION_ERROR_SUCCESS;
+    }
+    }
+
     reportResponse(err, sessionId);
 }
 
@@ -6101,13 +6112,6 @@ GnssAdapter::configLeverArmCommand(const LeverArmConfigInfo& configInfo) {
             mSessionId(sessionId),
             mConfigInfo(configInfo) {}
         inline virtual void proc() const {
-            // save the lever ARM config info for translating position from GNSS antenna based
-            // to VRP based
-            if (mConfigInfo.leverArmValidMask & LEVER_ARM_TYPE_GNSS_TO_VRP_BIT) {
-                mAdapter.mLocConfigInfo.leverArmConfigInfo.leverArmValidMask |=
-                        LEVER_ARM_TYPE_GNSS_TO_VRP_BIT;
-                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP = mConfigInfo.gnssToVRP;
-            }
             mAdapter.configLeverArm(mSessionId, mConfigInfo);
         }
     };
@@ -6397,6 +6401,34 @@ uint32_t GnssAdapter::configEngineRunStateCommand(
     return sessionId;
 }
 
+uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes) {
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, enabled nmea = 0x%x", sessionId, enabledNmeaTypes);
+
+    struct MsgConfigOutputNmeaType : public LocMsg {
+        GnssAdapter& mAdapter;
+        uint32_t     mSessionId;
+        GnssNmeaTypesMask mEnabledNmeaTypes;
+
+        inline MsgConfigOutputNmeaType(GnssAdapter& adapter,
+                                       uint32_t sessionId,
+                                       GnssNmeaTypesMask enabledNmeaTypes) :
+            LocMsg(),
+            mAdapter(adapter),
+            mSessionId(sessionId),
+            mEnabledNmeaTypes(enabledNmeaTypes) {}
+        inline virtual void proc() const {
+           loc_nmea_config_output_types(mEnabledNmeaTypes);
+           mAdapter.reportResponse(LOCATION_ERROR_SUCCESS, mSessionId);
+        }
+    };
+
+    sendMsg(new MsgConfigOutputNmeaType(*this, sessionId, enabledNmeaTypes));
+
+    return sessionId;
+}
+
 void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig)
 {
     struct MsgReportGnssConfig : public LocMsg {
@@ -6508,12 +6540,6 @@ GnssAdapter::initEngHubProxy() {
                     reportEnginePositionsEvent(count, locationArr);
             };
 
-        // callback function for engine hub to report back sv event
-        GnssAdapterReportSvEventCb reportSvEventCb =
-            [this](const GnssSvNotification& svNotify, bool fromEngineHub) {
-                   reportSvEvent(svNotify, fromEngineHub);
-            };
-
         // callback function for engine hub to request for complete aiding data
         GnssAdapterReqAidingDataCb reqAidingDataCb =
             [this] (const GnssAidingDataSvMask& svDataMask) {
@@ -6546,10 +6572,8 @@ GnssAdapter::initEngHubProxy() {
         getEngHubProxyFn* getter = (getEngHubProxyFn*) dlsym(handle, "getEngHubProxy");
         if(getter != nullptr) {
             EngineHubProxyBase* hubProxy = (*getter) (mMsgTask, mSystemStatus->getOsObserver(),
-                      reportPositionEventCb,
-                      reportSvEventCb, reqAidingDataCb,
-                      updateNHzRequirementCb,
-                      updateQwesFeatureStatusCb);
+                      reportPositionEventCb, reqAidingDataCb,
+                      updateNHzRequirementCb, updateQwesFeatureStatusCb);
             if (hubProxy != nullptr) {
                 mEngHubProxy = hubProxy;
                 engHubLoadSuccessful = true;
