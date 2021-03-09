@@ -636,7 +636,7 @@ public:
         @param
         enable: true/false to enable / disable permission
     */
-    virtual void enableNfwLocationAccess(bool enable) {}
+    virtual void enableNfwLocationAccess(std::vector<std::string>& enabledNfws) {}
 
     /** @brief
         Set the EULA opt-in status from system user. This is used as consent to

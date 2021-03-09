@@ -71,7 +71,7 @@ static void getDebugReport(GnssDebugReport& report);
 static void updateConnectionStatus(bool connected, int8_t type, bool roaming,
                                    NetworkHandle networkHandle, string& apn);
 static void getGnssEnergyConsumed(GnssEnergyConsumedCallback energyConsumedCb);
-static void enableNfwLocationAccess(bool enable);
+static void enableNfwLocationAccess(std::vector<std::string>& enabledNfws);
 static void nfwInit(const NfwCbInfo& cbInfo);
 static void getPowerStateChanges(std::function<void(bool)> powerStateCb);
 
@@ -438,9 +438,9 @@ static void getGnssEnergyConsumed(GnssEnergyConsumedCallback energyConsumedCb) {
     }
 }
 
-static void enableNfwLocationAccess(bool enable) {
+static void enableNfwLocationAccess(std::vector<std::string>& enabledNfws) {
     if (NULL != gGnssAdapter) {
-        gGnssAdapter->nfwControlCommand(enable);
+        gGnssAdapter->nfwControlCommand(enabledNfws);
     }
 }
 

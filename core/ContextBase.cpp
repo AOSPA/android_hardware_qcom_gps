@@ -340,7 +340,7 @@ void ContextBase::setEngineCapabilities(uint64_t supportedMsgMask,
                     (void *)featureList, sizeof(ContextBase::sFeaturesSupported));
         }
         mGps_conf.AGPS_CONFIG_INJECT &=
-                !(isFeatureSupported(LOC_SUPPORTED_FEATURE_QMI_AGNSS_CONFIG_DISABLED));
+                !(isFeatureSupported(LOC_SUPPORTED_FEATURE_DSDA_CONFIGURATION));
 
         /* */
         if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION)) {
