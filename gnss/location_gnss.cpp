@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -104,6 +104,8 @@ static void measCorrClose();
 static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback);
 static void antennaInfoClose();
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState);
+static void powerIndicationInit(const powerIndicationCb powerIndicationCallback);
+static void powerIndicationRequest();
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -162,7 +164,9 @@ static const GnssInterface gGnssInterface = {
     gnssUpdateSecondaryBandConfig,
     gnssGetSecondaryBandConfig,
     resetNetworkInfo,
-    configEngineRunState
+    configEngineRunState,
+    powerIndicationInit,
+    powerIndicationRequest
 };
 
 #ifndef DEBUG_X86
@@ -519,7 +523,7 @@ static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback) {
 static void antennaInfoClose() {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->antennaInfoCloseCommand();
-	}
+    }
 }
 
 static uint32_t configRobustLocation(bool enable, bool enableForE911){
@@ -589,5 +593,17 @@ static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRun
         return gGnssAdapter->configEngineRunStateCommand(engType, engState);
     } else {
         return 0;
+    }
+}
+
+static void powerIndicationInit(const powerIndicationCb powerIndicationCallback) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->powerIndicationInitCommand(powerIndicationCallback);
+    }
+}
+
+static void powerIndicationRequest() {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->powerIndicationRequestCommand();
     }
 }

@@ -137,7 +137,11 @@ GnssAdapter::GnssAdapter() :
     mPowerStateCb(nullptr),
     mSendNmeaConsent(false),
     mDgnssState(0),
-    mDgnssLastNmeaBootTimeMilli(0)
+    mDgnssLastNmeaBootTimeMilli(0),
+    mPowerIndicationCb(nullptr),
+    mGnssPowerStatisticsInit(false),
+    mBootReferenceEnergy(0),
+    mPowerElapsedRealTimeCal(30000000)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -2579,6 +2583,7 @@ GnssAdapter::handleEngineUpEvent()
                 mAdapter.sendMsg(msg);
             }
             mAdapter.mPendingMsgs.clear();
+            mAdapter.initGnssPowerStatistics();
         }
     };
 
@@ -5020,11 +5025,35 @@ GnssAdapter::invokeGnssEnergyConsumedCallback(uint64_t energyConsumedSinceFirstB
         mGnssEnergyConsumedCb(energyConsumedSinceFirstBoot);
         mGnssEnergyConsumedCb = nullptr;
     }
+    if (!mGnssPowerStatisticsInit) {
+        mBootReferenceEnergy = energyConsumedSinceFirstBoot;
+        mGnssPowerStatisticsInit = true;
+        mPowerElapsedRealTimeCal.reset();
+    } else if (nullptr != mPowerIndicationCb) {
+        GnssPowerStatistics gnssPowerStatistics = {};
+        gnssPowerStatistics.size = sizeof(GnssPowerStatistics);
+
+        gnssPowerStatistics.totalEnergyMilliJoule =
+                (double)(energyConsumedSinceFirstBoot - mBootReferenceEnergy) / 10.0;
+
+        LOC_LOGv("energyConsumedSinceFirstBoot: %" PRId64", "
+                 " mBootReferenceEnergy: %" PRId64", "
+                 " gnssPowerStatistics.totalEnergyMilliJoule: %f",
+                 energyConsumedSinceFirstBoot,
+                 mBootReferenceEnergy,
+                 gnssPowerStatistics.totalEnergyMilliJoule);
+
+        gnssPowerStatistics.elapsedRealTime =
+                mPowerElapsedRealTimeCal.getElapsedRealtimeEstimateNanos(0, 0, 0);
+        gnssPowerStatistics.elapsedRealTimeUnc =
+                mPowerElapsedRealTimeCal.getElapsedRealtimeUncNanos();
+        mPowerIndicationCb(gnssPowerStatistics);
+    }
 }
 
 bool
 GnssAdapter::reportGnssEngEnergyConsumedEvent(uint64_t energyConsumedSinceFirstBoot){
-    LOC_LOGD("%s]: %" PRIu64 " ", __func__, energyConsumedSinceFirstBoot);
+    LOC_LOGd("energyConsumedSinceFirstBoot: %" PRIu64 " ", energyConsumedSinceFirstBoot);
 
     struct MsgReportGnssGnssEngEnergyConsumed : public LocMsg {
         GnssAdapter& mAdapter;
@@ -5039,7 +5068,11 @@ GnssAdapter::reportGnssEngEnergyConsumedEvent(uint64_t energyConsumedSinceFirstB
         }
     };
 
-    sendMsg(new MsgReportGnssGnssEngEnergyConsumed(*this, energyConsumedSinceFirstBoot));
+    if (~0 != energyConsumedSinceFirstBoot) {
+        sendMsg(new MsgReportGnssGnssEngEnergyConsumed(*this, energyConsumedSinceFirstBoot));
+    } else {
+        LOC_LOGe("energyConsumedSinceFirstBoot not valid!");
+    }
     return true;
 }
 
@@ -6226,6 +6259,7 @@ bool GnssAdapter::measCorrSetCorrectionsCommand(const GnssMeasurementCorrections
         return false;
     }
 }
+
 uint32_t GnssAdapter::antennaInfoInitCommand(const antennaInfoCb antennaInfoCallback) {
     LOC_LOGi("GnssAdapter::antennaInfoInitCommand");
 
@@ -6386,12 +6420,12 @@ uint32_t GnssAdapter::configDeadReckoningEngineParamsCommand(
 }
 
 uint32_t GnssAdapter::configEngineRunStateCommand(
-        PositioningEngineMask engType, LocEngineRunState engState) {
+    PositioningEngineMask engType, LocEngineRunState engState) {
 
     // generated session id will be none-zero
     uint32_t sessionId = generateSessionId();
     LOC_LOGe("session id %u, eng type 0x%x, eng state %d, dre enabled %d",
-             sessionId, engType, engState, mDreIntEnabled);
+        sessionId, engType, engState, mDreIntEnabled);
 
     struct MsgConfigEngineRunState : public LocMsg {
         GnssAdapter& mAdapter;
@@ -6400,9 +6434,9 @@ uint32_t GnssAdapter::configEngineRunStateCommand(
         LocEngineRunState mEngState;
 
         inline MsgConfigEngineRunState(GnssAdapter& adapter,
-                                       uint32_t sessionId,
-                                       PositioningEngineMask engType,
-                                       LocEngineRunState engState) :
+            uint32_t sessionId,
+            PositioningEngineMask engType,
+            LocEngineRunState engState) :
             LocMsg(),
             mAdapter(adapter),
             mSessionId(sessionId),
@@ -6424,6 +6458,46 @@ uint32_t GnssAdapter::configEngineRunStateCommand(
     sendMsg(new MsgConfigEngineRunState(*this, sessionId, engType, engState));
 
     return sessionId;
+}
+
+void GnssAdapter::powerIndicationInitCommand(const powerIndicationCb powerIndicationCallback) {
+    LOC_LOGi("GnssAdapter::powerIndicationInitCommand");
+
+    struct MsgPowerIndicationInit : public LocMsg {
+        const powerIndicationCb mPowerIndicationCb;
+        GnssAdapter& mAdapter;
+
+        inline MsgPowerIndicationInit(const powerIndicationCb powerIndicationCallback,
+                                      GnssAdapter& adapter) :
+            LocMsg(), mPowerIndicationCb(powerIndicationCallback), mAdapter(adapter) {
+            LOC_LOGv("MsgPowerIndicationInit");
+        }
+
+        inline virtual void proc() const {
+            LOC_LOGv("MsgPowerIndicationInit::proc()");
+            mAdapter.setPowerIndicationCb(mPowerIndicationCb);
+        }
+    };
+    sendMsg(new MsgPowerIndicationInit(powerIndicationCallback, *this));
+}
+
+void GnssAdapter::powerIndicationRequestCommand() {
+    LOC_LOGi("GnssAdapter::powerIndicationRequestCommand");
+
+    struct MsgPowerIndicationRequest : public LocMsg {
+        LocApiBase& mApi;
+
+        inline MsgPowerIndicationRequest(LocApiBase& api) :
+            LocMsg(), mApi(api) {
+            LOC_LOGv("MsgPowerIndicationRequest");
+        }
+
+        inline virtual void proc() const {
+            LOC_LOGv("MsgPowerIndicationRequest::proc()");
+            mApi.getGnssEnergyConsumed();
+        }
+    };
+    sendMsg(new MsgPowerIndicationRequest(*mLocApi));
 }
 
 void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig)
@@ -6620,6 +6694,11 @@ GnssAdapter::parseDoublesString(char* dString) {
         dVector.push_back(std::stod(substr));
     }
     return dVector;
+}
+
+void GnssAdapter::initGnssPowerStatistics() {
+    mGnssPowerStatisticsInit = false;
+    mLocApi->getGnssEnergyConsumed();
 }
 
 void

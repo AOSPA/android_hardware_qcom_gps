@@ -166,7 +166,7 @@ ndk::ScopedAStatus Gnss::updateConfiguration(GnssConfig& gnssConfig) {
     if (mGnssPowerIndication == nullptr) {
         mGnssPowerIndication = SharedRefBase::make<GnssPowerIndication>();
     }
-    *_aidl_return = nullptr;
+    *_aidl_return = mGnssPowerIndication;
     return ndk::ScopedAStatus::ok();
 }
 ::ndk::ScopedAStatus Gnss::getExtensionGnssMeasurement(

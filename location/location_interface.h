@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -111,6 +111,8 @@ struct GnssInterface {
     void (*resetNetworkInfo)();
     uint32_t (*configEngineRunState)(PositioningEngineMask engType,
                                      LocEngineRunState engState);
+    void (*powerIndicationInit)(const powerIndicationCb powerIndicationCallback);
+    void (*powerIndicationRequest)();
 };
 
 struct BatchingInterface {

@@ -2394,6 +2394,18 @@ typedef void (*AgnssStatusIpV6Cb)(AGnssExtStatusIpV6 status);
 */
 typedef void(*antennaInfoCb)(std::vector<GnssAntennaInformation> gnssAntennaInformations);
 
+typedef struct {
+    uint32_t size;                        // set to sizeof
+    uint64_t elapsedRealTime;    // in ns
+    uint64_t elapsedRealTimeUnc; // in ns
+    double totalEnergyMilliJoule;
+} GnssPowerStatistics;
+
+/*
+* Callback with Power indication.
+*/
+typedef void(*powerIndicationCb)(GnssPowerStatistics gnssPowerStatistics);
+
 /* Constructs for interaction with loc_net_iface library */
 typedef void (*LocAgpsOpenResultCb)(bool isSuccess, AGpsExtType agpsType, const char* apn,
         AGpsBearerType bearerType, void* userDataPtr);
