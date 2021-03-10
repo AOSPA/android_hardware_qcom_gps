@@ -316,7 +316,6 @@ protected:
     void logLatencyInfo();
 
 public:
-
     GnssAdapter();
     virtual inline ~GnssAdapter() { }
 
@@ -522,6 +521,8 @@ public:
     (
         const std::unordered_map<LocationQwesFeatureType, bool> &featureMap
     );
+    void reportPdnTypeFromWds(int pdnType, AGpsExtType agpsType, std::string apnName,
+            AGpsBearerType bearerType);
 
     /* ======== UTILITIES ================================================================= */
     bool needReportForGnssClient(const UlpLocation& ulpLocation,
