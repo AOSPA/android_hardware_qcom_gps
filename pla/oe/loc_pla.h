@@ -76,6 +76,9 @@ extern "C" {
 #include <pthread.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -145,21 +148,24 @@ static inline size_t memscpy (void *p_Dest, size_t q_DestSize, const void *p_Src
 static inline int loc_boot_kpi_marker(const char * pFmt, ...)
 {
     int result = 0;
-    FILE *stream = NULL;
-    char data[MAX_COMMAND_STR_LEN] = {};
-    char buf[MAX_COMMAND_STR_LEN] = {};
+    int32_t errRet = -1;
+    struct stat nodeStat;
 
-    va_list ap;
-    va_start(ap, pFmt);
-    vsnprintf(&buf[0], sizeof(buf), pFmt, ap);
-    snprintf(data, sizeof(data), "echo -n %s > %s", buf, BOOT_KPI_FILE);
-    stream = popen(data, "w" );
-    if (NULL == stream) {
-        result = -1;
-    } else {
-        pclose(stream);
+    // Check if the KPI node exists exists
+    errRet = stat(BOOT_KPI_FILE, &nodeStat);
+    if (errRet == 0) {
+        char buf[MAX_COMMAND_STR_LEN] = {};
+        va_list ap;
+        va_start(ap, pFmt);
+        vsnprintf(&buf[0], sizeof(buf), pFmt, ap);
+        int fd = 0;
+        fd = open(BOOT_KPI_FILE, O_WRONLY);
+        if (fd > 0) {
+            write(fd, buf, strlen(buf));
+            close(fd);
+        }
+        va_end(ap);
     }
-    va_end(ap);
     return result;
 }
 
