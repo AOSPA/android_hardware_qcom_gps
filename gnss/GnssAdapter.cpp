@@ -2178,7 +2178,7 @@ void GnssAdapter::deleteAidingData(const GnssAidingData &data, uint32_t sessionI
     struct timespec bootDeleteAidingDataTime;
     int64_t bootDeleteTimeMs;
     if (clock_gettime(CLOCK_BOOTTIME, &bootDeleteAidingDataTime) == 0) {
-        bootDeleteTimeMs = bootDeleteAidingDataTime.tv_sec * 1000000;
+        bootDeleteTimeMs = (int64_t)bootDeleteAidingDataTime.tv_sec * 1000;
         int64_t diffTimeBFirSecDelete = bootDeleteTimeMs - mLastDeleteAidingDataTime;
         if (diffTimeBFirSecDelete > DELETE_AIDING_DATA_EXPECTED_TIME_MS) {
             mLocApi->deleteAidingData(data, new LocApiResponse(*getContext(),
