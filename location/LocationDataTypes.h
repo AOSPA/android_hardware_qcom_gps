@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -390,6 +390,7 @@ typedef enum {
     GNSS_CONFIG_LPPE_CONTROL_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2), // SRN_AP_MEASUREMENTS
     GNSS_CONFIG_LPPE_CONTROL_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                              // SENSOR_BARO_MEASUREMENTS
+    GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT = (1<<4), // NON_E911
 } GnssConfigLppeControlPlaneBits;
 
 // Technology for LPPe User Plane
@@ -400,6 +401,7 @@ typedef enum {
     GNSS_CONFIG_LPPE_USER_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2), // SRN_AP_MEASUREMENTS
     GNSS_CONFIG_LPPE_USER_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                             // SENSOR_BARO_MEASUREMENTS
+    GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT = (1<<4), // NON_E911
 } GnssConfigLppeUserPlaneBits;
 
 // Positioning Protocol on A-GLONASS system
