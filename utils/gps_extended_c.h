@@ -2387,6 +2387,7 @@ enum PowerStateType {
 /* Shared resources of LocIpc */
 #define LOC_IPC_HAL                    "/dev/socket/location/socket_hal"
 #define LOC_IPC_XTRA                   "/dev/socket/location/xtra/socket_xtra"
+#define LOC_IPC_DGNSS                  "/dev/socket/location/dgnss/socket_dgnss"
 
 #define SOCKET_DIR_LOCATION            "/dev/socket/location/"
 #define SOCKET_DIR_EHUB                "/dev/socket/location/ehub/"
