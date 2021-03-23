@@ -5590,28 +5590,28 @@ GnssAdapter::getAgcInformation(GnssMeasurementsNotification& measurements, int m
                 case GNSS_SV_TYPE_GPS:
                 case GNSS_SV_TYPE_QZSS:
                     measurements.measurements[i].agcLevelDb =
-                            (double)-reports.mRfAndParams.back().mJammerGps;
+                            -(double)reports.mRfAndParams.back().mJammerGps;
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
 
                 case GNSS_SV_TYPE_GALILEO:
                     measurements.measurements[i].agcLevelDb =
-                            (double)-reports.mRfAndParams.back().mJammerGal;
+                            -(double)reports.mRfAndParams.back().mJammerGal;
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
 
                 case GNSS_SV_TYPE_GLONASS:
                     measurements.measurements[i].agcLevelDb =
-                            (double)-reports.mRfAndParams.back().mJammerGlo;
+                            -(double)reports.mRfAndParams.back().mJammerGlo;
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
 
                 case GNSS_SV_TYPE_BEIDOU:
                     measurements.measurements[i].agcLevelDb =
-                            (double)-reports.mRfAndParams.back().mJammerBds;
+                            -(double)reports.mRfAndParams.back().mJammerBds;
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
@@ -5650,19 +5650,19 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] =
-                        (double)-reports.mRfAndParams.back().mJammerGps;
+                        -(double)reports.mRfAndParams.back().mJammerGps;
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] =
                         (double)reports.mRfAndParams.back().mJammerGps;
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_QZSS_L1CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_QZSS_L1CA] =
-                        (double)-reports.mRfAndParams.back().mJammerGps;
+                        -(double)reports.mRfAndParams.back().mJammerGps;
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_QZSS_L1CA] =
                         (double)reports.mRfAndParams.back().mJammerGps;
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_SBAS_L1_CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_SBAS_L1_CA] =
-                        (double)-reports.mRfAndParams.back().mJammerGps;
+                        -(double)reports.mRfAndParams.back().mJammerGps;
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_SBAS_L1_CA] =
                         (double)reports.mRfAndParams.back().mJammerGps;
             }
@@ -5670,7 +5670,7 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1] =
-                        (double)-reports.mRfAndParams.back().mJammerGlo;
+                        -(double)reports.mRfAndParams.back().mJammerGlo;
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1] =
                         (double)reports.mRfAndParams.back().mJammerGlo;
             }
@@ -5678,7 +5678,7 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I] =
-                        (double)-reports.mRfAndParams.back().mJammerBds;
+                        -(double)reports.mRfAndParams.back().mJammerBds;
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I] =
                         (double)reports.mRfAndParams.back().mJammerBds;
             }
@@ -5686,7 +5686,7 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C] =
-                        (double)-reports.mRfAndParams.back().mJammerGal;
+                        -(double)reports.mRfAndParams.back().mJammerGal;
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C] =
                         (double)reports.mRfAndParams.back().mJammerGal;
             }
