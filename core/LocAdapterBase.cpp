@@ -318,7 +318,8 @@ LocAdapterBase::getCapabilities()
         if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ROBUST_LOCATION)) {
             mask |= LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT;
         }
-        if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_EDGNSS)) {
+        if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_EDGNSS) ||
+            (ContextBase::getQwesFeatureStatus() & LOCATION_CAPABILITIES_QWES_DGNSS)) {
             mask |= LOCATION_CAPABILITIES_EDGNSS_BIT;
         }
     } else {

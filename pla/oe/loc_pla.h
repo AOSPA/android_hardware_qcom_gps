@@ -110,6 +110,7 @@ extern "C" {
 #define LOC_PATH_ANT_CORR_STR      "/etc/gnss_antenna_info.conf"
 #define LOC_PATH_SLIM_CONF_STR     "/etc/slim.conf"
 #define LOC_PATH_VPE_CONF_STR      "/etc/vpeglue.conf"
+#define LOC_PATH_QPPE_CONF_STR     "/etc/qppe.conf"
 
 extern char *program_invocation_short_name;
 

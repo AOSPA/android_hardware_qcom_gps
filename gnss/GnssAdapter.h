@@ -480,6 +480,8 @@ public:
     void reportResponse(LocationError err, uint32_t sessionId);
     void reportResponse(size_t count, LocationError* errs, uint32_t* ids);
     /* ======== UTILITIES ================================================================== */
+    /* ======== COMMANDS ====(Called from Client Thread)==================================== */
+    void initCDFWServiceCommand();
     LocationControlCallbacks& getControlCallbacks() { return mControlCallbacks; }
     void setControlCallbacks(const LocationControlCallbacks& controlCallbacks)
     { mControlCallbacks = controlCallbacks; }
@@ -653,6 +655,7 @@ public:
     void reportGGAToNtrip(const char* nmea);
     inline bool isDgnssNmeaRequired() { return mSendNmeaConsent &&
             mStartDgnssNtripParams.ntripParams.requiresNmeaLocation;}
+    void readPPENtripConfig();
 };
 
 #endif //GNSS_ADAPTER_H

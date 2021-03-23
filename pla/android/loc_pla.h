@@ -62,6 +62,7 @@ extern "C" {
 #define LOC_PATH_ANT_CORR_STR      "/vendor/etc/gnss_antenna_info.conf"
 #define LOC_PATH_SLIM_CONF_STR     "/vendor/etc/slim.conf"
 #define LOC_PATH_VPE_CONF_STR      "/vendor/etc/vpeglue.conf"
+#define LOC_PATH_QPPE_CONF_STR     "/vendor/etc/qppe.conf"
 
 /*!
  * @brief Function for memory block copy
