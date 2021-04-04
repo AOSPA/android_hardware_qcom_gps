@@ -229,7 +229,7 @@ uint64_t getQTimerFreq()
 
 uint64_t getBootTimeMilliSec()
 {
-    struct timespec curTs;
+    struct timespec curTs = {};
     clock_gettime(CLOCK_BOOTTIME, &curTs);
     return (uint64_t)GET_MSEC_FROM_TS(curTs);
 }

@@ -48,7 +48,7 @@
 
 inline int64_t sysTimeMillis(int clock)
 {
-    struct timespec ts;
+    struct timespec ts = {};
     int64_t time_ms = 0;
     clock_gettime(clock, &ts);
     time_ms += (ts.tv_sec * 1000000000LL);
