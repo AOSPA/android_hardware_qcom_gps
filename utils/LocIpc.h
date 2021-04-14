@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -153,6 +153,9 @@ public:
     // The function will return true on success, and false on failure.
     static bool send(LocIpcSender& sender, const uint8_t data[],
                      uint32_t length, int32_t msgId = -1);
+
+private:
+    static std::string generateThreadName(const std::string& recverName);
 
 private:
     LocThread mThread;
