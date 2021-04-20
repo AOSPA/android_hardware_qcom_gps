@@ -594,6 +594,8 @@ typedef enum {
     GNSS_MEASUREMENTS_DATA_SATELLITE_ISB_BIT                = (1<<20),
     GNSS_MEASUREMENTS_DATA_SATELLITE_ISB_UNCERTAINTY_BIT    = (1<<21),
     GNSS_MEASUREMENTS_DATA_CYCLE_SLIP_COUNT_BIT             = (1<<22),
+    GNSS_MEASUREMENTS_DATA_SATELLITE_PVT_BIT                = (1<<23),
+    GNSS_MEASUREMENTS_DATA_CORRELATION_VECTOR_BIT           = (1<<24),
 } GnssMeasurementsDataFlagsBits;
 
 typedef uint32_t GnssMeasurementsStateMask;
@@ -1338,6 +1340,34 @@ struct GnssConfigSetAssistanceServer {
 };
 
 typedef struct {
+    double posXMeters;
+    double posYMeters;
+    double posZMeters;
+    double ureMeters;
+} GnssSatellitePositionEcef;
+
+typedef struct {
+    double velXMps;
+    double velYMps;
+    double velZMps;
+    double ureRateMps;
+} GnssSatelliteVelocityEcef;
+
+typedef struct {
+    double satHardwareCodeBiasMeters;
+    double satTimeCorrectionMeters;
+    double satClkDriftMps;
+} GnssSatelliteClockInfo;
+
+typedef struct {
+    GnssSatellitePositionEcef satPosEcef;
+    GnssSatelliteVelocityEcef satVelEcef;
+    GnssSatelliteClockInfo satClockInfo;
+    double ionoDelayMeters;
+    double tropoDelayMeters;
+} GnssSatellitePvt;
+
+typedef struct {
     // set to sizeof(GnssMeasurementsData)
     uint32_t size;
     // bitwise OR of GnssMeasurementsDataFlagsBits
@@ -1374,6 +1404,7 @@ typedef struct {
     double satelliteInterSignalBiasUncertaintyNs;
     int16_t gloFrequency;
     uint8_t cycleSlipCount;
+    GnssSatellitePvt satellitePvt;
 } GnssMeasurementsData;
 
 typedef struct {

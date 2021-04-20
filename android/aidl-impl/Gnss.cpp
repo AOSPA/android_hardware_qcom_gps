@@ -175,7 +175,7 @@ ndk::ScopedAStatus Gnss::updateConfiguration(GnssConfig& gnssConfig) {
     if (mGnssMeasurementInterface == nullptr) {
         mGnssMeasurementInterface = SharedRefBase::make<GnssMeasurementInterface>();
     }
-    *_aidl_return = nullptr;
+    *_aidl_return = mGnssMeasurementInterface;
     return ndk::ScopedAStatus::ok();
 }
 
