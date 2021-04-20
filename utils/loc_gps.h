@@ -99,15 +99,17 @@ typedef uint16_t LocGpsLocationFlags;
 /** LocGpsLocation has valid accuracy. */
 #define LOC_GPS_LOCATION_HAS_ACCURACY   0x0010
 /** LocGpsLocation has valid vertical uncertainity */
-#define LOC_GPS_LOCATION_HAS_VERT_UNCERTAINITY   0x0040
-/** LocGpsLocation has valid spoof mask */
-#define LOC_GPS_LOCATION_HAS_SPOOF_MASK   0x0080
+#define LOC_GPS_LOCATION_HAS_VERT_UNCERTAINITY   0x0020
 /** LocGpsLocation has valid speed accuracy */
-#define LOC_GPS_LOCATION_HAS_SPEED_ACCURACY   0x0100
+#define LOC_GPS_LOCATION_HAS_SPEED_ACCURACY   0x0040
 /** LocGpsLocation has valid bearing accuracy */
-#define LOC_GPS_LOCATION_HAS_BEARING_ACCURACY 0x0200
+#define LOC_GPS_LOCATION_HAS_BEARING_ACCURACY 0x0080
+/** LocGpsLocation has valid spoof mask */
+#define LOC_GPS_LOCATION_HAS_SPOOF_MASK   0x0100
 /** LocGpsLocation has valid Real Time and Real Time Uncertainty */
-#define LOC_GPS_LOCATION_HAS_ELAPSED_REAL_TIME 0x0400
+#define LOC_GPS_LOCATION_HAS_ELAPSED_REAL_TIME 0x0200
+/** Location has valid source information. */
+#define LOC_GPS_LOCATION_HAS_SOURCE_INFO   0x0400
 
 /** Spoof mask in LocGpsLocation */
 typedef uint32_t LocGpsSpoofMask;
@@ -169,6 +171,12 @@ typedef uint16_t LocAGpsType;
 #define LOC_AGPS_TYPE_WWAN_ANY      3
 #define LOC_AGPS_TYPE_WIFI          4
 #define LOC_AGPS_TYPE_SUPL_ES       5
+
+typedef uint16_t LocSubId;
+#define LOC_DEFAULT_SUB    0
+#define LOC_PRIMARY_SUB    1
+#define LOC_SECONDARY_SUB  2
+#define LOC_TERTIARY_SUB   3
 
 typedef uint16_t LocAGpsSetIDType;
 #define LOC_AGPS_SETID_TYPE_NONE    0

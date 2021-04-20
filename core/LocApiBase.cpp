@@ -511,11 +511,11 @@ void LocApiBase::requestLocation()
 }
 
 void LocApiBase::requestATL(int connHandle, LocAGpsType agps_type,
-                            LocApnTypeMask apn_type_mask)
+                            LocApnTypeMask apn_type_mask, LocSubId sub_id)
 {
     // loop through adapters, and deliver to the first handling adapter.
     TO_1ST_HANDLING_LOCADAPTERS(
-            mLocAdapters[i]->requestATL(connHandle, agps_type, apn_type_mask));
+            mLocAdapters[i]->requestATL(connHandle, agps_type, apn_type_mask, sub_id));
 }
 
 void LocApiBase::releaseATL(int connHandle)
@@ -949,8 +949,8 @@ int64_t ElapsedRealtimeEstimator::getElapsedRealtimeEstimateNanos(int64_t curDat
     //   reset mFixTimeStablizationThreshold to default value, jump to step 2 to continue.
 
     int64_t currentTravelTimeNanos = mInitialTravelTime;
-    struct timespec currentTime;
-    int64_t sinceBootTimeNanos;
+    struct timespec currentTime = {};
+    int64_t sinceBootTimeNanos = 0;
     if (getCurrentTime(currentTime, sinceBootTimeNanos)) {
         if (isCurDataTimeTrustable) {
             if (tbf > 0 && tbf != curDataTimeNanos - mPrevDataTimeNanos) {
@@ -990,9 +990,9 @@ void ElapsedRealtimeEstimator::reset() {
 }
 
 int64_t ElapsedRealtimeEstimator::getElapsedRealtimeQtimer(int64_t qtimerTicksAtOrigin) {
-    struct timespec currentTime;
-    int64_t sinceBootTimeNanos;
-    int64_t elapsedRealTimeNanos;
+    struct timespec currentTime = {};
+    int64_t sinceBootTimeNanos = 0;
+    int64_t elapsedRealTimeNanos = 0;
 
     if (getCurrentTime(currentTime, sinceBootTimeNanos)) {
        uint64_t qtimerDiff = 0;
@@ -1031,8 +1031,8 @@ int64_t ElapsedRealtimeEstimator::getElapsedRealtimeQtimer(int64_t qtimerTicksAt
 bool ElapsedRealtimeEstimator::getCurrentTime(
         struct timespec& currentTime, int64_t& sinceBootTimeNanos)
 {
-    struct timespec sinceBootTime;
-    struct timespec sinceBootTimeTest;
+    struct timespec sinceBootTime = {};
+    struct timespec sinceBootTimeTest = {};
     bool clockGetTimeSuccess = false;
     const uint32_t MAX_TIME_DELTA_VALUE_NANOS = 10000;
     const uint32_t MAX_GET_TIME_COUNT = 20;
