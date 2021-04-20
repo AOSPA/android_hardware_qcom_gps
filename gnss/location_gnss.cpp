@@ -104,6 +104,8 @@ static void measCorrClose();
 static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback);
 static void antennaInfoClose();
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState);
+static void powerIndicationInit(const powerIndicationCb powerIndicationCallback);
+static void powerIndicationRequest();
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -162,7 +164,9 @@ static const GnssInterface gGnssInterface = {
     gnssUpdateSecondaryBandConfig,
     gnssGetSecondaryBandConfig,
     resetNetworkInfo,
-    configEngineRunState
+    configEngineRunState,
+    powerIndicationInit,
+    powerIndicationRequest
 };
 
 #ifndef DEBUG_X86
@@ -589,5 +593,17 @@ static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRun
         return gGnssAdapter->configEngineRunStateCommand(engType, engState);
     } else {
         return 0;
+    }
+}
+
+static void powerIndicationInit(const powerIndicationCb powerIndicationCallback) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->powerIndicationInitCommand(powerIndicationCallback);
+    }
+}
+
+static void powerIndicationRequest() {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->powerIndicationRequestCommand();
     }
 }

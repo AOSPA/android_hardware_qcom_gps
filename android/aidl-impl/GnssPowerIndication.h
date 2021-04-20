@@ -19,6 +19,7 @@
  */
 
 #include <aidl/android/hardware/gnss/BnGnssPowerIndication.h>
+#include <location_interface.h>
 
 namespace android {
 namespace hardware {
@@ -28,16 +29,30 @@ namespace implementation {
 
 using ::aidl::android::hardware::gnss::BnGnssPowerIndication;
 using ::aidl::android::hardware::gnss::IGnssPowerIndicationCallback;
+using ::aidl::android::hardware::gnss::GnssPowerStats;
 
 struct GnssPowerIndication : public BnGnssPowerIndication {
 public:
+    GnssPowerIndication();
+    ~GnssPowerIndication();
     ::ndk::ScopedAStatus setCallback(
             const std::shared_ptr<IGnssPowerIndicationCallback>& in_callback) override;
-    ::ndk::ScopedAStatus requestGnssPowerStats() override { return ndk::ScopedAStatus::ok(); }
+    ::ndk::ScopedAStatus requestGnssPowerStats() override;
 
     void cleanup();
+
+    // callbacks we are interested in
+    void gnssPowerIndicationCb(GnssPowerStatistics gnssPowerStatistics);
+    static void piGnssPowerIndicationCb(GnssPowerStatistics gnssPowerStatistics);
+
 private:
     std::shared_ptr<IGnssPowerIndicationCallback> mGnssPowerIndicationCb = nullptr;
+    // Synchronization lock for mGnssPowerIndicationCb
+    mutable std::mutex mMutex;
+    AIBinder_DeathRecipient* mDeathRecipient;
+    const GnssInterface* mGnssInterface = nullptr;
+
+    static void gnssPowerIndicationDied(void* cookie);
 };
 
 }  // namespace implementation

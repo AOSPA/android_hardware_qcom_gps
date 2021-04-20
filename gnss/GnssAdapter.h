@@ -241,6 +241,11 @@ class GnssAdapter : public LocAdapterBase {
         mIsE911Session = (IsInEmergencySession)cbInfo.isInEmergencySession;
     }
 
+    powerIndicationCb mPowerIndicationCb;
+    bool mGnssPowerStatisticsInit;
+    uint64_t mBootReferenceEnergy;
+    ElapsedRealtimeEstimator mPowerElapsedRealTimeCal;
+
     /* ==== Measurement Corrections========================================================= */
     bool mIsMeasCorrInterfaceOpen;
     measCorrSetCapabilitiesCb mMeasCorrSetCapabilitiesCb;
@@ -463,6 +468,8 @@ public:
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
+    void powerIndicationInitCommand(const powerIndicationCb powerIndicationCallback);
+    void powerIndicationRequestCommand();
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
@@ -568,6 +575,10 @@ public:
 
     std::vector<double> parseDoublesString(char* dString);
     void reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallback);
+    inline void setPowerIndicationCb(const powerIndicationCb powerIndicationCallback) {
+        mPowerIndicationCb = powerIndicationCallback;
+    }
+    void initGnssPowerStatistics();
 
     /*======== GNSSDEBUG ================================================================*/
     bool getDebugReport(GnssDebugReport& report);
