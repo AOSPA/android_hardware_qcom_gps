@@ -35,11 +35,16 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <unordered_set>
 #include <mutex>
 #include <LocThread.h>
 
 using namespace std;
+#ifdef NO_UNORDERED_SET_OR_MAP
+    #include <set>
+    #define unordered_set set
+#else
+    #include <unordered_set>
+#endif
 
 namespace loc_util {
 

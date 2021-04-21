@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -126,7 +126,7 @@ err:
 
 inline void logDlError(const char* failedCall) {
     const char * err = dlerror();
-    LOC_LOGe("%s error: %s", failedCall, (nullptr == err) ? "unknown" : err);
+    LOC_LOGw("%s error: %s", failedCall, (nullptr == err) ? "unknown" : err);
 }
 
 void* dlGetSymFromLib(void*& libHandle, const char* libName, const char* symName)
@@ -229,7 +229,7 @@ uint64_t getQTimerFreq()
 
 uint64_t getBootTimeMilliSec()
 {
-    struct timespec curTs;
+    struct timespec curTs = {};
     clock_gettime(CLOCK_BOOTTIME, &curTs);
     return (uint64_t)GET_MSEC_FROM_TS(curTs);
 }

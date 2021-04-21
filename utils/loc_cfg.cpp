@@ -541,7 +541,7 @@ static const loc_param_s_type loc_process_conf_parameter_table[] = {
     {"PREMIUM_FEATURE",            &conf.premium_feature,          NULL, 'n'},
     {"IZAT_FEATURE_MASK",          &conf.loc_feature_mask,         NULL, 'n'},
     {"PLATFORMS",                  &conf.platform_list,            NULL, 's'},
-    {"SOC_IDS",                    &conf.soc_id_list,            NULL, 's'},
+    {"SOC_IDS",                    &conf.soc_id_list,              NULL, 's'},
     {"BASEBAND",                   &conf.baseband,                 NULL, 's'},
     {"LOW_RAM_TARGETS",            &conf.low_ram_targets,          NULL, 's'},
     {"HARDWARE_TYPE",              &conf.auto_platform,            NULL, 's'},
