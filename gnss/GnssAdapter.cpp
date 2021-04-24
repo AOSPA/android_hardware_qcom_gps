@@ -92,15 +92,13 @@ GnssAdapter::GnssAdapter() :
                    LocContext::getLocContext(LocContext::mLocationHalName),
                    true, nullptr, true),
     mEngHubProxy(new EngineHubProxyBase()),
-    mQDgnssListenerHDL(nullptr),
-    mCdfwInterface(nullptr),
-    mDGnssNeedReport(false),
-    mDGnssDataUsage(false),
-    mLocPositionMode(),
     mNHzNeeded(false),
     mSPEAlreadyRunningAtHighestInterval(false),
+    mLocPositionMode(),
     mGnssSvIdUsedInPosition(),
     mGnssSvIdUsedInPosAvail(false),
+    mGnssMbSvIdUsedInPosition{},
+    mGnssMbSvIdUsedInPosAvail(false),
     mControlCallbacks(),
     mAfwControlId(0),
     mNmeaMask(0),
@@ -108,37 +106,38 @@ GnssAdapter::GnssAdapter() :
     mGnssSeconaryBandConfig(),
     mGnssSvTypeConfig(),
     mGnssSvTypeConfigCb(nullptr),
+    mSupportNfwControl(true),
     mLocConfigInfo{},
     mNiData(),
     mAgpsManager(),
+    mNfwCb(NULL),
+    mIsE911Session(NULL),
+    mIsMeasCorrInterfaceOpen(false),
+    mIsAntennaInfoInterfaceOpened(false),
+    mQDgnssListenerHDL(nullptr),
+    mCdfwInterface(nullptr),
+    mDGnssNeedReport(false),
+    mDGnssDataUsage(false),
     mOdcpiRequestCb(nullptr),
     mOdcpiRequestActive(false),
+    mCallbackPriority(OdcpiPrioritytype::ODCPI_HANDLER_PRIORITY_LOW),
     mOdcpiTimer(this),
     mOdcpiRequest(),
-    mCallbackPriority(OdcpiPrioritytype::ODCPI_HANDLER_PRIORITY_LOW),
+    mLastDeleteAidingDataTime(0),
     mSystemStatus(SystemStatus::getInstance(mMsgTask)),
     mServerUrl(":"),
     mXtraObserver(mSystemStatus->getOsObserver(), mMsgTask),
-    mBlockCPIInfo{},
-    mDreIntEnabled(false),
     mLocSystemInfo{},
-    mNfwCb(NULL),
+    mSystemPowerState(POWER_STATE_UNKNOWN),
+    mBlockCPIInfo{},
     mPowerOn(false),
-    mAllowFlpNetworkFixes(0),
+    mDreIntEnabled(false),
+    mNativeAgpsHandler(mSystemStatus->getOsObserver(), *this),
     mGnssEnergyConsumedCb(nullptr),
     mPowerStateCb(nullptr),
-    mIsE911Session(NULL),
-    mGnssMbSvIdUsedInPosition{},
-    mGnssMbSvIdUsedInPosAvail(false),
-    mSupportNfwControl(true),
-    mSystemPowerState(POWER_STATE_UNKNOWN),
-    mIsMeasCorrInterfaceOpen(false),
-    mIsAntennaInfoInterfaceOpened(false),
-    mLastDeleteAidingDataTime(0),
-    mDgnssState(0),
     mSendNmeaConsent(false),
-    mDgnssLastNmeaBootTimeMilli(0),
-    mNativeAgpsHandler(mSystemStatus->getOsObserver(), *this)
+    mDgnssState(0),
+    mDgnssLastNmeaBootTimeMilli(0)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -704,6 +703,9 @@ GnssAdapter::convertLppeCp(const GnssConfigLppeControlPlaneMask lppeControlPlane
     if (GNSS_CONFIG_LPPE_CONTROL_PLANE_SENSOR_BARO_MEASUREMENTS_BIT & lppeControlPlaneMask) {
         mask |= (1<<3);
     }
+    if (GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT & lppeControlPlaneMask) {
+        mask |= (1<<4);
+    }
     return mask;
 }
 
@@ -722,6 +724,9 @@ GnssAdapter::convertLppeUp(const GnssConfigLppeUserPlaneMask lppeUserPlaneMask)
     }
     if (GNSS_CONFIG_LPPE_USER_PLANE_SENSOR_BARO_MEASUREMENTS_BIT & lppeUserPlaneMask) {
         mask |= (1<<3);
+    }
+    if (GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT & lppeUserPlaneMask) {
+        mask |= (1<<4);
     }
     return mask;
 }
@@ -801,15 +806,6 @@ GnssAdapter::readConfigCommand()
                 confReadDone = true;
                 // reads config into mContext->mGps_conf
                 mContext.readConfig();
-
-                uint32_t allowFlpNetworkFixes = 0;
-                static const loc_param_s_type flp_conf_param_table[] =
-                {
-                    {"ALLOW_NETWORK_FIXES", &allowFlpNetworkFixes, NULL, 'n'},
-                };
-                UTIL_READ_CONF(LOC_PATH_FLP_CONF, flp_conf_param_table);
-                LOC_LOGd("allowFlpNetworkFixes %u", allowFlpNetworkFixes);
-                mAdapter->setAllowFlpNetworkFixes(allowFlpNetworkFixes);
             }
         }
     };
@@ -3823,7 +3819,7 @@ GnssAdapter::reportEnginePositionsEvent(unsigned int count,
 }
 
 bool
-GnssAdapter::needReportForGnssClient(const UlpLocation& ulpLocation,
+GnssAdapter::needReportForAllClients(const UlpLocation& ulpLocation,
                                      enum loc_sess_status status,
                                      LocPosTechMask techMask) {
     bool reported = false;
@@ -3838,25 +3834,40 @@ GnssAdapter::needReportForGnssClient(const UlpLocation& ulpLocation,
 }
 
 bool
-GnssAdapter::needReportForFlpClient(enum loc_sess_status status,
-                                    LocPosTechMask techMask) {
-    if (((LOC_SESS_INTERMEDIATE == status) && !(techMask & LOC_POS_TECH_MASK_SENSORS) &&
-        (!getAllowFlpNetworkFixes())) ||
-        (LOC_SESS_FAILURE == status)) {
-        return false;
-    } else {
-        return true;
+GnssAdapter::needReportForClient(LocationAPI* client, enum loc_sess_status status)
+{
+    if (LOC_SESS_INTERMEDIATE == status) {
+        for (auto it = mTimeBasedTrackingSessions.begin();
+            it != mTimeBasedTrackingSessions.end(); ++it) {
+            if (it->first.client == client && it->second.allowReportsWithAnyAccuracy) {
+                return true;
+            }
+        }
+        for (auto it = mDistanceBasedTrackingSessions.begin();
+            it != mDistanceBasedTrackingSessions.end(); ++it) {
+            if (it->first.client == client) { // Always report intermediate fixes to dbt clients
+                return true;
+            }
+        }
     }
+    return (LOC_SESS_SUCCESS == status);
 }
 
 bool
-GnssAdapter::isFlpClient(LocationCallbacks& locationCallbacks)
+GnssAdapter::needReportForAnyClient(enum loc_sess_status status)
 {
-    return (locationCallbacks.gnssLocationInfoCb == nullptr &&
-            locationCallbacks.gnssSvCb == nullptr &&
-            locationCallbacks.gnssNmeaCb == nullptr &&
-            locationCallbacks.gnssDataCb == nullptr &&
-            locationCallbacks.gnssMeasurementsCb == nullptr);
+    if (LOC_SESS_INTERMEDIATE == status) {
+        if (mDistanceBasedTrackingSessions.size() > 0) {
+            return true;
+        }
+        for (auto it = mTimeBasedTrackingSessions.begin();
+            it != mTimeBasedTrackingSessions.end(); ++it) {
+            if (it->second.allowReportsWithAnyAccuracy) {
+                return true;
+            }
+        }
+    }
+    return (LOC_SESS_SUCCESS == status);
 }
 
 bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
@@ -3956,21 +3967,20 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
                             enum loc_sess_status status,
                             LocPosTechMask techMask)
 {
-    bool reportToGnssClient = needReportForGnssClient(ulpLocation, status, techMask);
-    bool reportToFlpClient = needReportForFlpClient(status, techMask);
+    bool reportToAllClients = needReportForAllClients(ulpLocation, status, techMask);
+    bool reportToAnyClient = needReportForAnyClient(status);
 
-    if (reportToGnssClient || reportToFlpClient) {
+    if (reportToAllClients || reportToAnyClient) {
         GnssLocationInfoNotification locationInfo = {};
         convertLocationInfo(locationInfo, locationExtended, status);
         convertLocation(locationInfo.location, ulpLocation, locationExtended);
         logLatencyInfo();
         for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if ((reportToFlpClient && isFlpClient(it->second)) ||
-                    (reportToGnssClient && !isFlpClient(it->second))) {
+            if (reportToAllClients || needReportForClient(it->first, status)) {
                 if (nullptr != it->second.gnssLocationInfoCb) {
                     it->second.gnssLocationInfoCb(locationInfo);
                 } else if ((nullptr != it->second.engineLocationsInfoCb) &&
-                           (false == initEngHubProxy())) {
+                        (false == initEngHubProxy())) {
                     // if engine hub is disabled, this is SPE fix from modem
                     // we need to mark one copy marked as fused and one copy marked as PPE
                     // and dispatch it to the engineLocationsInfoCb
@@ -3988,7 +3998,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
 
         mGnssSvIdUsedInPosAvail = false;
         mGnssMbSvIdUsedInPosAvail = false;
-        if (reportToGnssClient) {
+        if (reportToAllClients) {
             if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
                 mGnssSvIdUsedInPosAvail = true;
                 mGnssSvIdUsedInPosition = locationExtended.gnss_sv_used_ids;
@@ -4021,7 +4031,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
         bool blank_fix = ((0 == ulpLocation.gpsLocation.latitude) &&
                           (0 == ulpLocation.gpsLocation.longitude) &&
                           (LOC_RELIABILITY_NOT_SET == locationExtended.horizontal_reliability));
-        uint8_t generate_nmea = (reportToGnssClient && status != LOC_SESS_FAILURE && !blank_fix);
+        uint8_t generate_nmea = (reportToAllClients && status != LOC_SESS_FAILURE && !blank_fix);
         bool custom_nmea_gga = (1 == ContextBase::mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED);
         bool isTagBlockGroupingEnabled =
                 (1 == ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED);
@@ -6735,7 +6745,9 @@ GnssAdapter::reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallbac
         }
         gnssAntennaInformations.push_back(std::move(gnssAntennaInfo));
     }
-    antennaInfoCallback(gnssAntennaInformations);
+    if (antennaInfoVectorSize > 0) {
+        antennaInfoCallback(gnssAntennaInformations);
+    }
 }
 
 /* ==== DGnss Usable Reporter ========================================================= */

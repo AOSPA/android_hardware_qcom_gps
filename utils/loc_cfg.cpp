@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, 2018-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, 2018-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -83,7 +83,7 @@ typedef struct loc_param_v_type
 // same conf path string over and again in location code.
 const char LOC_PATH_GPS_CONF[] = LOC_PATH_GPS_CONF_STR;
 const char LOC_PATH_IZAT_CONF[] = LOC_PATH_IZAT_CONF_STR;
-const char LOC_PATH_FLP_CONF[] = LOC_PATH_FLP_CONF_STR;
+const char LOC_PATH_BATCHING_CONF[] = LOC_PATH_BATCHING_CONF_STR;
 const char LOC_PATH_LOWI_CONF[] = LOC_PATH_LOWI_CONF_STR;
 const char LOC_PATH_SAP_CONF[] = LOC_PATH_SAP_CONF_STR;
 const char LOC_PATH_APDR_CONF[] = LOC_PATH_APDR_CONF_STR;
