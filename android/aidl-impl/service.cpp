@@ -94,6 +94,17 @@ int main() {
         if (NULL != aidlMainMethod) {
             ALOGI("start LocAidl service");
             (*aidlMainMethod)(0, NULL);
+        } else {
+            #ifdef LOC_HIDL_VERSION
+                #define VENDOR_ENHANCED_LIB "vendor.qti.gnss@" LOC_HIDL_VERSION "-service.so"
+            #endif
+            void* libHandle = NULL;
+            vendorEnhancedServiceMain* vendorEnhancedMainMethod = (vendorEnhancedServiceMain*)
+                    dlGetSymFromLib(libHandle, VENDOR_ENHANCED_LIB, "main");
+            if (NULL != vendorEnhancedMainMethod) {
+                (*vendorEnhancedMainMethod)(0, NULL);
+            }
+
         }
         // Loc AIDL service end
         joinRpcThreadpool();

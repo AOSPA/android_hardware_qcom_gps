@@ -39,7 +39,8 @@ PRODUCT_PACKAGES += libloc_core
 PRODUCT_PACKAGES += libgnss
 
 PRODUCT_PACKAGES += android.hardware.gnss@2.1-impl-qti
-PRODUCT_PACKAGES += android.hardware.gnss@2.1-service-qti
+PRODUCT_PACKAGES += android.hardware.gnss-aidl-impl-qti
+PRODUCT_PACKAGES += android.hardware.gnss-aidl-service-qti
 
 endif # ifneq (,$(filter $(LOC_BOARD_PLATFORM_LIST),$(TARGET_BOARD_PLATFORM)))
 endif # ifneq ($(BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE),)
