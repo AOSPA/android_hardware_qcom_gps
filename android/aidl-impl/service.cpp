@@ -99,13 +99,13 @@ int main() {
         } else {
             #ifdef LOC_HIDL_VERSION
                 #define VENDOR_ENHANCED_LIB "vendor.qti.gnss@" LOC_HIDL_VERSION "-service.so"
+                void* libHandle = NULL;
+                vendorEnhancedServiceMain* vendorEnhancedMainMethod = (vendorEnhancedServiceMain*)
+                        dlGetSymFromLib(libHandle, VENDOR_ENHANCED_LIB, "main");
+                if (NULL != vendorEnhancedMainMethod) {
+                    (*vendorEnhancedMainMethod)(0, NULL);
+                }
             #endif
-            void* libHandle = NULL;
-            vendorEnhancedServiceMain* vendorEnhancedMainMethod = (vendorEnhancedServiceMain*)
-                    dlGetSymFromLib(libHandle, VENDOR_ENHANCED_LIB, "main");
-            if (NULL != vendorEnhancedMainMethod) {
-                (*vendorEnhancedMainMethod)(0, NULL);
-            }
 
         }
         // Loc AIDL service end
