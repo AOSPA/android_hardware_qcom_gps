@@ -74,7 +74,9 @@ int main() {
     }
 
     int vendorInfo = getVendorEnhancedInfo();
-    bool vendorEnhanced = ( 1 == vendorInfo || 3 == vendorInfo );
+    // The magic number 2 points to
+    // #define VND_ENHANCED_SYS_STATUS_BIT 0x02 in vndfwk-detect.c
+    bool vendorEnhanced = ( vendorInfo & 2 );
     setVendorEnhanced(vendorEnhanced);
 
 #ifdef ARCH_ARM_32

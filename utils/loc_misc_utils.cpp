@@ -38,6 +38,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <sys/stat.h>
 
 #ifndef MSEC_IN_ONE_SEC
 #define MSEC_IN_ONE_SEC 1000ULL
@@ -348,4 +349,19 @@ void loc_convert_velocity_gnss_to_vrp(float enuVelocity[3], float rollPitchYaw[3
     enuVelocity[0] = enuVelocity[0] - deltaEnuVelocity[0];
     enuVelocity[1] = enuVelocity[1] - deltaEnuVelocity[1];
     enuVelocity[2] = enuVelocity[2] - deltaEnuVelocity[2];
+}
+
+// Wait for the system script(rootdir/etc/init.qcom.rc) to create the folder
+void locUtilWaitForDir(const char* dirName) {
+    struct stat buf_stat;
+    while (1) {
+        LOC_LOGv("waiting for %s...", dirName);
+        int rc = stat(dirName, &buf_stat);
+        if (!rc) {
+            break;
+        }
+        //check every 100ms
+        usleep(100000);
+    }
+    LOC_LOGv("done");
 }

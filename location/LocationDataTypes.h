@@ -308,6 +308,8 @@ typedef enum {
     // This mask indicates QDR3_C license bundle is enabled. This
     // bundle includes features for SV Polynomial.
     LOCATION_CAPABILITIES_QWES_QDR3                         = (1<<26),
+    // This mask indicates DGNSS license bundle is enabled.
+    LOCATION_CAPABILITIES_QWES_DGNSS                        = (1<<27),
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -347,6 +349,8 @@ typedef enum {
     // This indicates VEPP license bundle is enabled. VEPP
     // bundle include Carrier Phase and SV Polynomial features.
     LOCATION_QWES_FEATURE_TYPE_VPE,
+    // This indicates DGNSS license is enabled.
+    LOCATION_QWES_FEATURE_TYPE_DGNSS,
     // Max value
     LOCATION_QWES_FEATURE_TYPE_MAX
 } LocationQwesFeatureTypes;

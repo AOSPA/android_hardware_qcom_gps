@@ -48,6 +48,7 @@
 #include <vector>
 #include <loc_misc_utils.h>
 #include <gps_extended_c.h>
+#include <sys/stat.h>
 
 #define RAD2DEG    (180.0 / M_PI)
 #define DEG2RAD    (M_PI / 180.0)
@@ -171,6 +172,7 @@ GnssAdapter::GnssAdapter() :
 
     readConfigCommand();
     initDefaultAgpsCommand();
+    initCDFWServiceCommand();
     initEngHubProxyCommand();
 
     // at last step, let us inform adapater base that we are done
@@ -2586,8 +2588,7 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSvTypeConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
             mAdapter.gnssSecondaryBandConfigUpdate();
-            // start CDFW service
-            mAdapter.initCDFWService();
+
             // restart sessions
             mAdapter.restartSessions(true);
             for (auto msg: mAdapter.mPendingMsgs) {
@@ -6549,7 +6550,7 @@ void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gn
 /* ======== UTILITIES ================================================================= */
 void
 GnssAdapter::initEngHubProxyCommand() {
-    LOC_LOGD("%s]: ", __func__);
+    LOC_LOGd();
 
     struct MsgInitEngHubProxy : public LocMsg {
         GnssAdapter* mAdapter;
@@ -6572,7 +6573,6 @@ GnssAdapter::initEngHubProxy() {
     const char *error = nullptr;
     unsigned int processListLength = 0;
     loc_process_info_s_type* processInfoList = nullptr;
-
     do {
         // load eng hub only once
         if (firstTime == false) {
@@ -6666,6 +6666,8 @@ GnssAdapter::initEngHubProxy() {
 
         getEngHubProxyFn* getter = (getEngHubProxyFn*) dlsym(handle, "getEngHubProxy");
         if(getter != nullptr) {
+            // Wait for the script(rootdir/etc/init.qcom.rc) to create socket folder
+            locUtilWaitForDir(SOCKET_DIR_EHUB);
             EngineHubProxyBase* hubProxy = (*getter) (mMsgTask, mSystemStatus->getOsObserver(),
                       engServiceInfo, reportPositionEventCb, reqAidingDataCb,
                       updateNHzRequirementCb, updateQwesFeatureStatusCb);
@@ -6841,18 +6843,31 @@ GnssAdapter::reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallbac
 }
 
 /* ==== DGnss Usable Reporter ========================================================= */
+void GnssAdapter::initCDFWServiceCommand() {
+    struct MsgInitCDFWService : public LocMsg {
+        GnssAdapter* mAdapter;
+        inline MsgInitCDFWService(GnssAdapter* adapter) :
+            LocMsg(),
+            mAdapter(adapter) {}
+        inline virtual void proc() const {
+            mAdapter->initCDFWService();
+        }
+    };
+
+    sendMsg(new MsgInitCDFWService(this));
+}
 /* ======== UTILITIES ================================================================= */
 
 void GnssAdapter::initCDFWService()
 {
-    LOC_LOGv("mCdfwInterface %p", mCdfwInterface);
+    LOC_LOGd("mCdfwInterface %p", mCdfwInterface);
     if (nullptr == mCdfwInterface) {
         void* libHandle = nullptr;
         const char* libName = "libcdfw.so";
 
         libHandle = nullptr;
         getCdfwInterface getter  = (getCdfwInterface)dlGetSymFromLib(libHandle,
-                          libName, "getQCdfwInterface");
+                                    libName, "getQCdfwInterface");
         if (nullptr == getter) {
             LOC_LOGe("dlGetSymFromLib getQCdfwInterface failed");
         } else {
@@ -6867,6 +6882,11 @@ void GnssAdapter::initCDFWService()
             mQDgnssListenerHDL = mCdfwInterface->createUsableReporter(qDgnssSessionActiveCb);
         }
     }
+
+    //Read Ntrip params form gps.conf on automobile PLs
+#ifdef USE_GLIB
+    readPPENtripConfig();
+#endif
 }
 
 /*==== DGnss Ntrip Source ==========================================================*/
@@ -7019,4 +7039,64 @@ void GnssAdapter::reportGGAToNtrip(const char* nmea) {
     }
 
     return;
+}
+
+void GnssAdapter::readPPENtripConfig() {
+
+    static char NtripParamsString[LOC_MAX_PARAM_STRING];
+
+    if (mDgnssState & DGNSS_STATE_ENABLE_NTRIP_COMMAND) {
+        return;
+    }
+
+    // A sample Ntrip_Params -> 199.106.116.10 5000 Avante_Ref CV2X 1234 0 0
+    static loc_param_s_type gpsConfParamTable[] = {
+        {"Ntrip_Params", &NtripParamsString, nullptr, 's'}
+    };
+    UTIL_READ_CONF(LOC_PATH_GPS_CONF, gpsConfParamTable);
+    LOC_LOGd("Ntrip_Params=%s", NtripParamsString);
+
+    if (0 == strlen(NtripParamsString)) {
+        return;
+    }
+
+    // assign params to mStartDgnssNtripParams
+    GnssNtripConnectionParams* pNtripParams = &(mStartDgnssNtripParams.ntripParams);
+    string next(NtripParamsString);
+    stringstream ss(next);
+
+#define GET_NEXT() getline(ss, next, ' '); \
+        LOC_LOGd("%s", next.c_str());
+
+    GET_NEXT();
+    pNtripParams->hostNameOrIp = std::move(next);
+    GET_NEXT();
+    pNtripParams->port = std::stoi(next);
+    GET_NEXT();
+    pNtripParams->mountPoint = std::move(next);
+    GET_NEXT();
+    pNtripParams->username = std::move(next);
+    GET_NEXT();
+    pNtripParams->password = std::move(next);
+    GET_NEXT();
+    mSendNmeaConsent = true;
+    GET_NEXT();
+    pNtripParams->requiresNmeaLocation = next.compare("0") ? true : false;
+    GET_NEXT();
+    pNtripParams->useSSL = next.compare("0") ? true : false;
+
+    LOC_LOGd("%d %s %d %s %s %s %d",
+             pNtripParams->useSSL, pNtripParams->hostNameOrIp.data(), pNtripParams->port,
+             pNtripParams->mountPoint.data(), pNtripParams->username.data(),
+             pNtripParams->password.data(), pNtripParams->requiresNmeaLocation);
+
+    /* set up state*/
+    mDgnssState |= DGNSS_STATE_ENABLE_NTRIP_COMMAND;
+    mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
+    mDgnssState &= ~DGNSS_STATE_NTRIP_SESSION_STARTED;
+
+    mStartDgnssNtripParams.nmea.clear();
+    if (pNtripParams->requiresNmeaLocation) {
+        mDgnssState &= ~DGNSS_STATE_NO_NMEA_PENDING;
+    }
 }

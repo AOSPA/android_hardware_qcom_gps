@@ -92,6 +92,7 @@ const char LOC_PATH_QUIPC_CONF[] = LOC_PATH_QUIPC_CONF_STR;
 const char LOC_PATH_ANT_CORR[] = LOC_PATH_ANT_CORR_STR;
 const char LOC_PATH_SLIM_CONF[] = LOC_PATH_SLIM_CONF_STR;
 const char LOC_PATH_VPE_CONF[] = LOC_PATH_VPE_CONF_STR;
+const char LOC_PATH_QPPE_CONF[] = LOC_PATH_QPPE_CONF_STR;
 
 bool isVendorEnhanced() {
     return sVendorEnhanced;
