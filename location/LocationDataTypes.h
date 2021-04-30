@@ -2165,4 +2165,26 @@ typedef struct {
     uint64_t hlosQtimer5;
 } GnssLatencyInfo;
 
+typedef struct {
+    uint32_t size;
+    std::string adminArea;
+    std::string countryCode;
+    std::string countryName;
+    std::string featureName;
+    bool hasLatitude;
+    double latitude;
+    bool hasLongitude;
+    double longitude;
+    std::string locale;
+    std::string locality;
+    std::string phone;
+    std::string postalCode;
+    std::string premises;
+    std::string subAdminArea;
+    std::string subLocality;
+    std::string thoroughfare;
+    std::string subThoroughfare;
+    std::string url;
+} GnssCivicAddress;
+
 #endif /* LOCATIONDATATYPES_H */

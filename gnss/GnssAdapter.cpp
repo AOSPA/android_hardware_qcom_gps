@@ -120,7 +120,7 @@ GnssAdapter::GnssAdapter() :
     mDGnssNeedReport(false),
     mDGnssDataUsage(false),
     mOdcpiRequestCb(nullptr),
-    mOdcpiRequestActive(false),
+    mOdcpiStateMask(0),
     mCallbackPriority(OdcpiPrioritytype::ODCPI_HANDLER_PRIORITY_LOW),
     mOdcpiTimer(this),
     mOdcpiRequest(),
@@ -142,7 +142,8 @@ GnssAdapter::GnssAdapter() :
     mPowerIndicationCb(nullptr),
     mGnssPowerStatisticsInit(false),
     mBootReferenceEnergy(0),
-    mPowerElapsedRealTimeCal(30000000)
+    mPowerElapsedRealTimeCal(30000000),
+    mAddressRequestCb(nullptr)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -2270,6 +2271,7 @@ GnssAdapter::injectLocationCommand(double latitude, double longitude, float accu
              __func__, latitude, longitude, accuracy);
 
     struct MsgInjectLocation : public LocMsg {
+        GnssAdapter& mAdapter;
         LocApiBase& mApi;
         ContextBase& mContext;
         BlockCPIInfo& mBlockCPI;
@@ -2277,7 +2279,8 @@ GnssAdapter::injectLocationCommand(double latitude, double longitude, float accu
         double mLongitude;
         float mAccuracy;
         bool mOnDemandCpi;
-        inline MsgInjectLocation(LocApiBase& api,
+        inline MsgInjectLocation(GnssAdapter& adapter,
+                                 LocApiBase& api,
                                  ContextBase& context,
                                  BlockCPIInfo& blockCPIInfo,
                                  double latitude,
@@ -2285,6 +2288,7 @@ GnssAdapter::injectLocationCommand(double latitude, double longitude, float accu
                                  float accuracy,
                                  bool onDemandCpi) :
             LocMsg(),
+            mAdapter(adapter),
             mApi(api),
             mContext(context),
             mBlockCPI(blockCPIInfo),
@@ -2301,13 +2305,25 @@ GnssAdapter::injectLocationCommand(double latitude, double longitude, float accu
                          __func__, mLatitude, mLongitude, mAccuracy);
 
             } else {
+                if ((mAdapter.mOdcpiStateMask & CIVIC_ADDRESS_REQ_ACTIVE) &&
+                        mAdapter.mAddressRequestCb != nullptr) {
+                    Location location = {};
+                    location.flags |= LOCATION_HAS_LAT_LONG_BIT;
+                    location.latitude = mLatitude;
+                    location.longitude = mLongitude;
+                    location.flags |= LOCATION_HAS_ACCURACY_BIT;
+                    location.accuracy = mAccuracy;
+                    mAdapter.mAddressRequestCb(location);
+                }
+
                 mApi.injectPosition(mLatitude, mLongitude, mAccuracy, mOnDemandCpi);
             }
         }
     };
 
-    sendMsg(new MsgInjectLocation(*mLocApi, *mContext, mBlockCPIInfo,
-                                  latitude, longitude, accuracy, mOdcpiRequestActive));
+    sendMsg(new MsgInjectLocation(*this, *mLocApi, *mContext, mBlockCPIInfo,
+                                  latitude, longitude, accuracy,
+                                  mOdcpiStateMask & ODCPI_REQ_ACTIVE));
 }
 
 void
@@ -2610,7 +2626,7 @@ GnssAdapter::restartSessions(bool modemSSR)
 
     if (modemSSR) {
         // odcpi session is no longer active after restart
-        mOdcpiRequestActive = false;
+        mOdcpiStateMask = 0;
     }
 
     // SPE will be restarted now, so set this variable to false.
@@ -4839,14 +4855,14 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         LOC_LOGd("request: type %d, tbf %d, isEmergency %d"
                  " requestActive: %d timerActive: %d",
                  request.type, request.tbfMillis, request.isEmergencyMode,
-                 mOdcpiRequestActive, mOdcpiTimer.isActive());
+                 mOdcpiStateMask, mOdcpiTimer.isActive());
         // ODCPI START and ODCPI STOP from modem can come in quick succession
         // so the mOdcpiTimer helps avoid spamming the framework as well as
         // extending the odcpi session past 30 seconds if needed
         if (ODCPI_REQUEST_TYPE_START == request.type) {
-            if (false == mOdcpiRequestActive && false == mOdcpiTimer.isActive()) {
+            if (!(mOdcpiStateMask & ODCPI_REQ_ACTIVE)  && false == mOdcpiTimer.isActive()) {
                 mOdcpiRequestCb(request);
-                mOdcpiRequestActive = true;
+                mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
                 mOdcpiTimer.start();
             // if the current active odcpi session is non-emergency, and the new
             // odcpi request is emergency, replace the odcpi request with new request
@@ -4854,7 +4870,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             } else if (false == mOdcpiRequest.isEmergencyMode &&
                        true == request.isEmergencyMode) {
                 mOdcpiRequestCb(request);
-                mOdcpiRequestActive = true;
+                mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
                 if (true == mOdcpiTimer.isActive()) {
                     mOdcpiTimer.restart();
                 } else {
@@ -4863,17 +4879,22 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             // if ODCPI request is not active but the timer is active, then
             // just update the active state and wait for timer to expire
             // before requesting new ODCPI to avoid spamming ODCPI requests
-            } else if (false == mOdcpiRequestActive && true == mOdcpiTimer.isActive()) {
-                mOdcpiRequestActive = true;
+            } else if (!(mOdcpiStateMask & ODCPI_REQ_ACTIVE) && true == mOdcpiTimer.isActive()) {
+                mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
             }
             mOdcpiRequest = request;
+
+            //Check if Modem needs civic address
+            if (mAddressRequestCb != nullptr && request.isCivicAddressRequired) {
+                mOdcpiStateMask |= CIVIC_ADDRESS_REQ_ACTIVE;
+            }
         // the request is being stopped, but allow timer to expire first
         // before stopping the timer just in case more ODCPI requests come
         // to avoid spamming more odcpi requests to the framework
         } else if (ODCPI_REQUEST_TYPE_STOP == request.type) {
             LOC_LOGd("request: type %d, isEmergency %d", request.type, request.isEmergencyMode);
             mOdcpiRequestCb(request);
-            mOdcpiRequestActive = false;
+            mOdcpiStateMask = 0;
         } else {
             LOC_LOGE("Invalid ODCPI request type..");
         }
@@ -4984,10 +5005,66 @@ void GnssAdapter::injectOdcpi(const Location& location)
 {
     LOC_LOGd("ODCPI Injection: requestActive: %d timerActive: %d"
              "lat %.7f long %.7f",
-            mOdcpiRequestActive, mOdcpiTimer.isActive(),
+            mOdcpiStateMask, mOdcpiTimer.isActive(),
             location.latitude, location.longitude);
 
+    if ((mOdcpiStateMask & CIVIC_ADDRESS_REQ_ACTIVE) && mAddressRequestCb != nullptr) {
+        mAddressRequestCb(location);
+    }
+
     mLocApi->injectPosition(location, true);
+}
+
+void GnssAdapter::setAddressRequestCbCommand(
+        const std::function<void(const Location&)>& addressRequestCb)
+{
+    struct MsgSetAddrReqCb : public LocMsg {
+        GnssAdapter& mAdapter;
+        std::function<void(const Location&)> mAddrReqCb;
+        inline MsgSetAddrReqCb(GnssAdapter& adapter,
+                const std::function<void(const Location&)>& addressRequestCb) :
+            LocMsg(),
+            mAdapter(adapter),
+            mAddrReqCb(addressRequestCb){}
+        inline virtual void proc() const {
+            mAdapter.setAddressRequestCb(mAddrReqCb);
+        }
+    };
+    sendMsg(new MsgSetAddrReqCb(*this, addressRequestCb));
+}
+
+void GnssAdapter::injectLocationAndAddrCommand(
+        const Location& location, const GnssCivicAddress& addr)
+{
+    struct MsgInjectLocAndAddr : public LocMsg {
+        GnssAdapter& mAdapter;
+        Location mLocation;
+        GnssCivicAddress mAddress;
+        inline MsgInjectLocAndAddr(GnssAdapter& adapter,
+                const Location& location, const GnssCivicAddress& addr) :
+            LocMsg(), mAdapter(adapter), mLocation(location), mAddress(addr) {}
+        inline virtual void proc() const {
+            LOC_LOGd("[%s] Location: %x, %" PRIu64 ", %f, %f, %f \n"
+                    "Address: adminArea: %s, countryCode: %s, countryName: %s,\n"
+                    "featureName: %s, latitude: %f, longitude: %f\n"
+                    "locale: %s, locality: %s, phone: %s, postalCode: %s\n"
+                    "premises: %s, subAdminArea: %s, subLocality: %s"
+                    "thoroughfare: %s, subThoroughfare: %s, url: %s", __func__,
+                    mLocation.flags, mLocation.timestamp,
+                    mLocation.latitude, mLocation.longitude,
+                    mLocation.accuracy, mAddress.adminArea.c_str(),
+                    mAddress.countryCode.c_str(), mAddress.countryName.c_str(),
+                    mAddress.featureName.c_str(), mAddress.latitude, mAddress.longitude,
+                    mAddress.locale.c_str(), mAddress.locality.c_str(),
+                    mAddress.phone.c_str(), mAddress.postalCode.c_str(),
+                    mAddress.premises.c_str(), mAddress.subAdminArea.c_str(),
+                    mAddress.subLocality.c_str(), mAddress.thoroughfare.c_str(),
+                    mAddress.subThoroughfare.c_str(), mAddress.url.c_str());
+
+            mAdapter.injectLocationAndAddr(mLocation, mAddress);
+        }
+    };
+    sendMsg(new MsgInjectLocAndAddr(*this, location, addr));
 }
 
 // Called in the context of LocTimer thread
@@ -5015,11 +5092,11 @@ void GnssAdapter::odcpiTimerExpireEvent()
 void GnssAdapter::odcpiTimerExpire()
 {
     LOC_LOGd("requestActive: %d timerActive: %d",
-            mOdcpiRequestActive, mOdcpiTimer.isActive());
+            mOdcpiStateMask, mOdcpiTimer.isActive());
 
     // if ODCPI request is still active after timer
     // expires, request again and restart timer
-    if (mOdcpiRequestActive) {
+    if (mOdcpiStateMask & ODCPI_REQ_ACTIVE) {
         mOdcpiRequestCb(mOdcpiRequest);
         mOdcpiTimer.restart();
     } else {

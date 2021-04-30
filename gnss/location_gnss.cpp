@@ -109,6 +109,8 @@ static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRun
 static uint32_t configOutputNmeaTypes(GnssNmeaTypesMask enabledNmeaTypes);
 static void powerIndicationInit(const powerIndicationCb powerIndicationCallback);
 static void powerIndicationRequest();
+static void setAddressRequestCb(const std::function<void(const Location&)> addressRequestCb);
+static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -170,7 +172,9 @@ static const GnssInterface gGnssInterface = {
     configEngineRunState,
     configOutputNmeaTypes,
     powerIndicationInit,
-    powerIndicationRequest
+    powerIndicationRequest,
+    setAddressRequestCb,
+    injectLocationAndAddr
 };
 
 #ifndef DEBUG_X86
@@ -629,5 +633,17 @@ static void powerIndicationInit(const powerIndicationCb powerIndicationCallback)
 static void powerIndicationRequest() {
     if (NULL != gGnssAdapter) {
         gGnssAdapter->powerIndicationRequestCommand();
+    }
+}
+
+static void setAddressRequestCb(const std::function<void(const Location&)> addressRequestCb) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->setAddressRequestCbCommand(addressRequestCb);
+    }
+}
+
+static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->injectLocationAndAddrCommand(location, addr);
     }
 }

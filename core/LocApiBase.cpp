@@ -647,6 +647,10 @@ void LocApiBase::
 DEFAULT_IMPL()
 
 void LocApiBase::
+    injectPositionAndCivicAddress(const Location& location, const GnssCivicAddress& addr)
+DEFAULT_IMPL()
+
+void LocApiBase::
     setTime(LocGpsUtcTime /*time*/, int64_t /*timeReference*/, int /*uncertainty*/)
 DEFAULT_IMPL()
 

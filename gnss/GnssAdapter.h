@@ -261,12 +261,19 @@ class GnssAdapter : public LocAdapterBase {
 
     /* ==== ODCPI ========================================================================== */
     OdcpiRequestCallback mOdcpiRequestCb;
-    bool mOdcpiRequestActive;
+    typedef uint8_t OdcpiStateMask;
+    OdcpiStateMask mOdcpiStateMask;
+    typedef enum {
+        ODCPI_REQ_ACTIVE = (1<<0),
+        CIVIC_ADDRESS_REQ_ACTIVE = (1<<1)
+    } OdcpiStateBits;
+
     OdcpiPrioritytype mCallbackPriority;
     OdcpiTimer mOdcpiTimer;
     OdcpiRequestInfo mOdcpiRequest;
     void odcpiTimerExpire();
 
+    std::function<void(const Location&)> mAddressRequestCb;
     /* ==== DELETEAIDINGDATA =============================================================== */
     int64_t mLastDeleteAidingDataTime;
 
@@ -306,6 +313,11 @@ class GnssAdapter : public LocAdapterBase {
     /* ======== UTILITIES ================================================================== */
     inline void initOdcpi(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
     inline void injectOdcpi(const Location& location);
+    inline void setAddressRequestCb(const std::function<void(const Location&)>& addressRequestCb)
+    { mAddressRequestCb = addressRequestCb;}
+    inline void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr)
+    { mLocApi->injectPositionAndCivicAddress(location, addr);}
+    static bool isFlpClient(LocationCallbacks& locationCallbacks);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
@@ -476,6 +488,8 @@ public:
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
     void initOdcpiCommand(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
     void injectOdcpiCommand(const Location& location);
+    void setAddressRequestCbCommand(const std::function<void(const Location&)>& addressRequestCb);
+    void injectLocationAndAddrCommand(const Location& location, const GnssCivicAddress& addr);
     /* ======== RESPONSES ================================================================== */
     void reportResponse(LocationError err, uint32_t sessionId);
     void reportResponse(size_t count, LocationError* errs, uint32_t* ids);
