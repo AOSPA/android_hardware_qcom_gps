@@ -77,6 +77,23 @@ static void agpsCloseResultCb (bool isSuccess, AGpsExtType agpsType, void* userD
 
 typedef const CdfwInterface* (*getCdfwInterface)();
 
+GnssReportLoggerUtil::GnssReportLoggerUtil() : mLogLatency(nullptr) {
+    int loadDiagIfaceLib = 1;
+    const loc_param_s_type gps_conf_params[] = {
+        {"LOC_DIAGIFACE_ENABLED", &loadDiagIfaceLib, nullptr, 'n'}
+    };
+    UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
+    LOC_LOGi("Loc_DiagIface_enabled: %d", loadDiagIfaceLib);
+    if (0 != loadDiagIfaceLib) {
+        const char* libname = "liblocdiagiface.so";
+        void* libHandle = nullptr;
+        mLogLatency = (LogGnssLatency)dlGetSymFromLib(libHandle, libname, "LogGnssLatency");
+        if (nullptr == mLogLatency) {
+            LOC_LOGw("DiagIface mLogLatency is null");
+        }
+    }
+}
+
 inline bool GnssReportLoggerUtil::isLogEnabled() {
     return (mLogLatency != nullptr);
 }

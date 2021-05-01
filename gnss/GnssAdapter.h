@@ -184,12 +184,7 @@ class GnssReportLoggerUtil {
 public:
     typedef void (*LogGnssLatency)(const GnssLatencyInfo& gnssLatencyMeasInfo);
 
-    GnssReportLoggerUtil() : mLogLatency(nullptr) {
-        const char* libname = "liblocdiagiface.so";
-        void* libHandle = nullptr;
-        mLogLatency = (LogGnssLatency)dlGetSymFromLib(libHandle, libname, "LogGnssLatency");
-    }
-
+    GnssReportLoggerUtil();
     bool isLogEnabled();
     void log(const GnssLatencyInfo& gnssLatencyMeasInfo);
 
