@@ -1586,6 +1586,7 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
             break;
     }
     pthread_mutex_unlock(&mMutexSystemStatus);
+    LOC_LOGv("DataItemId: %d, whether to record dateitem in cache: %d", dataitem->getId(), ret);
     return ret;
 }
 

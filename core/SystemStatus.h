@@ -480,9 +480,12 @@ public:
         for (uint8_t i = 0; rtv && i < MAX_NETWORK_HANDLES; ++i) {
             rtv &= (mDataItem.mAllNetworkHandles[i] == peerDI.mAllNetworkHandles[i]);
         }
-        return peerDI.mApn.compare(mDataItem.mApn);
+        return rtv & peerDI.mApn.compare(mDataItem.mApn);
     }
     inline virtual SystemStatusItemBase& collate(SystemStatusItemBase& curInfo) {
+        LOC_LOGv("NetworkInfo: mAllTypes=%" PRIx64 " connected=%u mType=%x mApn=%s",
+                 mDataItem.mAllTypes, mDataItem.mConnected, mDataItem.mType,
+                 mDataItem.mApn.c_str());
         uint64_t allTypes = (static_cast<SystemStatusNetworkInfo&>(curInfo)).mDataItem.mAllTypes;
         string& apn = (static_cast<SystemStatusNetworkInfo&>(curInfo)).mDataItem.mApn;
         // Replace current with cached table for now and then update
