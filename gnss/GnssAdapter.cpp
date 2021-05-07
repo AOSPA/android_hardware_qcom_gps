@@ -153,8 +153,8 @@ GnssAdapter::GnssAdapter() :
 
     readConfigCommand();
     initDefaultAgpsCommand();
+    initCDFWServiceCommand();
     initEngHubProxyCommand();
-    initDGnssUsableReporter();
 
     // at last step, let us inform adapater base that we are done
     // with initialization, e.g.: ready to process handleEngineUpEvent
@@ -6228,25 +6228,42 @@ GnssAdapter::initEngHubProxy() {
     return engHubLoadSuccessful;
 }
 
-/* ==== DGnss Usable Reporter ========================================================= */
+/* ==== DGnss service & the usable reporter =========================================== */
+void GnssAdapter::initCDFWServiceCommand() {
+    struct MsgInitCDFWService : public LocMsg {
+        GnssAdapter* mAdapter;
+        inline MsgInitCDFWService(GnssAdapter* adapter) :
+            LocMsg(),
+            mAdapter(adapter) {}
+        inline virtual void proc() const {
+            mAdapter->initCDFWService();
+        }
+    };
+
+    sendMsg(new MsgInitCDFWService(this));
+}
 /* ======== UTILITIES ================================================================= */
 
-void GnssAdapter::initDGnssUsableReporter()
+void GnssAdapter::initCDFWService()
 {
+    LOC_LOGd("mCdfwInterface %p", mCdfwInterface);
     if (nullptr == mCdfwInterface) {
         void* libHandle = nullptr;
+        const char* libName = "libcdfw.so";
+
         getCdfwInterface getter  = (getCdfwInterface)dlGetSymFromLib(libHandle,
-                          "libcdfw.so", "getQCdfwInterface");
+                                    libName, "getQCdfwInterface");
         if (nullptr == getter) {
             LOC_LOGe("dlGetSymFromLib getQCdfwInterface failed");
         } else {
             mCdfwInterface = getter();
         }
-    }
-    if (nullptr != mCdfwInterface) {
-        QDgnssSessionActiveCb qDgnssSessionActiveCb = [this] (bool sessionActive) {
-            mDGnssNeedReport = sessionActive;
-        };
-        mQDgnssListenerHDL = mCdfwInterface->createUsableReporter(qDgnssSessionActiveCb);
+        if (nullptr != mCdfwInterface) {
+            QDgnssSessionActiveCb qDgnssSessionActiveCb = [this] (bool sessionActive) {
+                mDGnssNeedReport = sessionActive;
+            };
+            mCdfwInterface->startDgnssApiService(*mMsgTask);
+            mQDgnssListenerHDL = mCdfwInterface->createUsableReporter(qDgnssSessionActiveCb);
+        }
     }
 }
