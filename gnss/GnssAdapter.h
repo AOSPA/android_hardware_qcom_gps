@@ -558,11 +558,19 @@ public:
             mNfwCb(notification);
         }
     }
-    inline bool getE911State(void) {
+    void updatePowerState(PowerStateType powerState);
+    inline bool getE911State(GnssNiType niType) {
         if (NULL != mIsE911Session) {
             return mIsE911Session();
+        } else {
+            /* On LE targets(mIsE911Session is NULL) with old modem
+            and when (!LOC_SUPPORTED_FEATURE_LOCATION_PRIVACY) there is no way of
+            knowing for GNSS_NI_TYPE_EMERGENCY_SUPL we are "in emergency",
+            so we treat all emergency SUPL sessions as being "in emergency" so
+            the session will be auto-accepted */
+            return (!ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_LOCATION_PRIVACY) &&
+                    GNSS_NI_TYPE_EMERGENCY_SUPL == niType);
         }
-        return false;
     }
 
     void updateSystemPowerState(PowerStateType systemPowerState);

@@ -93,19 +93,20 @@ static bool needsGnssTrackingInfo(LocationCallbacks& locationCallbacks)
             locationCallbacks.gnssSvCb != nullptr ||
             locationCallbacks.gnssNmeaCb != nullptr ||
             locationCallbacks.gnssDataCb != nullptr ||
-            locationCallbacks.gnssMeasurementsCb != nullptr);
+            locationCallbacks.gnssMeasurementsCb != nullptr ||
+            locationCallbacks.gnssNHzMeasurementsCb != nullptr);
 }
 
 static bool isGnssClient(LocationCallbacks& locationCallbacks)
 {
     return (locationCallbacks.gnssNiCb != nullptr ||
-            locationCallbacks.trackingCb != nullptr ||
             locationCallbacks.gnssLocationInfoCb != nullptr ||
             locationCallbacks.engineLocationsInfoCb != nullptr ||
             locationCallbacks.gnssSvCb != nullptr ||
             locationCallbacks.gnssNmeaCb != nullptr ||
             locationCallbacks.gnssDataCb != nullptr ||
             locationCallbacks.gnssMeasurementsCb != nullptr ||
+            locationCallbacks.gnssNHzMeasurementsCb != nullptr ||
             locationCallbacks.locationSystemInfoCb != nullptr);
 }
 
