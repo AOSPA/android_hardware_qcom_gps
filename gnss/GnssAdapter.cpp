@@ -795,6 +795,49 @@ GnssAdapter::convertSuplMode(const GnssConfigSuplModeMask suplModeMask)
     return mask;
 }
 
+void GnssAdapter::readNfwLockConfig()
+{
+    char nfwCpPackageName[LOC_MAX_PARAM_STRING];
+    char nfwSuplPackageName[LOC_MAX_PARAM_STRING];
+    char nfwImsPackageName[LOC_MAX_PARAM_STRING];
+    char nfwSimPackageName[LOC_MAX_PARAM_STRING];
+    char nfwMdtPackageName[LOC_MAX_PARAM_STRING];
+    char nfwTlocPackageName[LOC_MAX_PARAM_STRING];
+    char nfwRlocPackageName[LOC_MAX_PARAM_STRING];
+    char nfwV2xPackageName[LOC_MAX_PARAM_STRING];
+    char nfwR1PackageName[LOC_MAX_PARAM_STRING];
+    char nfwR2PackageName[LOC_MAX_PARAM_STRING];
+    char nfwR3PackageName[LOC_MAX_PARAM_STRING];
+
+    const loc_param_s_type nfw_packages_table[] =
+    {
+        { "NFW_CLIENT_CP",      &nfwCpPackageName,      NULL, 's' },
+        { "NFW_CLIENT_SUPL",    &nfwSuplPackageName,    NULL, 's' },
+        { "NFW_CLIENT_IMS",     &nfwImsPackageName,     NULL, 's' },
+        { "NFW_CLIENT_SIM",     &nfwSimPackageName,     NULL, 's' },
+        { "NFW_CLIENT_MDT",     &nfwMdtPackageName,     NULL, 's' },
+        { "NFW_CLIENT_TLOC",    &nfwTlocPackageName,    NULL, 's' },
+        { "NFW_CLIENT_RLOC",    &nfwRlocPackageName,    NULL, 's' },
+        { "NFW_CLIENT_V2X",     &nfwV2xPackageName,     NULL, 's' },
+        { "NFW_CLIENT_R1",      &nfwR1PackageName,      NULL, 's' },
+        { "NFW_CLIENT_R2",      &nfwR2PackageName,      NULL, 's' },
+        { "NFW_CLIENT_R3",      &nfwR3PackageName,      NULL, 's' },
+    };
+    UTIL_READ_CONF(LOC_PATH_GPS_CONF_STR, nfw_packages_table);
+
+    mNfws[nfwImsPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_IMS;
+    mNfws[nfwSimPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_SIM;
+    mNfws[nfwMdtPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_MDT;
+    mNfws[nfwTlocPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_TLOC;
+    mNfws[nfwRlocPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_RLOC;
+    mNfws[nfwV2xPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_V2X;
+    mNfws[nfwR1PackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_R1;
+    mNfws[nfwR2PackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_R2;
+    mNfws[nfwR3PackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_R3;
+    mNfws[nfwSuplPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_SUPL;
+    mNfws[nfwCpPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_CP;
+}
+
 void
 GnssAdapter::readConfigCommand()
 {
@@ -814,6 +857,7 @@ GnssAdapter::readConfigCommand()
                 confReadDone = true;
                 // reads config into mContext->mGps_conf
                 mContext.readConfig();
+                mAdapter->readNfwLockConfig();
             }
         }
     };
@@ -3609,7 +3653,7 @@ GnssAdapter::enableCommand(LocationTechnologyType techType)
 
                 GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_NONE;
                 if (mAdapter.mSupportNfwControl) {
-                    ContextBase::mGps_conf.GPS_LOCK &= GNSS_CONFIG_GPS_LOCK_NI;
+                    ContextBase::mGps_conf.GPS_LOCK &= GNSS_CONFIG_GPS_LOCK_NFW_ALL;
                     gpsLock = ContextBase::mGps_conf.GPS_LOCK;
                 }
                 mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
@@ -4524,7 +4568,7 @@ GnssAdapter::requestNiNotifyEvent(const GnssNiNotification &notify, const void* 
                 (GNSS_NI_TYPE_SUPL == mNotify.type || GNSS_NI_TYPE_EMERGENCY_SUPL == mNotify.type)
                 && !bIsInEmergency &&
                 !(GNSS_NI_OPTIONS_PRIVACY_OVERRIDE_BIT & mNotify.options) &&
-                (GNSS_CONFIG_GPS_LOCK_NI & ContextBase::mGps_conf.GPS_LOCK) &&
+                (GNSS_CONFIG_GPS_LOCK_NFW_SUPL & ContextBase::mGps_conf.GPS_LOCK) &&
                 1 == ContextBase::mGps_conf.NI_SUPL_DENY_ON_NFW_LOCKED) {
                 /* If all these conditions are TRUE, then deny the NI Request:
                 -'Q' Lock behavior OR 'P' Lock behavior and GNSS is Locked
@@ -5895,36 +5939,58 @@ GnssAdapter::getGnssEnergyConsumedCommand(GnssEnergyConsumedCallback energyConsu
     sendMsg(new MsgGetGnssEnergyConsumed(*this, *mLocApi, energyConsumedCb));
 }
 
+uint32_t GnssAdapter::getNfwControlBits(const std::vector<std::string>& enabledNfws) {
+    uint32_t nfwControlBits = 0;
+
+    for (auto& pkgName : enabledNfws) {
+        auto nfw = mNfws.find(pkgName);
+        if (mNfws.end() != nfw) {
+            nfwControlBits |= nfw->second;
+        }
+    }
+
+    nfwControlBits = ~nfwControlBits;
+    LOC_LOGd("nfwControlBits=0x%X", nfwControlBits);
+    return nfwControlBits;
+}
+
 void
-GnssAdapter::nfwControlCommand(bool enable) {
+GnssAdapter::nfwControlCommand(std::vector<std::string>& enabledNfws) {
     struct MsgControlNfwLocationAccess : public LocMsg {
         GnssAdapter& mAdapter;
         LocApiBase& mApi;
-        bool mEnable;
+        const std::vector<std::string> mEnabledNfws;
         inline MsgControlNfwLocationAccess(GnssAdapter& adapter, LocApiBase& api,
-            bool enable) :
+            const std::vector<std::string>& enabledNfws) :
             LocMsg(),
             mAdapter(adapter),
             mApi(api),
-            mEnable(enable) {}
+            mEnabledNfws(std::move(enabledNfws)) {}
         inline virtual void proc() const {
+            if (!mAdapter.isEngineCapabilitiesKnown()) {
+                mAdapter.mPendingMsgs.push_back(
+                        new MsgControlNfwLocationAccess(mAdapter, mApi, mEnabledNfws));
+                return;
+            }
+
             GnssConfigGpsLock gpsLock;
 
+            uint32_t nfwControlBits;
+            nfwControlBits = mAdapter.getNfwControlBits(mEnabledNfws);
             gpsLock = ContextBase::mGps_conf.GPS_LOCK;
-            if (mEnable) {
-                gpsLock &= ~GNSS_CONFIG_GPS_LOCK_NI;
-            } else {
-                gpsLock |= GNSS_CONFIG_GPS_LOCK_NI;
-            }
+            gpsLock &= GNSS_CONFIG_GPS_LOCK_MO;
+            gpsLock |= nfwControlBits;
             ContextBase::mGps_conf.GPS_LOCK = gpsLock;
+
+            LOC_LOGv("gpsLock = 0x%X nfwControlBits = 0x%X", gpsLock, nfwControlBits);
             mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
-                mApi.setGpsLockSync((GnssConfigGpsLock)gpsLock);
+                         mApi.setGpsLockSync((GnssConfigGpsLock)gpsLock);
             }));
         }
     };
 
     if (mSupportNfwControl) {
-        sendMsg(new MsgControlNfwLocationAccess(*this, *mLocApi, enable));
+        sendMsg(new MsgControlNfwLocationAccess(*this, *mLocApi, enabledNfws));
     } else {
         LOC_LOGw("NFW control is not supported, do not use this for NFW");
     }

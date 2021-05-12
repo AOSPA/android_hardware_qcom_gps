@@ -112,23 +112,43 @@ enum loc_registration_mask_status {
     LOC_REGISTRATION_MASK_SET
 };
 
+/* The entries in the following enum should mimic the entries in qmiLocSupportedFeatureEnumT_v02
+   in location_service_v02.h */
 typedef enum {
-    LOC_SUPPORTED_FEATURE_ODCPI_2_V02 = 0, /**<  Support ODCPI version 2 feature  */
-    LOC_SUPPORTED_FEATURE_WIFI_AP_DATA_INJECT_2_V02, /**<  Support Wifi AP data inject version 2 feature  */
-    LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02, /**< Support debug NMEA feature */
-    LOC_SUPPORTED_FEATURE_GNSS_ONLY_POSITION_REPORT, /**< Support GNSS Only position reports */
-    LOC_SUPPORTED_FEATURE_FDCL, /**< Support FDCL */
-    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02, /**< Support constellation enablement */
-    LOC_SUPPORTED_FEATURE_AGPM_V02, /**< Support AGPM feature */
-    LOC_SUPPORTED_FEATURE_XTRA_INTEGRITY, /**< Support XTRA integrity */
-    LOC_SUPPORTED_FEATURE_FDCL_2, /**< Support FDCL V2 */
-    LOC_SUPPORTED_FEATURE_LOCATION_PRIVACY, /**< Support location privacy */
-    LOC_SUPPORTED_FEATURE_NAVIC, /**< Support NAVIC constellation */
-    LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION, /**< Support measurements correction */
-    LOC_SUPPORTED_FEATURE_ROBUST_LOCATION, /**<  Support Robust Location feature */
-    LOC_SUPPORTED_FEATURE_EDGNSS, /**< Support precise location dgnss */
-    LOC_SUPPORTED_FEATURE_MULTIBAND_CONFIG, /**<  Support the multiband GNSS config. feature  */
-    LOC_SUPPORTED_FEATURE_QMI_AGNSS_CONFIG_DISABLED, /**<  Support the AGNSS config. for DSDA  */
+    /**<  Support ODCPI version 2 feature  */
+    LOC_SUPPORTED_FEATURE_ODCPI_2_V02 = 0,
+    /**<  Support Wifi AP data inject version 2 feature  */
+    LOC_SUPPORTED_FEATURE_WIFI_AP_DATA_INJECT_2_V02,
+    /**< Support debug NMEA feature */
+    LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02,
+    /**< Support GNSS Only position reports */
+    LOC_SUPPORTED_FEATURE_GNSS_ONLY_POSITION_REPORT,
+    /**< Support FDCL */
+    LOC_SUPPORTED_FEATURE_FDCL,
+    /**< Support constellation enablement */
+    LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02,
+    /**< Support AGPM feature */
+    LOC_SUPPORTED_FEATURE_AGPM_V02,
+    /**< Support XTRA integrity */
+    LOC_SUPPORTED_FEATURE_XTRA_INTEGRITY,
+    /**< Support FDCL V2 */
+    LOC_SUPPORTED_FEATURE_FDCL_2,
+    /**< Support location privacy */
+    LOC_SUPPORTED_FEATURE_LOCATION_PRIVACY,
+    /**< Support NAVIC constellation */
+    LOC_SUPPORTED_FEATURE_NAVIC,
+    /**< Support measurements correction */
+    LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION,
+    /**<  Support Robust Location feature */
+    LOC_SUPPORTED_FEATURE_ROBUST_LOCATION,
+    /**< Support precise location dgnss */
+    LOC_SUPPORTED_FEATURE_EDGNSS,
+    /**<  Support the multiband GNSS configuration feature   */
+    LOC_SUPPORTED_FEATURE_MULTIBAND_CONFIG,
+    /**<  Support the configuration for DSDA   */
+    LOC_SUPPORTED_FEATURE_DSDA_CONFIGURATION,
+    /**<  Support the Multiple Attribution Apps(UTH clients Lock control) feature   */
+    LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS
 } loc_supported_feature_enum;
 
 typedef struct {

@@ -235,6 +235,7 @@ class GnssAdapter : public LocAdapterBase {
 
     /* ==== NFW =========================================================================== */
     NfwStatusCb mNfwCb;
+    unordered_map<string, uint32_t> mNfws;
     IsInEmergencySession mIsE911Session;
     inline void initNfw(const NfwCbInfo& cbInfo) {
         mNfwCb = (NfwStatusCb)cbInfo.visibilityControlCb;
@@ -451,6 +452,8 @@ public:
     { return mGnssSvTypeConfigCb; }
     void setConfig();
     void gnssSecondaryBandConfigUpdate(LocApiResponse* locApiResponse= nullptr);
+    uint32_t getNfwControlBits(const std::vector<std::string>& enabledNfws);
+    void readNfwLockConfig();
 
     /* ========= AGPS ====================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
@@ -462,7 +465,7 @@ public:
     void dataConnClosedCommand(AGpsExtType agpsType);
     void dataConnFailedCommand(AGpsExtType agpsType);
     void getGnssEnergyConsumedCommand(GnssEnergyConsumedCallback energyConsumedCb);
-    void nfwControlCommand(bool enable);
+    void nfwControlCommand(std::vector<std::string>& enabledNfws);
     uint32_t setConstrainedTuncCommand (bool enable, float tuncConstraint,
                                         uint32_t energyBudget);
     uint32_t setPositionAssistedClockEstimatorCommand (bool enable);
