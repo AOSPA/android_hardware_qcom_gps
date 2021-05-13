@@ -875,6 +875,8 @@ GnssAdapter::setConfig()
 {
     LOC_LOGD("%s]: ", __func__);
 
+    updateClientsEventMask();
+
     // set nmea mask type
     uint32_t mask = 0;
     if (NMEA_PROVIDER_MP == ContextBase::mGps_conf.NMEA_PROVIDER) {
