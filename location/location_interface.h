@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -111,6 +111,11 @@ struct GnssInterface {
     void (*resetNetworkInfo)();
     uint32_t (*configEngineRunState)(PositioningEngineMask engType,
                                      LocEngineRunState engState);
+    uint32_t (*configOutputNmeaTypes)(GnssNmeaTypesMask enabledNmeaTypes);
+    void (*powerIndicationInit)(const powerIndicationCb powerIndicationCallback);
+    void (*powerIndicationRequest)();
+    void (*setAddressRequestCb)(std::function<void(const Location&)> addressRequestCb);
+    void (*injectLocationAndAddr)(const Location& location, const GnssCivicAddress& addr);
 };
 
 struct BatchingInterface {

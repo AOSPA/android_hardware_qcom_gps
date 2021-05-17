@@ -241,6 +241,11 @@ class GnssAdapter : public LocAdapterBase {
         mIsE911Session = (IsInEmergencySession)cbInfo.isInEmergencySession;
     }
 
+    powerIndicationCb mPowerIndicationCb;
+    bool mGnssPowerStatisticsInit;
+    uint64_t mBootReferenceEnergy;
+    ElapsedRealtimeEstimator mPowerElapsedRealTimeCal;
+
     /* ==== Measurement Corrections========================================================= */
     bool mIsMeasCorrInterfaceOpen;
     measCorrSetCapabilitiesCb mMeasCorrSetCapabilitiesCb;
@@ -256,12 +261,19 @@ class GnssAdapter : public LocAdapterBase {
 
     /* ==== ODCPI ========================================================================== */
     OdcpiRequestCallback mOdcpiRequestCb;
-    bool mOdcpiRequestActive;
+    typedef uint8_t OdcpiStateMask;
+    OdcpiStateMask mOdcpiStateMask;
+    typedef enum {
+        ODCPI_REQ_ACTIVE = (1<<0),
+        CIVIC_ADDRESS_REQ_ACTIVE = (1<<1)
+    } OdcpiStateBits;
+
     OdcpiPrioritytype mCallbackPriority;
     OdcpiTimer mOdcpiTimer;
     OdcpiRequestInfo mOdcpiRequest;
     void odcpiTimerExpire();
 
+    std::function<void(const Location&)> mAddressRequestCb;
     /* ==== DELETEAIDINGDATA =============================================================== */
     int64_t mLastDeleteAidingDataTime;
 
@@ -301,6 +313,11 @@ class GnssAdapter : public LocAdapterBase {
     /* ======== UTILITIES ================================================================== */
     inline void initOdcpi(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
     inline void injectOdcpi(const Location& location);
+    inline void setAddressRequestCb(const std::function<void(const Location&)>& addressRequestCb)
+    { mAddressRequestCb = addressRequestCb;}
+    inline void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr)
+    { mLocApi->injectPositionAndCivicAddress(location, addr);}
+    static bool isFlpClient(LocationCallbacks& locationCallbacks);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
@@ -463,15 +480,22 @@ public:
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
+    uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes);
+    void powerIndicationInitCommand(const powerIndicationCb powerIndicationCallback);
+    void powerIndicationRequestCommand();
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
     void initOdcpiCommand(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
     void injectOdcpiCommand(const Location& location);
+    void setAddressRequestCbCommand(const std::function<void(const Location&)>& addressRequestCb);
+    void injectLocationAndAddrCommand(const Location& location, const GnssCivicAddress& addr);
     /* ======== RESPONSES ================================================================== */
     void reportResponse(LocationError err, uint32_t sessionId);
     void reportResponse(size_t count, LocationError* errs, uint32_t* ids);
     /* ======== UTILITIES ================================================================== */
+    /* ======== COMMANDS ====(Called from Client Thread)==================================== */
+    void initCDFWServiceCommand();
     LocationControlCallbacks& getControlCallbacks() { return mControlCallbacks; }
     void setControlCallbacks(const LocationControlCallbacks& controlCallbacks)
     { mControlCallbacks = controlCallbacks; }
@@ -494,8 +518,7 @@ public:
     virtual void reportEnginePositionsEvent(unsigned int count,
                                             EngineLocationInfo* locationArr);
 
-    virtual void reportSvEvent(const GnssSvNotification& svNotify,
-                               bool fromEngineHub=false);
+    virtual void reportSvEvent(const GnssSvNotification& svNotify);
     virtual void reportNmeaEvent(const char* nmea, size_t length);
     virtual void reportDataEvent(const GnssDataNotification& dataNotify, int msInWeek);
     virtual bool requestNiNotifyEvent(const GnssNiNotification& notify, const void* data,
@@ -510,7 +533,9 @@ public:
     virtual bool reportGnssEngEnergyConsumedEvent(uint64_t energyConsumedSinceFirstBoot);
     virtual void reportLocationSystemInfoEvent(const LocationSystemInfo& locationSystemInfo);
 
-    virtual bool requestATL(int connHandle, LocAGpsType agps_type, LocApnTypeMask apn_type_mask);
+    virtual bool requestATL(int connHandle, LocAGpsType agps_type,
+                            LocApnTypeMask apn_type_mask,
+                            LocSubId sub_id=LOC_DEFAULT_SUB);
     virtual bool releaseATL(int connHandle);
     virtual bool requestOdcpiEvent(OdcpiRequestInfo& request);
     virtual bool reportDeleteAidingDataEvent(GnssAidingData& aidingData);
@@ -568,6 +593,10 @@ public:
 
     std::vector<double> parseDoublesString(char* dString);
     void reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallback);
+    inline void setPowerIndicationCb(const powerIndicationCb powerIndicationCallback) {
+        mPowerIndicationCb = powerIndicationCallback;
+    }
+    void initGnssPowerStatistics();
 
     /*======== GNSSDEBUG ================================================================*/
     bool getDebugReport(GnssDebugReport& report);
@@ -640,6 +669,7 @@ public:
     void reportGGAToNtrip(const char* nmea);
     inline bool isDgnssNmeaRequired() { return mSendNmeaConsent &&
             mStartDgnssNtripParams.ntripParams.requiresNmeaLocation;}
+    void readPPENtripConfig();
 };
 
 #endif //GNSS_ADAPTER_H

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2017, 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2017, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,12 +31,14 @@
 
 #include <stdbool.h>
 #include <ctype.h>
+#include <loc_pla.h>
 #include <MsgTask.h>
 #include <LocApiBase.h>
 #include <LBSProxyBase.h>
 #include <loc_cfg.h>
 #ifdef NO_UNORDERED_SET_OR_MAP
     #include <map>
+    #define unordered_map map
 #else
     #include <unordered_map>
 #endif
@@ -83,6 +85,7 @@ typedef struct loc_gps_cfg_s
     uint32_t       NI_SUPL_DENY_ON_NFW_LOCKED;
     uint32_t       ENABLE_NMEA_PRINT;
     uint32_t       NMEA_TAG_BLOCK_GROUPING_ENABLED;
+    uint32_t       ROBUST_LOCATION_ENABLED;
 } loc_gps_cfg_s_type;
 
 /* NOTE: the implementation of the parser casts number
@@ -271,6 +274,12 @@ public:
                        sQwesFeatureMask |= LOCATION_CAPABILITIES_QWES_VPE;
                    } else {
                        sQwesFeatureMask &= ~LOCATION_CAPABILITIES_QWES_VPE;
+                   }
+               case LOCATION_QWES_FEATURE_TYPE_DGNSS:
+                   if (itr->second) {
+                       sQwesFeatureMask |= LOCATION_CAPABILITIES_QWES_DGNSS;
+                   } else {
+                       sQwesFeatureMask &= ~LOCATION_CAPABILITIES_QWES_DGNSS;
                    }
                break;
            }

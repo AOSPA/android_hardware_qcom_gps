@@ -32,6 +32,8 @@
 
 static GnssAdapter* gGnssAdapter = NULL;
 
+typedef void (createOSFramework)();
+
 static void initialize();
 static void deinitialize();
 
@@ -104,6 +106,11 @@ static void measCorrClose();
 static uint32_t antennaInfoInit(const antennaInfoCb antennaInfoCallback);
 static void antennaInfoClose();
 static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRunState engState);
+static uint32_t configOutputNmeaTypes(GnssNmeaTypesMask enabledNmeaTypes);
+static void powerIndicationInit(const powerIndicationCb powerIndicationCallback);
+static void powerIndicationRequest();
+static void setAddressRequestCb(const std::function<void(const Location&)> addressRequestCb);
+static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -162,7 +169,12 @@ static const GnssInterface gGnssInterface = {
     gnssUpdateSecondaryBandConfig,
     gnssGetSecondaryBandConfig,
     resetNetworkInfo,
-    configEngineRunState
+    configEngineRunState,
+    configOutputNmeaTypes,
+    powerIndicationInit,
+    powerIndicationRequest,
+    setAddressRequestCb,
+    injectLocationAndAddr
 };
 
 #ifndef DEBUG_X86
@@ -175,10 +187,22 @@ const GnssInterface* getGnssInterface()
    return &gGnssInterface;
 }
 
+static void createOSFrameworkInstance() {
+    void* libHandle = nullptr;
+    createOSFramework* getter = (createOSFramework*)dlGetSymFromLib(libHandle,
+            "liblocationservice_glue.so", "createOSFramework");
+    if (getter != nullptr) {
+        (*getter)();
+    } else {
+        LOC_LOGe("dlGetSymFromLib failed for liblocationservice_glue.so");
+    }
+}
+
 static void initialize()
 {
     if (NULL == gGnssAdapter) {
         gGnssAdapter = new GnssAdapter();
+        createOSFrameworkInstance();
     }
 }
 
@@ -589,5 +613,37 @@ static uint32_t configEngineRunState(PositioningEngineMask engType, LocEngineRun
         return gGnssAdapter->configEngineRunStateCommand(engType, engState);
     } else {
         return 0;
+    }
+}
+
+static uint32_t configOutputNmeaTypes (GnssNmeaTypesMask enabledNmeaTypes) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->configOutputNmeaTypesCommand(enabledNmeaTypes);
+    } else {
+        return 0;
+    }
+}
+
+static void powerIndicationInit(const powerIndicationCb powerIndicationCallback) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->powerIndicationInitCommand(powerIndicationCallback);
+    }
+}
+
+static void powerIndicationRequest() {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->powerIndicationRequestCommand();
+    }
+}
+
+static void setAddressRequestCb(const std::function<void(const Location&)> addressRequestCb) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->setAddressRequestCbCommand(addressRequestCb);
+    }
+}
+
+static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->injectLocationAndAddrCommand(location, addr);
     }
 }

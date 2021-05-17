@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -431,14 +431,18 @@ public:
     inline virtual ~RilServiceInfoDataItem() { if (nullptr != mData) free(mData); }
     virtual void stringify(string& /*valueStr*/) {}
     virtual int32_t copyFrom(IDataItemCore* src) {
-        memcpy(mData,  ((RilServiceInfoDataItem*)src)->mData, mLength);
+        if (nullptr != mData && nullptr != src) {
+            memcpy(mData,  ((RilServiceInfoDataItem*)src)->mData, mLength);
+        }
         return 0;
     }
     inline RilServiceInfoDataItem(const RilServiceInfoDataItem& peer) :
             RilServiceInfoDataItem() {
         mLength = peer.mLength;
         mData = malloc(mLength);
-        memcpy(mData,  peer.mData, mLength);
+        if (nullptr != mData) {
+            memcpy(mData,  peer.mData, mLength);
+        }
         peer.setPeerData(*this);
     }
     inline virtual bool operator==(const RilServiceInfoDataItem& other) const {
@@ -456,14 +460,18 @@ public:
     inline virtual ~RilCellInfoDataItem() { if (nullptr != mData) free(mData); }
     virtual void stringify(string& /*valueStr*/) {}
     virtual int32_t copyFrom(IDataItemCore* src) {
-        memcpy(mData,  ((RilCellInfoDataItem*)src)->mData, mLength);
+        if (nullptr != mData && nullptr != src) {
+            memcpy(mData,  ((RilCellInfoDataItem*)src)->mData, mLength);
+        }
         return 0;
     }
     inline RilCellInfoDataItem(const RilCellInfoDataItem& peer) :
             RilCellInfoDataItem() {
         mLength = peer.mLength;
         mData = malloc(mLength);
-        memcpy(mData,  peer.mData, mLength);
+        if (nullptr != mData) {
+            memcpy(mData,  peer.mData, mLength);
+        }
         peer.setPeerData(*this);
     }
     inline virtual bool operator==(const RilCellInfoDataItem& other) const {

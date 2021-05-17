@@ -23,6 +23,10 @@
 #include "GnssPowerIndication.h"
 #include <android/binder_auto_utils.h>
 #include <log_util.h>
+#include <inttypes.h>
+#include "loc_misc_utils.h"
+
+typedef const GnssInterface* (getLocationInterface)();
 
 namespace android {
 namespace hardware {
@@ -30,24 +34,114 @@ namespace gnss {
 namespace aidl {
 namespace implementation {
 
-void gnssPowerIndicationDied(void* cookie) {
-    LOC_LOGe("IGnssPowerIndicationCallback AIDL service died");
+static GnssPowerIndication* spGnssPowerIndication = nullptr;
+
+GnssPowerIndication::GnssPowerIndication() :
+    mDeathRecipient(AIBinder_DeathRecipient_new(GnssPowerIndication::gnssPowerIndicationDied)) {
+    spGnssPowerIndication = this;
+}
+
+GnssPowerIndication::~GnssPowerIndication() {
+    spGnssPowerIndication = nullptr;
+}
+
+::ndk::ScopedAStatus GnssPowerIndication::setCallback(
+        const std::shared_ptr<IGnssPowerIndicationCallback>& in_callback) {
+    std::unique_lock<std::mutex> lock(mMutex);
+    if (nullptr != mGnssPowerIndicationCb) {
+        LOC_LOGe("mGnssPowerIndicationCb is already set");
+        return ndk::ScopedAStatus::ok();
+    }
+
+    if (nullptr == in_callback) {
+        LOC_LOGe("callback is nullptr");
+        return ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
+    }
+
+    AIBinder_linkToDeath(in_callback->asBinder().get(), mDeathRecipient, this);
+    mGnssPowerIndicationCb = in_callback;
+
+    static bool getGnssInterfaceFailed = false;
+    if (nullptr == mGnssInterface && !getGnssInterfaceFailed) {
+        void * libHandle = nullptr;
+        getLocationInterface* getter = (getLocationInterface*)
+            dlGetSymFromLib(libHandle, "libgnss.so", "getGnssInterface");
+        if (NULL == getter) {
+            getGnssInterfaceFailed = true;
+        } else {
+            mGnssInterface = (GnssInterface*)(*getter)();
+        }
+    }
+    if (nullptr != mGnssInterface) {
+        mGnssInterface->powerIndicationInit(piGnssPowerIndicationCb);
+    } else {
+        LOC_LOGe("mGnssInterface is nullptr");
+        return ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
+    }
+
+    lock.unlock();
+    mGnssPowerIndicationCb->setCapabilitiesCb(IGnssPowerIndicationCallback::CAPABILITY_TOTAL);
+    return ndk::ScopedAStatus::ok();
+}
+
+void GnssPowerIndication::cleanup() {
+    LOC_LOGd("()");
+    if (nullptr != mGnssPowerIndicationCb) {
+        AIBinder_unlinkToDeath(mGnssPowerIndicationCb->asBinder().get(), mDeathRecipient, this);
+        mGnssPowerIndicationCb = nullptr;
+    }
+}
+
+void GnssPowerIndication::gnssPowerIndicationDied(void* cookie) {
+    LOC_LOGe("IGnssPowerIndicationCallback service died");
     GnssPowerIndication* iface = static_cast<GnssPowerIndication*>(cookie);
-    //clean up i.e.  iface->close();
     if (iface != nullptr) {
         iface->cleanup();
     }
 }
 
-void GnssPowerIndication::cleanup() {
-    mGnssPowerIndicationCb = nullptr;
-}
-::ndk::ScopedAStatus GnssPowerIndication::setCallback(
-        const std::shared_ptr<IGnssPowerIndicationCallback>& in_callback) {
-    AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(&gnssPowerIndicationDied);
-    AIBinder_linkToDeath(in_callback->asBinder().get(), recipient, this);
-    mGnssPowerIndicationCb = in_callback;
+ndk::ScopedAStatus GnssPowerIndication::requestGnssPowerStats() {
+    LOC_LOGd("requestGnssPowerStats");
+    std::unique_lock<std::mutex> lock(mMutex);
+
+    if (nullptr != mGnssInterface) {
+        lock.unlock();
+        mGnssInterface->powerIndicationRequest();
+    } else {
+        LOC_LOGe("mGnssInterface is nullptr");
+    }
+
     return ndk::ScopedAStatus::ok();
+}
+
+void GnssPowerIndication::piGnssPowerIndicationCb(GnssPowerStatistics gnssPowerStatistics) {
+    if (nullptr != spGnssPowerIndication) {
+        spGnssPowerIndication->gnssPowerIndicationCb(gnssPowerStatistics);
+    } else {
+        LOC_LOGe("spGnssPowerIndication is nullptr");
+    }
+}
+
+void GnssPowerIndication::gnssPowerIndicationCb(GnssPowerStatistics gnssPowerStatistics) {
+
+    GnssPowerStats gnssPowerStats = {};
+
+    gnssPowerStats.elapsedRealtime.flags |= gnssPowerStats.elapsedRealtime.HAS_TIMESTAMP_NS;
+    gnssPowerStats.elapsedRealtime.timestampNs = gnssPowerStatistics.elapsedRealTime;
+    gnssPowerStats.elapsedRealtime.flags |= gnssPowerStats.elapsedRealtime.HAS_TIME_UNCERTAINTY_NS;
+    gnssPowerStats.elapsedRealtime.timeUncertaintyNs = gnssPowerStatistics.elapsedRealTimeUnc;
+    gnssPowerStats.totalEnergyMilliJoule = gnssPowerStatistics.totalEnergyMilliJoule;
+
+    LOC_LOGd("gnssPowerStats.elapsedRealtime.flags: 0x%08X"
+             " gnssPowerStats.elapsedRealtime.timestampNs: %" PRId64", "
+             " gnssPowerStats.elapsedRealtime.timeUncertaintyNs: %.2f,"
+             " gnssPowerStatistics.totalEnergyMilliJoule = %.2f",
+             gnssPowerStats.elapsedRealtime.flags,
+             gnssPowerStats.elapsedRealtime.timestampNs,
+             gnssPowerStats.elapsedRealtime.timeUncertaintyNs,
+             gnssPowerStats.totalEnergyMilliJoule);
+
+    mGnssPowerIndicationCb->gnssPowerStatsCb(gnssPowerStats);
 }
 
 }  // namespace implementation

@@ -308,6 +308,8 @@ typedef enum {
     // This mask indicates QDR3_C license bundle is enabled. This
     // bundle includes features for SV Polynomial.
     LOCATION_CAPABILITIES_QWES_QDR3                         = (1<<26),
+    // This mask indicates DGNSS license bundle is enabled.
+    LOCATION_CAPABILITIES_QWES_DGNSS                        = (1<<27),
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -347,6 +349,8 @@ typedef enum {
     // This indicates VEPP license bundle is enabled. VEPP
     // bundle include Carrier Phase and SV Polynomial features.
     LOCATION_QWES_FEATURE_TYPE_VPE,
+    // This indicates DGNSS license is enabled.
+    LOCATION_QWES_FEATURE_TYPE_DGNSS,
     // Max value
     LOCATION_QWES_FEATURE_TYPE_MAX
 } LocationQwesFeatureTypes;
@@ -594,6 +598,8 @@ typedef enum {
     GNSS_MEASUREMENTS_DATA_SATELLITE_ISB_BIT                = (1<<20),
     GNSS_MEASUREMENTS_DATA_SATELLITE_ISB_UNCERTAINTY_BIT    = (1<<21),
     GNSS_MEASUREMENTS_DATA_CYCLE_SLIP_COUNT_BIT             = (1<<22),
+    GNSS_MEASUREMENTS_DATA_SATELLITE_PVT_BIT                = (1<<23),
+    GNSS_MEASUREMENTS_DATA_CORRELATION_VECTOR_BIT           = (1<<24),
 } GnssMeasurementsDataFlagsBits;
 
 typedef uint32_t GnssMeasurementsStateMask;
@@ -903,12 +909,16 @@ typedef struct {
     double latitude;         // in degrees
     double longitude;        // in degrees
     double altitude;         // in meters above the WGS 84 reference ellipsoid
-    float speed;             // in meters per second
+    float speed;             // horizontal speed, in meters per second
     float bearing;           // in degrees; range [0, 360)
-    float accuracy;          // in meters
+    float accuracy;          // horizontal acuracy, in meters
+                             // confidence level is at 68%
     float verticalAccuracy;  // in meters
-    float speedAccuracy;     // in meters/second
+                             // confidence level is at 68%
+    float speedAccuracy;     // horizontal speed unc, in meters/second
+                             // confidence level is at 68%
     float bearingAccuracy;   // in degrees (0 to 359.999)
+                             // confidence level is at 68%
     float conformityIndex;   // in range [0, 1]
     LocationTechnologyMask techMask;
     LocationSpoofMask spoofMask;
@@ -1076,22 +1086,31 @@ typedef struct {
     float yawRate;                             // Heading Rate (Radians/second)
     float pitch;                               // Body pitch (Radians)
     float longAccelUnc;   // Uncertainty of Forward Acceleration in body frame
+                          // Confidence level is at 68%
     float latAccelUnc;    // Uncertainty of Side-ward Acceleration in body frame
+                          // Confidence level is at 68%
     float vertAccelUnc;   // Uncertainty of Vertical Acceleration in body frame
+                          // Confidence level is at 68%
     float yawRateUnc;     // Uncertainty of Heading Rate
+                          // Confidence level is at 68%
     float pitchUnc;       // Uncertainty of Body pitch
+                          // Confidence level is at 68%
 } GnssLocationPositionDynamics;
 
 typedef struct {
     GnssLocationPosDataMaskExt bodyFrameDataMask; // Contains Ext Body frame LocPosDataMask bits
     float pitchRate;      // Body pitch rate (Radians/second)
     float pitchRateUnc;   // Uncertainty of pitch rate (Radians/second)
+                          // Confidence level is at 68%
     float roll;           // Roll of body frame. Clockwise positive. (radian
-    float rollUnc;        // Uncertainty of Roll, 68% confidence level (radian)
+    float rollUnc;        // Uncertainty of Roll (radian)
+                          // Confidence level is at 68%
     float rollRate;       // Roll rate of body frame. Clockwise positive. (radian/second)
-    float rollRateUnc;    // Uncertainty of Roll rate, 68% confidence level (radian/second)
+    float rollRateUnc;    // Uncertainty of Roll rate (radian/second)
+                          // Confidence level is at 68%
     float yaw;            // Yaw of body frame. Clockwise positive (radian)
-    float yawUnc;         // Uncertainty of Yaw, 68% confidence level (radian)
+    float yawUnc;         // Uncertainty of Yaw (radian)
+                          // Confidence level is at 68%
 } GnssLocationPositionDynamicsExt;
 
 typedef struct {
@@ -1213,16 +1232,20 @@ typedef struct {
     LocationReliability horReliability; // horizontal reliability
     LocationReliability verReliability; // vertical reliability
     float horUncEllipseSemiMajor;       // horizontal elliptical accuracy semi-major axis
+                                        // Confidence level is at 39%
     float horUncEllipseSemiMinor;       // horizontal elliptical accuracy semi-minor axis
+                                        // Confidence level is at 39%
     float horUncEllipseOrientAzimuth;   // horizontal elliptical accuracy azimuth
     float northStdDeviation;            // North standard deviation Unit: Meters
+                                        // Confidence level is at 68%
     float eastStdDeviation;             // East standard deviation. Unit: Meters
+                                        // Confidence level is at 68%
     float northVelocity;                // North Velocity.Unit: Meters/sec
     float eastVelocity;                 // East Velocity Unit Meters/sec
     float upVelocity;                   // Up Velocity. Unit Meters/sec
-    float northVelocityStdDeviation;
-    float eastVelocityStdDeviation;
-    float upVelocityStdDeviation;
+    float northVelocityStdDeviation;    // Confidence level is at 68%
+    float eastVelocityStdDeviation;     // Confidence level is at 68%
+    float upVelocityStdDeviation;       // Confidence level is at 68%
     uint16_t numSvUsedInPosition;
     GnssLocationSvUsedInPosition svUsedInPosition;// Gnss sv used in position data
     GnssLocationNavSolutionMask navSolutionMask;  // Nav solution mask to indicate sbas corrections
@@ -1233,6 +1256,8 @@ typedef struct {
     GnssMeasUsageInfo measUsageInfo[GNSS_SV_MAX]; // GNSS Measurement Usage info
     uint8_t leapSeconds;                          // leap second
     float timeUncMs;                              // Time uncertainty in milliseconds
+                                                  // SPE report: confidence level is 99%
+                                                  // Other engine report: confidence not unspecified
     uint8_t calibrationConfidence;                // Sensor calibration confidence percent,
                                                   // in range of [0, 100]
     DrCalibrationStatusMask calibrationStatus;    // Sensor calibration status
@@ -1338,6 +1363,34 @@ struct GnssConfigSetAssistanceServer {
 };
 
 typedef struct {
+    double posXMeters;
+    double posYMeters;
+    double posZMeters;
+    double ureMeters;
+} GnssSatellitePositionEcef;
+
+typedef struct {
+    double velXMps;
+    double velYMps;
+    double velZMps;
+    double ureRateMps;
+} GnssSatelliteVelocityEcef;
+
+typedef struct {
+    double satHardwareCodeBiasMeters;
+    double satTimeCorrectionMeters;
+    double satClkDriftMps;
+} GnssSatelliteClockInfo;
+
+typedef struct {
+    GnssSatellitePositionEcef satPosEcef;
+    GnssSatelliteVelocityEcef satVelEcef;
+    GnssSatelliteClockInfo satClockInfo;
+    double ionoDelayMeters;
+    double tropoDelayMeters;
+} GnssSatellitePvt;
+
+typedef struct {
     // set to sizeof(GnssMeasurementsData)
     uint32_t size;
     // bitwise OR of GnssMeasurementsDataFlagsBits
@@ -1374,6 +1427,7 @@ typedef struct {
     double satelliteInterSignalBiasUncertaintyNs;
     int16_t gloFrequency;
     uint8_t cycleSlipCount;
+    GnssSatellitePvt satellitePvt;
 } GnssMeasurementsData;
 
 typedef struct {
@@ -1457,6 +1511,7 @@ typedef struct {
 
 typedef struct {
     uint32_t size;         // set to sizeof(GnssMeasurementsNotification)
+    bool isNhz;            // NHz indicator
     uint32_t count;        // number of items in GnssMeasurements array
     GnssMeasurementsData measurements[GNSS_MEASUREMENTS_MAX];
     GnssMeasurementsClock clock; // clock
@@ -1871,6 +1926,42 @@ struct DeadReckoningEngineConfig{
     float gyroScaleFactorUnc;
 };
 
+/*  Specify the NMEA sentence types that are generated by GNSS
+ *  stack on HLOS.
+ *
+ *  Please note that this setting is only applicable if
+ *  NMEA_PROVIDER in gps.conf is set to 0 to use HLOS
+ *  generated NMEA. */
+enum GnssNmeaTypesMask {
+    NMEA_TYPE_NONE     = (0x0),
+    // GGA NMEA sentence.
+    NMEA_TYPE_GGA      = (1<<0),
+    // RMC NMEA sentence.
+    NMEA_TYPE_RMC      = (1<<1),
+    // GSA NMEA sentence.
+    NMEA_TYPE_GSA      = (1<<2),
+    // VTG NMEA sentence.
+    NMEA_TYPE_VTG      = (1<<3),
+    // GNS NMEA sentence.
+    NMEA_TYPE_GNS      = (1<<4),
+    // DTM NMEA sentence.
+    NMEA_TYPE_DTM      = (1<<5),
+    // GPGSV NMEA sentence for SVs from GPS constellation.
+    NMEA_TYPE_GPGSV    = (1<<6),
+    // GLGSV NMEA sentence for SVs from GLONASS constellation.
+    NMEA_TYPE_GLGSV    = (1<<7),
+    // GAGSV NMEA sentence for SVs from GALILEO constellation
+    NMEA_TYPE_GAGSV    = (1<<8),
+    // GQGSV NMEA sentence for SVs from QZSS constellation.
+    NMEA_TYPE_GQGSV    = (1<<9),
+    // GBGSV NMEA sentence for SVs from BEIDOU constellation.
+    NMEA_TYPE_GBGSV    = (1<<10),
+    // GIGSV NMEA sentence for SVs from NAVIC constellation.
+    NMEA_TYPE_GIGSV    = (1<<11),
+    // All HLOS supported NMEA  sentences.
+    NMEA_TYPE_ALL        = 0xffffffff,
+};
+
 /* Provides the capabilities of the system
    capabilities callback is called once soon after createInstance is called */
 typedef std::function<void(
@@ -2073,5 +2164,27 @@ typedef struct {
     uint64_t hlosQtimer4;
     uint64_t hlosQtimer5;
 } GnssLatencyInfo;
+
+typedef struct {
+    uint32_t size;
+    std::string adminArea;
+    std::string countryCode;
+    std::string countryName;
+    std::string featureName;
+    bool hasLatitude;
+    double latitude;
+    bool hasLongitude;
+    double longitude;
+    std::string locale;
+    std::string locality;
+    std::string phone;
+    std::string postalCode;
+    std::string premises;
+    std::string subAdminArea;
+    std::string subLocality;
+    std::string thoroughfare;
+    std::string subThoroughfare;
+    std::string url;
+} GnssCivicAddress;
 
 #endif /* LOCATIONDATATYPES_H */

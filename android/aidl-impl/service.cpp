@@ -74,7 +74,9 @@ int main() {
     }
 
     int vendorInfo = getVendorEnhancedInfo();
-    bool vendorEnhanced = ( 1 == vendorInfo || 3 == vendorInfo );
+    // The magic number 2 points to
+    // #define VND_ENHANCED_SYS_STATUS_BIT 0x02 in vndfwk-detect.c
+    bool vendorEnhanced = ( vendorInfo & 2 );
     setVendorEnhanced(vendorEnhanced);
 
 #ifdef ARCH_ARM_32
@@ -94,6 +96,17 @@ int main() {
         if (NULL != aidlMainMethod) {
             ALOGI("start LocAidl service");
             (*aidlMainMethod)(0, NULL);
+        } else {
+            #ifdef LOC_HIDL_VERSION
+                #define VENDOR_ENHANCED_LIB "vendor.qti.gnss@" LOC_HIDL_VERSION "-service.so"
+                void* libHandle = NULL;
+                vendorEnhancedServiceMain* vendorEnhancedMainMethod = (vendorEnhancedServiceMain*)
+                        dlGetSymFromLib(libHandle, VENDOR_ENHANCED_LIB, "main");
+                if (NULL != vendorEnhancedMainMethod) {
+                    (*vendorEnhancedMainMethod)(0, NULL);
+                }
+            #endif
+
         }
         // Loc AIDL service end
         joinRpcThreadpool();

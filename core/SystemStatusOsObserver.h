@@ -40,6 +40,7 @@
 #include <IOsObserver.h>
 #include <loc_pla.h>
 #include <log_util.h>
+#include <gps_extended.h>
 #include <LocUnorderedSetMap.h>
 
 namespace loc_core
@@ -60,7 +61,7 @@ typedef unordered_map<DataItemId, IDataItemCore*> DataItemIdToCore;
 typedef unordered_map<DataItemId, int> DataItemIdToInt;
 #ifdef USE_GLIB
 // Cache details of backhaul client requests
-typedef unordered_set<string> ClientBackhaulReqCache;
+typedef std::map<string, BackhaulContext> ClientBackhaulReqCache;
 #endif
 
 struct ObserverContext {
@@ -107,9 +108,15 @@ public:
         uint32_t numBackHaulClients = mBackHaulConnReqCache.size();
         if (numBackHaulClients > 0) {
             // For each client, invoke connectbackhaul.
-            for (auto clientName : mBackHaulConnReqCache) {
-                LOC_LOGd("Invoke connectBackhaul for client: %s", clientName.c_str());
-                connectBackhaul(clientName);
+            for (auto clientContext : mBackHaulConnReqCache) {
+                LOC_LOGd("Invoke connectBackhaul for client: %s Sub: %d Apn: %s IpType: %d",
+                         clientContext.second.clientName.c_str(), clientContext.second.prefSub,
+                         clientContext.second.prefApn.c_str(), clientContext.second.prefIpType);
+                BackhaulContext ctx = { clientContext.second.clientName,
+                                        clientContext.second.prefSub,
+                                        clientContext.second.prefApn,
+                                        clientContext.second.prefIpType };
+                connectBackhaul(ctx);
             }
             // Clear the set
             mBackHaulConnReqCache.clear();
@@ -138,8 +145,8 @@ public:
     virtual void turnOn(DataItemId dit, int timeOut = 0) override;
     virtual void turnOff(DataItemId dit) override;
 #ifdef USE_GLIB
-    virtual bool connectBackhaul(const string& clientName) override;
-    virtual bool disconnectBackhaul(const string& clientName) override;
+    virtual bool connectBackhaul(const BackhaulContext& ctx) override;
+    virtual bool disconnectBackhaul(const BackhaulContext& ctx) override;
 #endif
 
 private:
