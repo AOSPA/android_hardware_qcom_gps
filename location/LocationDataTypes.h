@@ -2131,4 +2131,12 @@ typedef struct {
     uint64_t hlosQtimer5;
 } GnssLatencyInfo;
 
+enum PowerStateType {
+    POWER_STATE_UNKNOWN = 0,
+    POWER_STATE_SUSPEND = 1,
+    POWER_STATE_RESUME  = 2,
+    POWER_STATE_SHUTDOWN = 3
+};
+
+
 #endif /* LOCATIONDATATYPES_H */

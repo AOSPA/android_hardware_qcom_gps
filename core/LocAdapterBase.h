@@ -87,7 +87,7 @@ protected:
     LocationCapabilitiesMask getCapabilities();
     void broadcastCapabilities(LocationCapabilitiesMask mask);
     virtual void updateClientsEventMask();
-    virtual void stopClientSessions(LocationAPI* client);
+    virtual void stopClientSessions(LocationAPI* client, bool eraseSession = true);
 
 public:
     inline virtual ~LocAdapterBase() { mLocApi->removeAdapter(this); }

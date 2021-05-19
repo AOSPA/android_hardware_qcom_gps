@@ -31,6 +31,7 @@
 
 #include "ILocationAPI.h"
 
+
 class LocationAPI : public ILocationAPI
 {
 private:
@@ -214,6 +215,7 @@ public:
        Will return NULL if mandatory parameters are invalid or if the maximum number
        of instances have been reached. Only once instance allowed */
     static LocationControlAPI* createInstance(LocationControlCallbacks&);
+    static LocationControlAPI* getInstance();
 
     /* destroy/cleans up the instance, which should be called when LocationControlAPI object is
        no longer needed. LocationControlAPI* returned from createInstance will no longer valid
@@ -543,6 +545,17 @@ public:
     virtual uint32_t configOutputNmeaTypes(
             GnssNmeaTypesMask enabledNmeaTypes) override;
 
+   /** @brief
+        This API is used to send platform power events to GNSS adapters in order
+        to handle GNSS sessions as per platform power event.
+
+        @param
+        powerState: Current vehicle/platform power state.
+
+        @return
+        No return value.
+    */
+    virtual void powerStateEvent(PowerStateType powerState) override;
 };
 
 #endif /* LOCATIONAPI_H */
