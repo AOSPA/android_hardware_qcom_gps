@@ -346,8 +346,7 @@ public:
 
 bool LocIpc::startNonBlockingListening(unique_ptr<LocIpcRecver>& ipcRecver) {
     if (ipcRecver != nullptr && ipcRecver->isRecvable()) {
-        std::string threadName("LocIpc-");
-        threadName.append(ipcRecver->getName());
+        std::string threadName = generateThreadName(ipcRecver->getName());
         return mThread.start(threadName.c_str(), make_shared<LocIpcRunnable>(*this, ipcRecver));
     } else {
         LOC_LOGe("ipcRecver is null OR ipcRecver->recvable() is fasle");
@@ -379,6 +378,15 @@ void LocIpc::stopBlockingListening(LocIpcRecver& ipcRecver) {
 
 bool LocIpc::send(LocIpcSender& sender, const uint8_t data[], uint32_t length, int32_t msgId) {
     return sender.sendData(data, length, msgId);
+}
+
+std::string LocIpc::generateThreadName(const std::string& recverName) {
+    std::string threadName("Ipc-");
+    int recverNameLen = recverName.length();
+    // Total thread name length is 16 letters.
+    // Concatenate with up to 11 chars starting from the last char of the ipc name.
+    threadName.append(recverName.substr(recverNameLen <= 11 ? 0 : (recverNameLen - 11)));
+    return threadName;
 }
 
 shared_ptr<LocIpcSender> LocIpc::getLocIpcLocalSender(const char* localSockName) {

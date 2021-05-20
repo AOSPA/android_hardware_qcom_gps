@@ -548,7 +548,8 @@ typedef enum {
     GNSS_SV_OPTIONS_HAS_ALMANAC_BIT             = (1<<1),
     GNSS_SV_OPTIONS_USED_IN_FIX_BIT             = (1<<2),
     GNSS_SV_OPTIONS_HAS_CARRIER_FREQUENCY_BIT   = (1<<3),
-    GNSS_SV_OPTIONS_HAS_GNSS_SIGNAL_TYPE_BIT    = (1<<4)
+    GNSS_SV_OPTIONS_HAS_GNSS_SIGNAL_TYPE_BIT          = (1<<4),
+    GNSS_SV_OPTIONS_HAS_BASEBAND_CARRIER_TO_NOISE_BIT = (1<<5),
 } GnssSvOptionsBits;
 
 typedef enum {
@@ -630,6 +631,7 @@ typedef enum {
     GNSS_MEASUREMENTS_DATA_CYCLE_SLIP_COUNT_BIT             = (1<<22),
     GNSS_MEASUREMENTS_DATA_SATELLITE_PVT_BIT                = (1<<23),
     GNSS_MEASUREMENTS_DATA_CORRELATION_VECTOR_BIT           = (1<<24),
+    GNSS_MEASUREMENTS_DATA_GNSS_SIGNAL_TYPE_BIT             = (1<<25),
 } GnssMeasurementsDataFlagsBits;
 
 typedef uint32_t GnssMeasurementsStateMask;
@@ -1432,8 +1434,13 @@ typedef struct {
     GnssSvType svType;
     double timeOffsetNs;
     GnssMeasurementsStateMask stateMask;       // bitwise OR of GnssMeasurementsStateBits
+    // valid when GNSS_MEASUREMENTS_DATA_RECEIVED_SV_TIME_BIT is set
+    // total time is: receivedSvTimeNs + receivedSvTimeSubNs
     int64_t receivedSvTimeNs;
-    int64_t receivedSvTimeUncertaintyNs;
+    // valid when GNSS_MEASUREMENTS_DATA_RECEIVED_SV_TIME_BIT is set
+    // total time is: receivedSvTimeNs + receivedSvTimeSubNs
+    float  receivedSvTimeSubNs;
+    int64_t  receivedSvTimeUncertaintyNs;
     double carrierToNoiseDbHz;
     double pseudorangeRateMps;
     double pseudorangeRateUncertaintyMps;
@@ -2141,6 +2148,7 @@ typedef struct {
     gnssNmeaCallback gnssNmeaCb;                     // optional
     gnssDataCallback gnssDataCb;                     // optional
     gnssMeasurementsCallback gnssMeasurementsCb;     // optional
+    gnssMeasurementsCallback gnssNHzMeasurementsCb;  // optional
     batchingStatusCallback batchingStatusCb;         // optional
     locationSystemInfoCallback locationSystemInfoCb; // optional
     engineLocationsInfoCallback engineLocationsInfoCb;     // optional
@@ -2216,5 +2224,13 @@ typedef struct {
     std::string subThoroughfare;
     std::string url;
 } GnssCivicAddress;
+
+enum PowerStateType {
+    POWER_STATE_UNKNOWN = 0,
+    POWER_STATE_SUSPEND = 1,
+    POWER_STATE_RESUME  = 2,
+    POWER_STATE_SHUTDOWN = 3
+};
+
 
 #endif /* LOCATIONDATATYPES_H */

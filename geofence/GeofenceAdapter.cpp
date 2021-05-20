@@ -38,7 +38,8 @@ using namespace loc_core;
 GeofenceAdapter::GeofenceAdapter() :
     LocAdapterBase(0,
                    LocContext::getLocContext(LocContext::mLocationHalName),
-                   true /*isMaster*/, nullptr, true)
+                   true /*isMaster*/, nullptr, true),
+    mSystemPowerState(POWER_STATE_UNKNOWN)
 {
     LOC_LOGD("%s]: Constructor", __func__);
 
@@ -48,7 +49,7 @@ GeofenceAdapter::GeofenceAdapter() :
 }
 
 void
-GeofenceAdapter::stopClientSessions(LocationAPI* client)
+GeofenceAdapter::stopClientSessions(LocationAPI* client, bool eraseSession)
 {
     LOC_LOGD("%s]: client %p", __func__, client);
 
@@ -57,14 +58,16 @@ GeofenceAdapter::stopClientSessions(LocationAPI* client)
         uint32_t hwId = it->second;
         GeofenceKey key(it->first);
         if (client == key.client) {
-            it = mGeofenceIds.erase(it);
+            if (eraseSession)
+                it = mGeofenceIds.erase(it);
             mLocApi->removeGeofence(hwId, key.id,
                     new LocApiResponse(*getContext(),
-                    [this, hwId] (LocationError err) {
+                    [this, hwId, eraseSession] (LocationError err) {
                 if (LOCATION_ERROR_SUCCESS == err) {
                     auto it2 = mGeofences.find(hwId);
                     if (it2 != mGeofences.end()) {
-                        mGeofences.erase(it2);
+                        if (eraseSession)
+                            mGeofences.erase(it2);
                     } else {
                         LOC_LOGE("%s]:geofence item to erase not found. hwId %u", __func__, hwId);
                     }
@@ -127,7 +130,10 @@ GeofenceAdapter::handleEngineUpEvent()
         virtual void proc() const {
             mAdapter.setEngineCapabilitiesKnown(true);
             mAdapter.broadcastCapabilities(mAdapter.getCapabilities());
-            mAdapter.restartGeofences();
+            if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
+                 POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
+                mAdapter.restartGeofences();
+            }
             for (auto msg: mAdapter.mPendingMsgs) {
                 mAdapter.sendMsg(msg);
             }
@@ -849,6 +855,79 @@ GeofenceAdapter::geofenceStatus(GeofenceStatusAvailable available)
             it->second.geofenceStatusCb(notify);
         }
     }
+}
+
+void
+GeofenceAdapter::updateSystemPowerStateCommand(PowerStateType powerState)
+{
+    LOC_LOGD("%s]: powerState: %d", __func__, powerState);
+
+    struct MsgUpdateSystemPowerState : public LocMsg {
+        GeofenceAdapter& mAdapter;
+        PowerStateType mPowerState;
+        inline MsgUpdateSystemPowerState(GeofenceAdapter& adapter,
+                PowerStateType powerState) :
+            mAdapter(adapter),
+            mPowerState(powerState) {}
+        inline virtual void proc() const {
+            mAdapter.updateSystemPowerState(mPowerState);
+        }
+    };
+
+    sendMsg(new MsgUpdateSystemPowerState(*this, powerState));
+}
+
+
+void
+GeofenceAdapter::pauseOrResumeGeofences(bool pauseOrResume /*false - pause, true - resume*/)
+{
+    LocationError error;
+
+    for (auto it = mGeofenceIds.begin(); it != mGeofenceIds.end(); ++it) {
+
+        uint32_t hwId = it->second;
+        if (false == pauseOrResume) {
+            mLocApi->pauseGeofence(it->second, it->first.id, new LocApiResponse(*getContext(),
+                    [&mAdapter = *this, hwId = hwId] (LocationError err) {
+                if (LOCATION_ERROR_SUCCESS == err) {
+                    mAdapter.pauseGeofenceItem(hwId);
+                }
+            }));
+        } else {
+            mLocApi->resumeGeofence(it->second, it->first.id, new LocApiResponse(*getContext(),
+                    [&mAdapter = *this, hwId = hwId] (LocationError err) {
+                if (LOCATION_ERROR_SUCCESS == err) {
+                    mAdapter.resumeGeofenceItem(hwId);
+                }
+            }));
+        }
+    }
+}
+
+void
+GeofenceAdapter::updateSystemPowerState(PowerStateType systemPowerState)
+{
+
+    if (POWER_STATE_UNKNOWN != systemPowerState) {
+        mSystemPowerState = systemPowerState;
+
+        /*Manage active GNSS sessions based on power event*/
+        switch (systemPowerState){
+
+            case POWER_STATE_SUSPEND:
+            case POWER_STATE_SHUTDOWN:
+                pauseOrResumeGeofences(false /*pause*/);
+                LOC_LOGd("Pause all geoFences -- powerState: %d", systemPowerState);
+                break;
+            case POWER_STATE_RESUME:
+                pauseOrResumeGeofences(true /*resume*/);
+                LOC_LOGd("Resume all geoFences -- powerState: %d", systemPowerState);
+                break;
+            default:
+                break;
+        } // switch
+    }
+
 }
 
 void

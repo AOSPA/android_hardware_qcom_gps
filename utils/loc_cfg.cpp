@@ -443,18 +443,20 @@ void loc_read_conf_long(const char* conf_file_name, const loc_param_s_type* conf
     log_buffer_init(false);
     if((conf_fp = fopen(conf_file_name, "r")) != NULL)
     {
-        LOC_LOGD("%s: using %s", __FUNCTION__, conf_file_name);
+        LOC_LOGd("using %s", conf_file_name);
         if(table_length && config_table) {
             loc_read_conf_r_long(conf_fp, config_table, table_length, string_len);
             rewind(conf_fp);
+        } else {
+            /* Read default config entries*/
+            loc_read_conf_r(conf_fp, loc_param_table, loc_param_num);
+            /* Initialize logging mechanism with parsed data */
+            loc_logger_init(DEBUG_LEVEL, TIMESTAMP);
+            log_buffer_init(sLogBufferEnabled);
+            log_tag_level_map_init();
         }
-        loc_read_conf_r_long(conf_fp, loc_param_table, loc_param_num, string_len);
         fclose(conf_fp);
     }
-    /* Initialize logging mechanism with parsed data */
-    loc_logger_init(DEBUG_LEVEL, TIMESTAMP);
-    log_buffer_init(sLogBufferEnabled);
-    log_tag_level_map_init();
 }
 
 /*=============================================================================

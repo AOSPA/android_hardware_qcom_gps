@@ -21,6 +21,7 @@ LOC_BOARD_PLATFORM_LIST += bengal
 LOC_BOARD_PLATFORM_LIST += lahaina
 LOC_BOARD_PLATFORM_LIST += holi
 LOC_BOARD_PLATFORM_LIST += taro
+LOC_BOARD_PLATFORM_LIST += monaco
 
 # Add product packages
 ifneq (,$(filter $(LOC_BOARD_PLATFORM_LIST),$(TARGET_BOARD_PLATFORM)))
@@ -37,6 +38,10 @@ PRODUCT_PACKAGES += libbatching
 PRODUCT_PACKAGES += libgeofencing
 PRODUCT_PACKAGES += libloc_core
 PRODUCT_PACKAGES += libgnss
+
+ifeq ($(strip $(TARGET_BOARD_AUTO)),true)
+PRODUCT_PACKAGES += libgnssauto_power
+endif #TARGET_BOARD_AUTO
 
 PRODUCT_PACKAGES += android.hardware.gnss@2.1-impl-qti
 PRODUCT_PACKAGES += android.hardware.gnss-aidl-impl-qti
