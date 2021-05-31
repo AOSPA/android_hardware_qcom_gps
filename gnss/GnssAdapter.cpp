@@ -135,6 +135,7 @@ GnssAdapter::GnssAdapter() :
     mOdcpiTimer(this),
     mOdcpiRequest(),
     mCallbackPriority(OdcpiPrioritytype::ODCPI_HANDLER_PRIORITY_LOW),
+    mEsStatusCb(nullptr),
     mSystemStatus(SystemStatus::getInstance(mMsgTask)),
     mServerUrl(":"),
     mXtraObserver(mSystemStatus->getOsObserver(), mMsgTask),
@@ -2422,6 +2423,27 @@ GnssAdapter::blockCPICommand(double latitude, double longitude,
     // send a message to record down the coarse position
     // to be blocked from injection in the master copy (mBlockCPIInfo)
     sendMsg(new MsgBlockCPI(mBlockCPIInfo, blockCPIInfo));
+}
+
+void
+GnssAdapter::setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb)
+{
+    LOC_LOGD("%s]: ", __func__);
+
+    struct MsgReportEsStatus : public LocMsg {
+        GnssAdapter& mAdapter;
+        std::function<void(bool)> mEsStatusCb;
+        inline MsgReportEsStatus(GnssAdapter& adapter,
+                                 std::function<void(bool)> esStatusCb) :
+            LocMsg(),
+            mAdapter(adapter),
+            mEsStatusCb(esStatusCb) {}
+        inline virtual void proc() const {
+            mAdapter.setEsStatusCallback(mEsStatusCb);
+        }
+    };
+
+    sendMsg(new MsgReportEsStatus(*this, esStatusCb));
 }
 
 void
@@ -4892,6 +4914,9 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         if (ODCPI_REQUEST_TYPE_START == request.type) {
             if (false == mOdcpiRequestActive && false == mOdcpiTimer.isActive()) {
                 mOdcpiRequestCb(request);
+                if (nullptr != mEsStatusCb) {
+                    mEsStatusCb(request.isEmergencyMode);
+                }
                 mOdcpiRequestActive = true;
                 mOdcpiTimer.start();
             // if the current active odcpi session is non-emergency, and the new
@@ -4900,6 +4925,9 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             } else if (false == mOdcpiRequest.isEmergencyMode &&
                        true == request.isEmergencyMode) {
                 mOdcpiRequestCb(request);
+                if (nullptr != mEsStatusCb) {
+                    mEsStatusCb(request.isEmergencyMode);
+                }
                 mOdcpiRequestActive = true;
                 if (true == mOdcpiTimer.isActive()) {
                     mOdcpiTimer.restart();
@@ -4919,6 +4947,9 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         } else if (ODCPI_REQUEST_TYPE_STOP == request.type) {
             LOC_LOGd("request: type %d, isEmergency %d", request.type, request.isEmergencyMode);
             mOdcpiRequestCb(request);
+            if (nullptr != mEsStatusCb) {
+                mEsStatusCb(false);
+            }
             mOdcpiRequestActive = false;
         } else {
             LOC_LOGE("Invalid ODCPI request type..");
