@@ -354,6 +354,23 @@ GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
         out.elapsedRealTime = ulpLocation.gpsLocation.elapsedRealTime;
         out.elapsedRealTimeUnc = ulpLocation.gpsLocation.elapsedRealTimeUnc;
     }
+    out.qualityType = LOCATION_STANDALONE_QUALITY_TYPE;
+    if (GPS_LOCATION_EXTENDED_HAS_NAV_SOLUTION_MASK & locationExtended.flags) {
+        if (LOC_NAV_MASK_DGNSS_CORRECTION == locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_DGNSS_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_RTK_CORRECTION == locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_RTK_FIXED_CORRECTION == locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_PPP_CORRECTION == locationExtended.navSolutionMask) {
+            //If HEPE<5cm, we shall claim ‘FIXED’; otherwise, ‘FLOAT’
+            out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
+            if (GPS_LOCATION_EXTENDED_HAS_VERT_UNC & locationExtended.flags &&
+                    locationExtended.vert_unc < 0.05) {
+                    out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
+            }
+        }
+    }
 }
 
 /* This is utility routine that computes number of SV used
