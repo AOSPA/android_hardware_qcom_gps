@@ -54,10 +54,6 @@ GnssMeasurementInterface::GnssMeasurementInterface() :
              (int)in_enableFullTracking,
              (int)in_enableCorrVecOutputs);
     std::unique_lock<std::mutex> lock(mMutex);
-    if (nullptr != mGnssMeasurementCbIface) {
-        LOC_LOGe("GnssMeasurementCallback is already set");
-        return ndk::ScopedAStatus::ok();
-    }
 
     if (nullptr == in_callback) {
         LOC_LOGe("callback is nullptr");
