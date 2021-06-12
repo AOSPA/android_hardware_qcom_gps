@@ -4985,6 +4985,7 @@ GnssAdapter::requestOdcpiEvent(OdcpiRequestInfo& request)
 void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
 {
     if (nullptr != mOdcpiRequestCb) {
+        bool sendEmergencyCallStatusEvent = false;
         LOC_LOGd("request: type %d, tbf %d, isEmergency %d"
                  " requestActive: %d timerActive: %d",
                  request.type, request.tbfMillis, request.isEmergencyMode,
@@ -4997,6 +4998,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
                 mOdcpiRequestCb(request);
                 mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
                 mOdcpiTimer.start();
+                sendEmergencyCallStatusEvent = true;
             // if the current active odcpi session is non-emergency, and the new
             // odcpi request is emergency, replace the odcpi request with new request
             // and restart the timer
@@ -5009,6 +5011,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
                 } else {
                     mOdcpiTimer.start();
                 }
+                sendEmergencyCallStatusEvent = true;
             // if ODCPI request is not active but the timer is active, then
             // just update the active state and wait for timer to expire
             // before requesting new ODCPI to avoid spamming ODCPI requests
@@ -5028,8 +5031,19 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             LOC_LOGd("request: type %d, isEmergency %d", request.type, request.isEmergencyMode);
             mOdcpiRequestCb(request);
             mOdcpiStateMask = 0;
+            sendEmergencyCallStatusEvent = true;
         } else {
             LOC_LOGE("Invalid ODCPI request type..");
+        }
+
+        // Raise InEmergencyCall event
+        if (sendEmergencyCallStatusEvent && request.isEmergencyMode) {
+            SystemStatus* systemstatus = getSystemStatus();
+            if (nullptr != systemstatus) {
+                systemstatus->eventInEmergencyCall(0 != mOdcpiStateMask);
+            } else {
+                LOC_LOGe("Failed to get system status instance.");
+            }
         }
     } else {
         LOC_LOGw("ODCPI request not supported");

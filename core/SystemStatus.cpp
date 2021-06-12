@@ -1538,6 +1538,11 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
             ret = setIteminReport(mCache.mManufacturer,
                     SystemStatusManufacturer(*(static_cast<ManufacturerDataItem*>(dataitem))));
             break;
+        case IN_EMERGENCY_CALL_DATA_ITEM_ID:
+            ret = setIteminReport(mCache.mInEmergencyCall,
+                    SystemStatusInEmergencyCall(
+                        *(static_cast<InEmergencyCallDataItem*>(dataitem))));
+            break;
         case ASSISTED_GPS_DATA_ITEM_ID:
             ret = setIteminReport(mCache.mAssistedGps,
                     SystemStatusAssistedGps(*(static_cast<AssistedGpsDataItem*>(dataitem))));
@@ -1768,6 +1773,20 @@ bool SystemStatus::updatePowerConnectState(bool charging)
 bool SystemStatus::eventOptInStatus(bool userConsent)
 {
     SystemStatusENH s(userConsent);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
+/******************************************************************************
+@brief      API to notify emergency call
+
+@param[In]  is emergency call
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventInEmergencyCall(bool isEmergency)
+{
+    SystemStatusInEmergencyCall s(isEmergency);
     mSysStatusObsvr.notify({&s.mDataItem});
     return true;
 }
