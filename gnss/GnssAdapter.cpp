@@ -755,6 +755,9 @@ GnssAdapter::convertLppeCp(const GnssConfigLppeControlPlaneMask lppeControlPlane
     if (GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT & lppeControlPlaneMask) {
         mask |= (1<<4);
     }
+    if (GNSS_CONFIG_LPPE_CONTROL_PLANE_CIV_ADDRESS_BIT & lppeControlPlaneMask) {
+        mask |= (1<<5);
+    }
     return mask;
 }
 
@@ -776,6 +779,9 @@ GnssAdapter::convertLppeUp(const GnssConfigLppeUserPlaneMask lppeUserPlaneMask)
     }
     if (GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT & lppeUserPlaneMask) {
         mask |= (1<<4);
+    }
+    if (GNSS_CONFIG_LPPE_USER_PLANE_CIV_ADDRESS_BIT & lppeUserPlaneMask) {
+        mask |= (1<<5);
     }
     return mask;
 }

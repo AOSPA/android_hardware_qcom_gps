@@ -428,6 +428,7 @@ typedef enum {
     GNSS_CONFIG_LPPE_CONTROL_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                              // SENSOR_BARO_MEASUREMENTS
     GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT = (1<<4), // NON_E911
+    GNSS_CONFIG_LPPE_CONTROL_PLANE_CIV_ADDRESS_BIT          = (1<<5), // CIV_ADDRESS
 } GnssConfigLppeControlPlaneBits;
 
 // Technology for LPPe User Plane
@@ -439,6 +440,7 @@ typedef enum {
     GNSS_CONFIG_LPPE_USER_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                             // SENSOR_BARO_MEASUREMENTS
     GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT = (1<<4), // NON_E911
+    GNSS_CONFIG_LPPE_USER_PLANE_CIV_ADDRESS_BIT           = (1<<5), // CIV_ADDRESS
 } GnssConfigLppeUserPlaneBits;
 
 // Positioning Protocol on A-GLONASS system
