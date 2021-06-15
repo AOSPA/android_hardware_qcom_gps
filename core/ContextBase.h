@@ -156,6 +156,7 @@ public:
     inline bool hasAgpsExtendedCapabilities() { return mLBSProxy->hasAgpsExtendedCapabilities(); }
     inline bool hasNativeXtraClient() { return mLBSProxy->hasNativeXtraClient(); }
     inline void modemPowerVote(bool power) const { return mLBSProxy->modemPowerVote(power); }
+    inline const LBSProxyBase* getLBSProxyBase() { return mLBSProxy; }
     inline IzatDevId_t getIzatDevId() const {
         return mLBSProxy->getIzatDevId();
     }
