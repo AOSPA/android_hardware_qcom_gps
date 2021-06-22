@@ -15,8 +15,7 @@ GNSS_CFLAGS := \
     -Wno-error=parentheses-equality \
     -Wno-error=undefined-bool-conversion \
     -Wno-error=tautological-compare \
-    -Wno-error=switch \
-    -Wno-error=date-time
+    -Wno-error=switch
 
 GNSS_HIDL_VERSION := 2.1
 GNSS_AIDL_VERSION := 1

@@ -78,6 +78,25 @@ static void agpsCloseResultCb (bool isSuccess, AGpsExtType agpsType, void* userD
 
 typedef const CdfwInterface* (*getCdfwInterface)();
 
+typedef void getPdnTypeFromWds(const std::string& apnName, std::function<void(int)> pdnCb);
+
+GnssReportLoggerUtil::GnssReportLoggerUtil() : mLogLatency(nullptr) {
+    int loadDiagIfaceLib = 1;
+    const loc_param_s_type gps_conf_params[] = {
+        {"LOC_DIAGIFACE_ENABLED", &loadDiagIfaceLib, nullptr, 'n'}
+    };
+    UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
+    LOC_LOGi("Loc_DiagIface_enabled: %d", loadDiagIfaceLib);
+    if (0 != loadDiagIfaceLib) {
+        const char* libname = "liblocdiagiface.so";
+        void* libHandle = nullptr;
+        mLogLatency = (LogGnssLatency)dlGetSymFromLib(libHandle, libname, "LogGnssLatency");
+        if (nullptr == mLogLatency) {
+            LOC_LOGw("DiagIface mLogLatency is null");
+        }
+    }
+}
+
 inline bool GnssReportLoggerUtil::isLogEnabled() {
     return (mLogLatency != nullptr);
 }
@@ -795,6 +814,49 @@ GnssAdapter::convertSuplMode(const GnssConfigSuplModeMask suplModeMask)
     return mask;
 }
 
+void GnssAdapter::readNfwLockConfig()
+{
+    char nfwCpPackageName[LOC_MAX_PARAM_STRING];
+    char nfwSuplPackageName[LOC_MAX_PARAM_STRING];
+    char nfwImsPackageName[LOC_MAX_PARAM_STRING];
+    char nfwSimPackageName[LOC_MAX_PARAM_STRING];
+    char nfwMdtPackageName[LOC_MAX_PARAM_STRING];
+    char nfwTlocPackageName[LOC_MAX_PARAM_STRING];
+    char nfwRlocPackageName[LOC_MAX_PARAM_STRING];
+    char nfwV2xPackageName[LOC_MAX_PARAM_STRING];
+    char nfwR1PackageName[LOC_MAX_PARAM_STRING];
+    char nfwR2PackageName[LOC_MAX_PARAM_STRING];
+    char nfwR3PackageName[LOC_MAX_PARAM_STRING];
+
+    const loc_param_s_type nfw_packages_table[] =
+    {
+        { "NFW_CLIENT_CP",      &nfwCpPackageName,      NULL, 's' },
+        { "NFW_CLIENT_SUPL",    &nfwSuplPackageName,    NULL, 's' },
+        { "NFW_CLIENT_IMS",     &nfwImsPackageName,     NULL, 's' },
+        { "NFW_CLIENT_SIM",     &nfwSimPackageName,     NULL, 's' },
+        { "NFW_CLIENT_MDT",     &nfwMdtPackageName,     NULL, 's' },
+        { "NFW_CLIENT_TLOC",    &nfwTlocPackageName,    NULL, 's' },
+        { "NFW_CLIENT_RLOC",    &nfwRlocPackageName,    NULL, 's' },
+        { "NFW_CLIENT_V2X",     &nfwV2xPackageName,     NULL, 's' },
+        { "NFW_CLIENT_R1",      &nfwR1PackageName,      NULL, 's' },
+        { "NFW_CLIENT_R2",      &nfwR2PackageName,      NULL, 's' },
+        { "NFW_CLIENT_R3",      &nfwR3PackageName,      NULL, 's' },
+    };
+    UTIL_READ_CONF(LOC_PATH_GPS_CONF_STR, nfw_packages_table);
+
+    mNfws[nfwImsPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_IMS;
+    mNfws[nfwSimPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_SIM;
+    mNfws[nfwMdtPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_MDT;
+    mNfws[nfwTlocPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_TLOC;
+    mNfws[nfwRlocPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_RLOC;
+    mNfws[nfwV2xPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_V2X;
+    mNfws[nfwR1PackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_R1;
+    mNfws[nfwR2PackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_R2;
+    mNfws[nfwR3PackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_R3;
+    mNfws[nfwSuplPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_SUPL;
+    mNfws[nfwCpPackageName] |= GNSS_CONFIG_GPS_LOCK_NFW_CP;
+}
+
 void
 GnssAdapter::readConfigCommand()
 {
@@ -814,6 +876,7 @@ GnssAdapter::readConfigCommand()
                 confReadDone = true;
                 // reads config into mContext->mGps_conf
                 mContext.readConfig();
+                mAdapter->readNfwLockConfig();
             }
         }
     };
@@ -893,6 +956,8 @@ GnssAdapter::setConfig()
                       ContextBase::mGps_conf.MO_SUPL_PORT,
                       LOC_AGPS_MO_SUPL_SERVER);
 
+    std::string moServerUrl = getMoServerUrl();
+    std::string serverUrl = getServerUrl();
     // inject the configurations into modem
     loc_gps_cfg_s gpsConf = ContextBase::mGps_conf;
     loc_sap_cfg_s_type sapConf = ContextBase::mSap_conf;
@@ -940,8 +1005,10 @@ GnssAdapter::setConfig()
     gnssConfigRequested.blacklistedSvIds.assign(mBlacklistedSvIds.begin(),
                                                 mBlacklistedSvIds.end());
     mLocApi->sendMsg(new LocApiMsg(
-            [this, gpsConf, sapConf, oldMoServerUrl, gnssConfigRequested] () mutable {
-        gnssUpdateConfig(oldMoServerUrl, gnssConfigRequested, gnssConfigRequested);
+            [this, gpsConf, sapConf, oldMoServerUrl, moServerUrl,
+            serverUrl, gnssConfigRequested] () mutable {
+        gnssUpdateConfig(oldMoServerUrl, moServerUrl, serverUrl,
+                gnssConfigRequested, gnssConfigRequested);
 
         // set nmea mask type
         uint32_t mask = 0;
@@ -1036,6 +1103,7 @@ GnssAdapter::setConfig()
 }
 
 std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldMoServerUrl,
+        const std::string& moServerUrl, const std::string& serverUrl,
         GnssConfig& gnssConfigRequested, GnssConfig& gnssConfigNeedEngineUpdate, size_t count) {
     loc_gps_cfg_s gpsConf = ContextBase::mGps_conf;
     size_t index = 0;
@@ -1044,9 +1112,6 @@ std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldM
     if (count > 0) {
         errsList.insert(errsList.begin(), count, LOCATION_ERROR_SUCCESS);
     }
-
-    std::string serverUrl = getServerUrl();
-    std::string moServerUrl = getMoServerUrl();
 
     int serverUrlLen = serverUrl.length();
     int moServerUrlLen = moServerUrl.length();
@@ -1438,10 +1503,14 @@ GnssAdapter::gnssUpdateConfigCommand(const GnssConfig& config)
                     adapter.reportResponse(countOfConfigs, errs.data(), ids.data());
             });
 
+            std::string moServerUrl = adapter.getMoServerUrl();
+            std::string serverUrl = adapter.getServerUrl();
             mApi.sendMsg(new LocApiMsg(
                     [&adapter, gnssConfigRequested, gnssConfigNeedEngineUpdate,
-                    countOfConfigs, configCollectiveResponse, errs] () mutable {
+                    moServerUrl, serverUrl, countOfConfigs, configCollectiveResponse,
+                    errs] () mutable {
                 std::vector<LocationError> errsList = adapter.gnssUpdateConfig("",
+                        moServerUrl, serverUrl,
                         gnssConfigRequested, gnssConfigNeedEngineUpdate, countOfConfigs);
 
                 configCollectiveResponse->returnToSender(errsList);
@@ -2425,7 +2494,25 @@ void
 GnssAdapter::updateSystemPowerState(PowerStateType systemPowerState) {
     if (POWER_STATE_UNKNOWN != systemPowerState) {
         mSystemPowerState = systemPowerState;
+
+        /*Manage active GNSS sessions based on power event*/
+        switch (systemPowerState){
+
+            case POWER_STATE_SUSPEND:
+            case POWER_STATE_SHUTDOWN:
+                suspendSessions();
+                LOC_LOGd("Suspending all active sessions -- powerState: %d", systemPowerState);
+                break;
+            case POWER_STATE_RESUME:
+                restartSessions(false);
+                LOC_LOGd("Re-starting all active sessions -- powerState: %d", systemPowerState);
+                break;
+            default:
+                break;
+        } // switch
+
         mLocApi->updateSystemPowerState(mSystemPowerState);
+
     }
 }
 
@@ -2477,7 +2564,7 @@ GnssAdapter::addClientCommand(LocationAPI* client, const LocationCallbacks& call
 }
 
 void
-GnssAdapter::stopClientSessions(LocationAPI* client)
+GnssAdapter::stopClientSessions(LocationAPI* client, bool eraseSession)
 {
     LOC_LOGD("%s]: client %p", __func__, client);
 
@@ -2490,7 +2577,8 @@ GnssAdapter::stopClientSessions(LocationAPI* client)
     }
     for (auto key : vTimeBasedTrackingClient) {
         stopTimeBasedTrackingMultiplex(key.client, key.id);
-        eraseTrackingSession(key.client, key.id);
+        if (eraseSession)
+            eraseTrackingSession(key.client, key.id);
     }
 
     /* Distance-based Tracking */
@@ -2498,9 +2586,10 @@ GnssAdapter::stopClientSessions(LocationAPI* client)
               it != mDistanceBasedTrackingSessions.end(); /* no increment here*/) {
         if (client == it->first.client) {
             mLocApi->stopDistanceBasedTracking(it->first.id, new LocApiResponse(*getContext(),
-                          [this, client, id=it->first.id] (LocationError err) {
+                          [this, client, id=it->first.id, eraseSession] (LocationError err) {
                     if (LOCATION_ERROR_SUCCESS == err) {
-                        eraseTrackingSession(client, id);
+                        if (eraseSession)
+                            eraseTrackingSession(client, id);
                     }
                 }
             ));
@@ -2531,6 +2620,17 @@ GnssAdapter::updateClientsEventMask()
         }
         if (it->second.gnssMeasurementsCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_GNSS_MEASUREMENT;
+            if (nullptr != mPowerIndicationCb) {
+                /* If power reporting is requested this implies Android 'S' or higher,
+                   meaning we need to enable poly message (necessary for satellite
+                   PVT report). We do it this way since satellite PVT are reported
+                   in the measurements cb, they don't have their own cb, and we want
+                   to enable poly message only for Android 'S' or higher */
+                mask |= LOC_API_ADAPTER_BIT_GNSS_SV_POLYNOMIAL_REPORT;
+            }
+        }
+        if (it->second.gnssNHzMeasurementsCb != nullptr) {
+            mask |= LOC_API_ADAPTER_BIT_GNSS_NHZ_MEASUREMENT;
         }
         if (it->second.gnssDataCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_PARSED_POSITION_REPORT;
@@ -2604,9 +2704,11 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSvTypeConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
             mAdapter.gnssSecondaryBandConfigUpdate();
-
-            // restart sessions
-            mAdapter.restartSessions(true);
+            // restart sessions only in power state resume
+            if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
+                 POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
+                mAdapter.restartSessions(true);
+            }
             for (auto msg: mAdapter.mPendingMsgs) {
                 mAdapter.sendMsg(msg);
             }
@@ -2804,7 +2906,8 @@ GnssAdapter::hasCallbacksToStartTracking(LocationAPI* client)
     if (it != mClientData.end()) {
         if (it->second.trackingCb || it->second.gnssLocationInfoCb ||
                 it->second.engineLocationsInfoCb || it->second.gnssMeasurementsCb ||
-                it->second.gnssDataCb || it->second.gnssSvCb || it->second.gnssNmeaCb) {
+                it->second.gnssNHzMeasurementsCb || it->second.gnssDataCb ||
+                it->second.gnssSvCb || it->second.gnssNmeaCb) {
             allowed = true;
         } else {
             LOC_LOGi("missing right callback to start tracking")
@@ -3595,7 +3698,7 @@ GnssAdapter::enableCommand(LocationTechnologyType techType)
 
                 GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_NONE;
                 if (mAdapter.mSupportNfwControl) {
-                    ContextBase::mGps_conf.GPS_LOCK &= GNSS_CONFIG_GPS_LOCK_NI;
+                    ContextBase::mGps_conf.GPS_LOCK &= GNSS_CONFIG_GPS_LOCK_NFW_ALL;
                     gpsLock = ContextBase::mGps_conf.GPS_LOCK;
                 }
                 mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
@@ -4476,10 +4579,12 @@ GnssAdapter::requestNiNotifyEvent(const GnssNiNotification &notify, const void* 
                                   const LocInEmergency emergencyState)
 {
     LOC_LOGI("%s]: notif_type: %d, timeout: %d, default_resp: %d"
-             "requestor_id: %s (encoding: %d) text: %s text (encoding: %d) extras: %s",
+             "requestor_id: %s (encoding: %d) text: %s text (encoding: %d) extras: %s "
+             "emergencyState = %d",
              __func__, notify.type, notify.timeout, notify.timeoutResponse,
              notify.requestor, notify.requestorEncoding,
-             notify.message, notify.messageEncoding, notify.extras);
+             notify.message, notify.messageEncoding, notify.extras,
+             emergencyState);
 
     struct MsgReportNiNotify : public LocMsg {
         GnssAdapter& mAdapter;
@@ -4502,15 +4607,15 @@ GnssAdapter::requestNiNotifyEvent(const GnssNiNotification &notify, const void* 
             bool bIsInEmergency = false;
             bool bInformNiAccept = false;
 
-            bIsInEmergency = ((LOC_IN_EMERGENCY_UNKNOWN == mEmergencyState) &&
-                    mAdapter.getE911State()) ||                // older modems
+            bIsInEmergency = ((LOC_IN_EMERGENCY_UNKNOWN == mEmergencyState) && // older modems
+                    (mAdapter.getE911State(mNotify.type))) ||
                     (LOC_IN_EMERGENCY_SET == mEmergencyState); // newer modems
 
             if ((mAdapter.mSupportNfwControl || 0 == mAdapter.getAfwControlId()) &&
                 (GNSS_NI_TYPE_SUPL == mNotify.type || GNSS_NI_TYPE_EMERGENCY_SUPL == mNotify.type)
                 && !bIsInEmergency &&
                 !(GNSS_NI_OPTIONS_PRIVACY_OVERRIDE_BIT & mNotify.options) &&
-                (GNSS_CONFIG_GPS_LOCK_NI & ContextBase::mGps_conf.GPS_LOCK) &&
+                (GNSS_CONFIG_GPS_LOCK_NFW_SUPL & ContextBase::mGps_conf.GPS_LOCK) &&
                 1 == ContextBase::mGps_conf.NI_SUPL_DENY_ON_NFW_LOCKED) {
                 /* If all these conditions are TRUE, then deny the NI Request:
                 -'Q' Lock behavior OR 'P' Lock behavior and GNSS is Locked
@@ -4531,10 +4636,13 @@ GnssAdapter::requestNiNotifyEvent(const GnssNiNotification &notify, const void* 
             } else if (GNSS_NI_TYPE_CONTROL_PLANE == mNotify.type) {
                 if (bIsInEmergency && (1 == ContextBase::mGps_conf.CP_MTLR_ES)) {
                     mApi.informNiResponse(GNSS_NI_RESPONSE_ACCEPT, mData);
-                }
-                else {
+                } else {
                     mAdapter.requestNiNotify(mNotify, mData, false);
                 }
+            } else if ((GNSS_NI_TYPE_SUPL == mNotify.type ||
+                        GNSS_NI_TYPE_EMERGENCY_SUPL == mNotify.type)
+                      && (GNSS_NI_OPTIONS_PRIVACY_OVERRIDE_BIT & mNotify.options)) {
+                mApi.informNiResponse(GNSS_NI_RESPONSE_ACCEPT, mData);
             } else {
                 mAdapter.requestNiNotify(mNotify, mData, false);
             }
@@ -4737,6 +4845,8 @@ GnssAdapter::requestNiNotify(const GnssNiNotification& notify, const void* data,
         if (rc) {
             LOC_LOGE("%s]: Loc NI thread is not created.", __func__);
         }
+        pthread_setname_np(pSession->thread, "NiThread");
+
         rc = pthread_detach(pSession->thread);
         if (rc) {
             LOC_LOGE("%s]: Loc NI thread is not detached.", __func__);
@@ -4788,8 +4898,14 @@ void
 GnssAdapter::reportGnssMeasurementData(const GnssMeasurementsNotification& measurements)
 {
     for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-        if (nullptr != it->second.gnssMeasurementsCb) {
-            it->second.gnssMeasurementsCb(measurements);
+        if (!measurements.isNhz) {
+            if (nullptr != it->second.gnssMeasurementsCb) {
+                it->second.gnssMeasurementsCb(measurements);
+            }
+        } else { // nHz measurement
+            if (nullptr != it->second.gnssNHzMeasurementsCb) {
+                it->second.gnssNHzMeasurementsCb(measurements);
+            }
         }
     }
 }
@@ -5340,6 +5456,38 @@ bool GnssAdapter::releaseATL(int connHandle){
     return true;
 }
 
+void GnssAdapter::reportPdnTypeFromWds(int pdnType, AGpsExtType agpsType, std::string apnName,
+        AGpsBearerType bearerType) {
+    LOC_LOGd("pdnType from WDS QMI: %d, agpsType: %d, apnName: %s, bearerType: %d",
+            pdnType, agpsType, apnName.c_str(), bearerType);
+
+    struct MsgReportAtlPdn : public LocMsg {
+        GnssAdapter& mAdapter;
+        int mPdnType;
+        AgpsManager* mAgpsManager;
+        AGpsExtType mAgpsType;
+        string mApnName;
+        AGpsBearerType mBearerType;
+
+        inline MsgReportAtlPdn(GnssAdapter& adapter, int pdnType,
+                AgpsManager* agpsManager, AGpsExtType agpsType,
+                const string& apnName, AGpsBearerType bearerType) :
+            LocMsg(), mAgpsManager(agpsManager), mAgpsType(agpsType),
+            mApnName(apnName), mBearerType(bearerType),
+            mAdapter(adapter), mPdnType(pdnType) {}
+        inline virtual void proc() const {
+            mAgpsManager->reportAtlOpenSuccess(mAgpsType,
+                    const_cast<char*>(mApnName.c_str()),
+                    mApnName.length(), mPdnType<=0? mBearerType:mPdnType);
+        }
+    };
+
+    AGpsBearerType atlPdnType = (pdnType+1) & 3; // convert WDS QMI pdn type to AgpsBearerType
+    sendMsg(new MsgReportAtlPdn(*this, atlPdnType, &mAgpsManager,
+                agpsType, apnName, bearerType));
+}
+
+
 void GnssAdapter::dataConnOpenCommand(
         AGpsExtType agpsType,
         const char* apnName, int apnLen, AGpsBearerType bearerType){
@@ -5347,17 +5495,16 @@ void GnssAdapter::dataConnOpenCommand(
     LOC_LOGI("GnssAdapter::frameworkDataConnOpen");
 
     struct AgpsMsgAtlOpenSuccess: public LocMsg {
-
+        GnssAdapter& mAdapter;
         AgpsManager* mAgpsManager;
         AGpsExtType mAgpsType;
         char* mApnName;
-        int mApnLen;
         AGpsBearerType mBearerType;
 
-        inline AgpsMsgAtlOpenSuccess(AgpsManager* agpsManager, AGpsExtType agpsType,
-                const char* apnName, int apnLen, AGpsBearerType bearerType) :
+        inline AgpsMsgAtlOpenSuccess(GnssAdapter& adapter, AgpsManager* agpsManager,
+                AGpsExtType agpsType, const char* apnName, int apnLen, AGpsBearerType bearerType) :
                 LocMsg(), mAgpsManager(agpsManager), mAgpsType(agpsType), mApnName(
-                        new char[apnLen + 1]), mApnLen(apnLen), mBearerType(bearerType) {
+                        new char[apnLen + 1]), mBearerType(bearerType), mAdapter(adapter) {
 
             LOC_LOGV("AgpsMsgAtlOpenSuccess");
             if (mApnName == nullptr) {
@@ -5375,9 +5522,27 @@ void GnssAdapter::dataConnOpenCommand(
         }
 
         inline virtual void proc() const {
+            LOC_LOGv("AgpsMsgAtlOpenSuccess::proc()");
+            string apn(mApnName);
+            //Use QMI WDS API to query IP Protocol from modem profile
+            void* libHandle = nullptr;
+            getPdnTypeFromWds* getPdnTypeFunc = (getPdnTypeFromWds*)dlGetSymFromLib(libHandle,
+            #ifdef USE_GLIB
+                    "libloc_api_wds.so", "_Z10getPdnTypeRKNSt7__cxx1112basic_string"\
+                    "IcSt11char_traitsIcESaIcEEESt8functionIFviEE");
+            #else
+                    "libloc_api_wds.so", "_Z10getPdnTypeRKNSt3__112basic_stringIcNS_11char_traits"\
+                    "IcEENS_9allocatorIcEEEENS_8functionIFviEEE");
+            #endif
 
-            LOC_LOGV("AgpsMsgAtlOpenSuccess::proc()");
-            mAgpsManager->reportAtlOpenSuccess(mAgpsType, mApnName, mApnLen, mBearerType);
+            std::function<void(int)> wdsPdnTypeCb = std::bind(&GnssAdapter::reportPdnTypeFromWds,
+                    &mAdapter, std::placeholders::_1, mAgpsType, apn, mBearerType);
+           if (getPdnTypeFunc != nullptr) {
+               LOC_LOGv("dlGetSymFromLib success");
+               (*getPdnTypeFunc)(apn, wdsPdnTypeCb);
+           } else {
+               mAgpsManager->reportAtlOpenSuccess(mAgpsType, mApnName, apn.length(), mBearerType);
+           }
         }
     };
     // Added inital length checks for apnlen check to avoid security issues
@@ -5387,7 +5552,7 @@ void GnssAdapter::dataConnOpenCommand(
         LOC_LOGe("%s]: incorrect apnlen length or incorrect apnName", __func__);
         mAgpsManager.reportAtlClosed(agpsType);
     } else {
-        sendMsg( new AgpsMsgAtlOpenSuccess(
+        sendMsg( new AgpsMsgAtlOpenSuccess(*this,
                     &mAgpsManager, agpsType, apnName, apnLen, bearerType));
     }
 }
@@ -5881,36 +6046,58 @@ GnssAdapter::getGnssEnergyConsumedCommand(GnssEnergyConsumedCallback energyConsu
     sendMsg(new MsgGetGnssEnergyConsumed(*this, *mLocApi, energyConsumedCb));
 }
 
+uint32_t GnssAdapter::getNfwControlBits(const std::vector<std::string>& enabledNfws) {
+    uint32_t nfwControlBits = 0;
+
+    for (auto& pkgName : enabledNfws) {
+        auto nfw = mNfws.find(pkgName);
+        if (mNfws.end() != nfw) {
+            nfwControlBits |= nfw->second;
+        }
+    }
+
+    nfwControlBits = ~nfwControlBits & GNSS_CONFIG_GPS_LOCK_NFW_ALL;
+    LOC_LOGd("nfwControlBits=0x%X", nfwControlBits);
+    return nfwControlBits;
+}
+
 void
-GnssAdapter::nfwControlCommand(bool enable) {
+GnssAdapter::nfwControlCommand(std::vector<std::string>& enabledNfws) {
     struct MsgControlNfwLocationAccess : public LocMsg {
         GnssAdapter& mAdapter;
         LocApiBase& mApi;
-        bool mEnable;
+        const std::vector<std::string> mEnabledNfws;
         inline MsgControlNfwLocationAccess(GnssAdapter& adapter, LocApiBase& api,
-            bool enable) :
+            const std::vector<std::string>& enabledNfws) :
             LocMsg(),
             mAdapter(adapter),
             mApi(api),
-            mEnable(enable) {}
+            mEnabledNfws(std::move(enabledNfws)) {}
         inline virtual void proc() const {
+            if (!mAdapter.isEngineCapabilitiesKnown()) {
+                mAdapter.mPendingMsgs.push_back(
+                        new MsgControlNfwLocationAccess(mAdapter, mApi, mEnabledNfws));
+                return;
+            }
+
             GnssConfigGpsLock gpsLock;
 
+            uint32_t nfwControlBits;
+            nfwControlBits = mAdapter.getNfwControlBits(mEnabledNfws);
             gpsLock = ContextBase::mGps_conf.GPS_LOCK;
-            if (mEnable) {
-                gpsLock &= ~GNSS_CONFIG_GPS_LOCK_NI;
-            } else {
-                gpsLock |= GNSS_CONFIG_GPS_LOCK_NI;
-            }
+            gpsLock &= GNSS_CONFIG_GPS_LOCK_MO;
+            gpsLock |= nfwControlBits;
             ContextBase::mGps_conf.GPS_LOCK = gpsLock;
+
+            LOC_LOGv("gpsLock = 0x%X nfwControlBits = 0x%X", gpsLock, nfwControlBits);
             mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
-                mApi.setGpsLockSync((GnssConfigGpsLock)gpsLock);
+                         mApi.setGpsLockSync((GnssConfigGpsLock)gpsLock);
             }));
         }
     };
 
     if (mSupportNfwControl) {
-        sendMsg(new MsgControlNfwLocationAccess(*this, *mLocApi, enable));
+        sendMsg(new MsgControlNfwLocationAccess(*this, *mLocApi, enabledNfws));
     } else {
         LOC_LOGw("NFW control is not supported, do not use this for NFW");
     }
@@ -6971,10 +7158,15 @@ void GnssAdapter::enablePPENtripStreamCommand(const GnssNtripConnectionParams& p
                                               bool enableRTKEngine) {
 
     (void)enableRTKEngine; //future parameter, not used
+    if (0 == params.size || params.hostNameOrIp.empty() || params.mountPoint.empty() ||
+            params.username.empty() || params.password.empty()) {
+        LOC_LOGe("Ntrip parameters are invalid!");
+        return;
+    }
 
     struct enableNtripMsg : public LocMsg {
         GnssAdapter& mAdapter;
-        const GnssNtripConnectionParams& mParams;
+        const GnssNtripConnectionParams mParams;
 
         inline enableNtripMsg(GnssAdapter& adapter,
                 const GnssNtripConnectionParams& params) :

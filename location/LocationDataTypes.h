@@ -360,13 +360,43 @@ typedef enum {
 } LocationTechnologyType;
 
 // Configures how GPS is locked when GPS is disabled (through GnssDisable)
+/*
+There are several interpretations for GnssConfigGpsLock as follows:
+1. S behavior. This is identified by mSupportNfwControl being 1 and
+    isFeatureSupported(LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS)
+    In this case the bits GNSS_CONFIG_GPS_NFW_XXX below come into play,
+    a 1 will lock the corresponding NFW client while a 0 will unlock it.
+2. Q behavior. This is identified by mSupportNfwControl being 1. In this case
+    ContextBase::mGps_conf.GPS_LOCK is a "state", meaning it should reflect the
+    NV value. Therefore we will set the NV to ContextBase::mGps_conf.GPS_LOCK
+    GNSS_CONFIG_GPS_LOCK_NI bit will be 0 (enabled) if either GNSS_CONFIG_GPS_NFW_XXX
+    is 1 (enabled).
+3. P behavior. This is identified by mSupportNfwControl being 0. In this case
+    ContextBase::mGps_conf.GPS_LOCK is a "configuration", meaning it should hold
+    the "mask" for NI.
+*/
 enum {
-    GNSS_CONFIG_GPS_LOCK_NONE = 0, // gps is not locked when GPS is disabled (GnssDisable)
-    GNSS_CONFIG_GPS_LOCK_MO,       // gps mobile originated (MO) is locked when GPS is disabled
-    GNSS_CONFIG_GPS_LOCK_NI,       // gps network initiated (NI) is locked when GPS is disabled
-    GNSS_CONFIG_GPS_LOCK_MO_AND_NI,// gps MO and NI is locked when GPS is disabled
+    // gps is not locked when GPS is disabled (GnssDisable)
+    GNSS_CONFIG_GPS_LOCK_NONE               = 0x00000000,
+    // gps mobile originated (MO) is locked when GPS is disabled
+    GNSS_CONFIG_GPS_LOCK_MO                 = 0x00000001,
+    GNSS_CONFIG_GPS_LOCK_NFW_IMS            = 0x00000002,
+    GNSS_CONFIG_GPS_LOCK_NFW_SIM            = 0x00000004,
+    GNSS_CONFIG_GPS_LOCK_NFW_MDT            = 0x00000008,
+    GNSS_CONFIG_GPS_LOCK_NFW_TLOC           = 0x00000010,
+    GNSS_CONFIG_GPS_LOCK_NFW_RLOC           = 0x00000020,
+    GNSS_CONFIG_GPS_LOCK_NFW_V2X            = 0x00000040,
+    GNSS_CONFIG_GPS_LOCK_NFW_R1             = 0x00000080,
+    GNSS_CONFIG_GPS_LOCK_NFW_R2             = 0x00000100,
+    GNSS_CONFIG_GPS_LOCK_NFW_R3             = 0x00000200,
+    GNSS_CONFIG_GPS_LOCK_NFW_SUPL           = 0x00000400,
+    GNSS_CONFIG_GPS_LOCK_NFW_CP             = 0X00000800,
+    GNSS_CONFIG_GPS_LOCK_NFW_ALL            =
+            (((GNSS_CONFIG_GPS_LOCK_NFW_CP << 1) - 1) & ~GNSS_CONFIG_GPS_LOCK_MO),
+    GNSS_CONFIG_GPS_LOCK_MO_AND_NI          =
+            (GNSS_CONFIG_GPS_LOCK_MO | GNSS_CONFIG_GPS_LOCK_NFW_ALL),
 };
-typedef int32_t GnssConfigGpsLock;
+typedef uint32_t GnssConfigGpsLock;
 
 // SUPL version
 typedef enum {
@@ -518,7 +548,8 @@ typedef enum {
     GNSS_SV_OPTIONS_HAS_ALMANAC_BIT             = (1<<1),
     GNSS_SV_OPTIONS_USED_IN_FIX_BIT             = (1<<2),
     GNSS_SV_OPTIONS_HAS_CARRIER_FREQUENCY_BIT   = (1<<3),
-    GNSS_SV_OPTIONS_HAS_GNSS_SIGNAL_TYPE_BIT    = (1<<4)
+    GNSS_SV_OPTIONS_HAS_GNSS_SIGNAL_TYPE_BIT          = (1<<4),
+    GNSS_SV_OPTIONS_HAS_BASEBAND_CARRIER_TO_NOISE_BIT = (1<<5),
 } GnssSvOptionsBits;
 
 typedef enum {
@@ -600,6 +631,7 @@ typedef enum {
     GNSS_MEASUREMENTS_DATA_CYCLE_SLIP_COUNT_BIT             = (1<<22),
     GNSS_MEASUREMENTS_DATA_SATELLITE_PVT_BIT                = (1<<23),
     GNSS_MEASUREMENTS_DATA_CORRELATION_VECTOR_BIT           = (1<<24),
+    GNSS_MEASUREMENTS_DATA_GNSS_SIGNAL_TYPE_BIT             = (1<<25),
 } GnssMeasurementsDataFlagsBits;
 
 typedef uint32_t GnssMeasurementsStateMask;
@@ -1402,8 +1434,13 @@ typedef struct {
     GnssSvType svType;
     double timeOffsetNs;
     GnssMeasurementsStateMask stateMask;       // bitwise OR of GnssMeasurementsStateBits
+    // valid when GNSS_MEASUREMENTS_DATA_RECEIVED_SV_TIME_BIT is set
+    // total time is: receivedSvTimeNs + receivedSvTimeSubNs
     int64_t receivedSvTimeNs;
-    int64_t receivedSvTimeUncertaintyNs;
+    // valid when GNSS_MEASUREMENTS_DATA_RECEIVED_SV_TIME_BIT is set
+    // total time is: receivedSvTimeNs + receivedSvTimeSubNs
+    float  receivedSvTimeSubNs;
+    int64_t  receivedSvTimeUncertaintyNs;
     double carrierToNoiseDbHz;
     double pseudorangeRateMps;
     double pseudorangeRateUncertaintyMps;
@@ -2111,6 +2148,7 @@ typedef struct {
     gnssNmeaCallback gnssNmeaCb;                     // optional
     gnssDataCallback gnssDataCb;                     // optional
     gnssMeasurementsCallback gnssMeasurementsCb;     // optional
+    gnssMeasurementsCallback gnssNHzMeasurementsCb;  // optional
     batchingStatusCallback batchingStatusCb;         // optional
     locationSystemInfoCallback locationSystemInfoCb; // optional
     engineLocationsInfoCallback engineLocationsInfoCb;     // optional
@@ -2186,5 +2224,13 @@ typedef struct {
     std::string subThoroughfare;
     std::string url;
 } GnssCivicAddress;
+
+enum PowerStateType {
+    POWER_STATE_UNKNOWN = 0,
+    POWER_STATE_SUSPEND = 1,
+    POWER_STATE_RESUME  = 2,
+    POWER_STATE_SHUTDOWN = 3
+};
+
 
 #endif /* LOCATIONDATATYPES_H */

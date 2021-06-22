@@ -41,7 +41,6 @@ typedef const GeofenceInterface* (getGeofenceInterface)();
 typedef const BatchingInterface* (getBatchingInterface)();
 
 // GTP services
-typedef uint32_t (setOptInStatusGetter)(bool userConsent, responseCallback* callback);
 typedef void (enableProviderGetter)();
 typedef void (disableProviderGetter)();
 typedef void (getSingleNetworkLocationGetter)(trackingCallback* callback);
@@ -94,19 +93,20 @@ static bool needsGnssTrackingInfo(LocationCallbacks& locationCallbacks)
             locationCallbacks.gnssSvCb != nullptr ||
             locationCallbacks.gnssNmeaCb != nullptr ||
             locationCallbacks.gnssDataCb != nullptr ||
-            locationCallbacks.gnssMeasurementsCb != nullptr);
+            locationCallbacks.gnssMeasurementsCb != nullptr ||
+            locationCallbacks.gnssNHzMeasurementsCb != nullptr);
 }
 
 static bool isGnssClient(LocationCallbacks& locationCallbacks)
 {
     return (locationCallbacks.gnssNiCb != nullptr ||
-            locationCallbacks.trackingCb != nullptr ||
             locationCallbacks.gnssLocationInfoCb != nullptr ||
             locationCallbacks.engineLocationsInfoCb != nullptr ||
             locationCallbacks.gnssSvCb != nullptr ||
             locationCallbacks.gnssNmeaCb != nullptr ||
             locationCallbacks.gnssDataCb != nullptr ||
             locationCallbacks.gnssMeasurementsCb != nullptr ||
+            locationCallbacks.gnssNHzMeasurementsCb != nullptr ||
             locationCallbacks.locationSystemInfoCb != nullptr);
 }
 
@@ -666,27 +666,44 @@ LocationControlAPI::createInstance(LocationControlCallbacks& locationControlCall
     LocationControlAPI* controlAPI = NULL;
     pthread_mutex_lock(&gDataMutex);
 
-    if (nullptr != locationControlCallbacks.responseCb && NULL == gData.controlAPI) {
-        if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
-            gData.gnssInterface =
-                (GnssInterface*)loadLocationInterface<GnssInterface,
-                    getGnssInterface>("libgnss.so", "getGnssInterface");
-            if (NULL == gData.gnssInterface) {
-                gGnssLoadFailed = true;
-                LOC_LOGW("%s:%d]: No gnss interface available", __func__, __LINE__);
-            } else {
-                gData.gnssInterface->initialize();
+    if (NULL != gData.controlAPI) {
+        controlAPI = gData.controlAPI;
+    } else {
+        if (nullptr != locationControlCallbacks.responseCb && NULL == gData.controlAPI) {
+            if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
+                gData.gnssInterface =
+                    (GnssInterface*)loadLocationInterface<GnssInterface,
+                        getGnssInterface>("libgnss.so", "getGnssInterface");
+                if (NULL == gData.gnssInterface) {
+                    gGnssLoadFailed = true;
+                    LOC_LOGW("%s:%d]: No gnss interface available", __func__, __LINE__);
+                } else {
+                    gData.gnssInterface->initialize();
+                }
             }
-        }
-        if (NULL != gData.gnssInterface) {
-            gData.controlAPI = new LocationControlAPI();
-            gData.controlCallbacks = locationControlCallbacks;
-            gData.gnssInterface->setControlCallbacks(locationControlCallbacks);
-            controlAPI = gData.controlAPI;
+            if (NULL != gData.gnssInterface) {
+                gData.controlAPI = new LocationControlAPI();
+                gData.controlCallbacks = locationControlCallbacks;
+                gData.gnssInterface->setControlCallbacks(locationControlCallbacks);
+                controlAPI = gData.controlAPI;
+            }
         }
     }
 
     pthread_mutex_unlock(&gDataMutex);
+    return controlAPI;
+}
+
+
+LocationControlAPI*
+LocationControlAPI::getInstance()
+{
+    LocationControlAPI* controlAPI = NULL;
+
+    pthread_mutex_lock(&gDataMutex);
+    controlAPI = gData.controlAPI;
+    pthread_mutex_unlock(&gDataMutex);
+
     return controlAPI;
 }
 
@@ -928,16 +945,17 @@ uint32_t LocationControlAPI::configEngineRunState(
 }
 
 uint32_t LocationControlAPI::setOptInStatus(bool userConsent) {
-    void* libHandle = nullptr;
-    uint32_t sessionId = 0;
-    setOptInStatusGetter* setter = (setOptInStatusGetter*)dlGetSymFromLib(libHandle,
-            "liblocationservice_glue.so", "setOptInStatus");
-    if (setter != nullptr) {
-        sessionId = (*setter)(userConsent, &gData.controlCallbacks.responseCb);
+    uint32_t id = 0;
+    pthread_mutex_lock(&gDataMutex);
+
+    if (gData.gnssInterface != NULL) {
+        id = gData.gnssInterface->setOptInStatus(userConsent);
     } else {
-        LOC_LOGe("dlGetSymFromLib failed for liblocationservice_glue.so");
+        LOC_LOGe("No gnss interface available for Location Control API");
     }
-    return sessionId;
+
+    pthread_mutex_unlock(&gDataMutex);
+    return id;
 }
 
 uint32_t LocationControlAPI::configOutputNmeaTypes(
@@ -953,4 +971,30 @@ uint32_t LocationControlAPI::configOutputNmeaTypes(
 
     pthread_mutex_unlock(&gDataMutex);
     return id;
+}
+
+void LocationControlAPI::powerStateEvent(PowerStateType powerState) {
+    pthread_mutex_lock(&gDataMutex);
+
+    LOC_LOGv("--> entry, powerState: %d", powerState);
+
+    if (NULL != gData.gnssInterface) {
+        gData.gnssInterface->updateSystemPowerState(powerState);
+    } else {
+        LOC_LOGv("No gnss interface available.");
+    }
+
+    if (NULL != gData.geofenceInterface) {
+            gData.geofenceInterface->updateSystemPowerState(powerState);
+        } else {
+            LOC_LOGv("No geofence interface available.");
+    }
+
+    if (NULL != gData.batchingInterface) {
+        gData.batchingInterface->updateSystemPowerState(powerState);
+    } else {
+        LOC_LOGv("No batching interface available.");
+    }
+
+    pthread_mutex_unlock(&gDataMutex);
 }

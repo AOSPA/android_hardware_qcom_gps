@@ -154,7 +154,8 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
         if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT) {
             capabilities |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
         }
-        // CORRELATION_VECTOR not supported. TODO: SATELLITE_PVT
+        // CORRELATION_VECTOR not supported.
+        capabilities |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
 
         if (mGnssCbIface != nullptr) {
             auto r = mGnssCbIface->gnssSetCapabilitiesCb(capabilities);

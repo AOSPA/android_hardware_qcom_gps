@@ -118,7 +118,7 @@ public:
 XtraSystemStatusObserver::XtraSystemStatusObserver(IOsObserver* sysStatObs,
                                                    const MsgTask* msgTask) :
         mSystemStatusObsrvr(sysStatObs), mMsgTask(msgTask),
-        mGpsLock(-1), mConnections(~0), mXtraThrottle(true),
+        mGpsLock(-1), mConnections(~0), mRoaming(false), mXtraThrottle(true),
         mReqStatusReceived(false),
         mIsConnectivityStatusKnown(false),
         mXtraSender(LocIpc::getLocIpcLocalSender(LOC_IPC_XTRA)),
@@ -135,7 +135,7 @@ XtraSystemStatusObserver::XtraSystemStatusObserver(IOsObserver* sysStatObs,
 bool XtraSystemStatusObserver::updateLockStatus(GnssConfigGpsLock lock) {
     // mask NI(NFW bit) since from XTRA's standpoint GPS is enabled if
     // MO(AFW bit) is enabled and disabled when MO is disabled
-    mGpsLock = lock & ~GNSS_CONFIG_GPS_LOCK_NI;
+    mGpsLock = lock & ~GNSS_CONFIG_GPS_LOCK_NFW_ALL;
 
     if (!mReqStatusReceived) {
         return true;
@@ -149,11 +149,13 @@ bool XtraSystemStatusObserver::updateLockStatus(GnssConfigGpsLock lock) {
 }
 
 bool XtraSystemStatusObserver::updateConnections(uint64_t allConnections,
-        NetworkInfoType* networkHandleInfo) {
+        NetworkInfoType* networkHandleInfo, bool roaming) {
     mIsConnectivityStatusKnown = true;
     mConnections = allConnections;
+    mRoaming = roaming;
 
-    LOC_LOGd("updateConnections mConnections:%" PRIx64, mConnections);
+    LOC_LOGd("updateConnections mConnections:%" PRIx64 " mRoaming:%u",
+        mConnections, mRoaming);
     for (uint8_t i = 0; i < MAX_NETWORK_HANDLES; ++i) {
         mNetworkHandle[i] = networkHandleInfo[i];
         LOC_LOGd("updateConnections [%d] networkHandle:%" PRIx64 " networkType:%u",
@@ -175,7 +177,8 @@ bool XtraSystemStatusObserver::updateConnections(uint64_t allConnections,
             << mNetworkHandle[6].toString() << endl
             << mNetworkHandle[7].toString() << endl
             << mNetworkHandle[8].toString() << endl
-            << mNetworkHandle[MAX_NETWORK_HANDLES-1].toString();
+            << mNetworkHandle[MAX_NETWORK_HANDLES-1].toString() << endl
+            << (mRoaming ? 1 : 0);
     string s = ss.str();
     LocIpc::send(*mDgnssSender, (const uint8_t*)s.data(), s.size());
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()));
@@ -365,7 +368,7 @@ void XtraSystemStatusObserver::notify(const unordered_set<IDataItemCore*>& dlist
                         NetworkInfoType* networkHandleInfo =
                                 static_cast<NetworkInfoType*>(networkInfo->getNetworkHandle());
                         mXtraSysStatObj->updateConnections(networkInfo->getAllTypes(),
-                                networkHandleInfo);
+                                networkHandleInfo, (*networkInfo).mRoaming);
                     }
                     break;
 

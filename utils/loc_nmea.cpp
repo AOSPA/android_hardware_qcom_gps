@@ -1484,6 +1484,20 @@ void loc_nmea_generate_pos(const UlpLocation &location,
                 talker[1] = sv_meta.talker[1];
             }
 
+            // --------------------------
+            // ---$GIGSA/$GNGSA (NavIC)---
+            // --------------------------
+
+            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+                            loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_NAVIC,
+                            GNSS_SIGNAL_NAVIC_L5, true), nmeaArraystr, isTagBlockGroupingEnabled);
+            if (count > 0)
+            {
+                svUsedCount += count;
+                talker[0] = sv_meta.talker[0];
+                talker[1] = sv_meta.talker[1];
+            }
+
             // if svUsedCount is 0, it means we do not generate any GSA sentence yet.
             // in this case, generate an empty GSA sentence
             if (svUsedCount == 0) {

@@ -100,6 +100,7 @@ typedef struct {
     unsigned char        num_groups;
     char                 args[LOC_PROCESS_MAX_NUM_ARGS][LOC_PROCESS_MAX_ARG_STR_LENGTH];
     char                 argumentString[LOC_MAX_PARAM_STRING];
+    bool                 launch_on_optin;
 } loc_process_info_s_type;
 
 /*=============================================================================
