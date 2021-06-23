@@ -275,6 +275,7 @@ public:
                    } else {
                        sQwesFeatureMask &= ~LOCATION_CAPABILITIES_QWES_VPE;
                    }
+               break;
                case LOCATION_QWES_FEATURE_TYPE_DGNSS:
                    if (itr->second) {
                        sQwesFeatureMask |= LOCATION_CAPABILITIES_QWES_DGNSS;
