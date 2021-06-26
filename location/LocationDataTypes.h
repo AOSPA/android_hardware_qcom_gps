@@ -934,6 +934,18 @@ typedef enum {
     DR_GYRO_CALIBRATION_NEEDED  = (1<<4)
 } DrCalibrationStatusBits;
 
+typedef enum {
+    /**< Position calculated by standard alone postion engine. */
+    LOCATION_STANDALONE_QUALITY_TYPE = 0,
+    /**< Position calculated by using DGNSS technology. */
+    LOCATION_DGNSS_QUALITY_TYPE = 1,
+    /**< Position accuracy in RTK or PPP float performance. */
+    LOCATION_FLOAT_QUALITY_TYPE = 2,
+    /**< Position accuracy in RTK or PPP fixed performance. */
+    LOCATION_FIXED_QUALITY_TYPE = 3,
+} LocationQualityType;
+
+
 typedef struct {
     uint32_t size;           // set to sizeof(Location)
     LocationFlagsMask flags; // bitwise OR of LocationFlagsBits to mark which params are valid
@@ -956,6 +968,7 @@ typedef struct {
     LocationSpoofMask spoofMask;
     uint64_t elapsedRealTime;    // in ns
     uint64_t elapsedRealTimeUnc; // in ns
+    LocationQualityType qualityType; // position quality
 } Location;
 
 typedef enum {
