@@ -322,6 +322,9 @@ LocAdapterBase::getCapabilities()
             (ContextBase::getQwesFeatureStatus() & LOCATION_CAPABILITIES_QWES_DGNSS)) {
             mask |= LOCATION_CAPABILITIES_EDGNSS_BIT;
         }
+        if ((ContextBase::getQwesFeatureStatus() & LOCATION_CAPABILITIES_QWES_PPE)) {
+            mask |= LOCATION_CAPABILITIES_QWES_PPE;
+        }
     } else {
         LOC_LOGE("%s]: attempt to get capabilities before they are known.", __func__);
     }
