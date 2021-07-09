@@ -137,7 +137,12 @@ void GnssPowerIndication::gnssPowerIndicationCb(GnssPowerStatistics gnssPowerSta
              gnssPowerStats.elapsedRealtime.timeUncertaintyNs,
              gnssPowerStats.totalEnergyMilliJoule);
 
-    mGnssPowerIndicationCb->gnssPowerStatsCb(gnssPowerStats);
+    std::unique_lock<std::mutex> lock(mMutex);
+    auto gnssPowerIndicationCb = mGnssPowerIndicationCb;
+    lock.unlock();
+    if (nullptr != gnssPowerIndicationCb) {
+        gnssPowerIndicationCb->gnssPowerStatsCb(gnssPowerStats);
+    }
 }
 
 }  // namespace implementation
