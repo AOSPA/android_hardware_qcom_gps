@@ -655,6 +655,10 @@ public:
     void reportGGAToNtrip(const char* nmea);
     inline bool isDgnssNmeaRequired() { return mSendNmeaConsent &&
             mStartDgnssNtripParams.ntripParams.requiresNmeaLocation;}
+
+    // Zpp related
+    virtual bool reportZppBestAvailableFix(LocGpsLocation &zppLoc,
+            GpsLocationExtended &location_extended, LocPosTechMask tech_mask) override;
 };
 
 #endif //GNSS_ADAPTER_H
