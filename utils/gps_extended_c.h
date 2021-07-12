@@ -128,6 +128,9 @@ typedef enum {
     LOC_SUPPORTED_FEATURE_EDGNSS, /**< Support precise location dgnss */
     LOC_SUPPORTED_FEATURE_MULTIBAND_CONFIG, /**<  Support the multiband GNSS config. feature  */
     LOC_SUPPORTED_FEATURE_QMI_AGNSS_CONFIG_DISABLED, /**<  Support the AGNSS config. for DSDA  */
+    LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS, /**<  Support the Multiple Attribution Apps
+                                                       (UTH clients Lock control) feature  */
+    LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE, /**< Support the FLP, NLP Z-Source provider feature */
 } loc_supported_feature_enum;
 
 typedef struct {
