@@ -720,39 +720,24 @@ void GnssAPIClient::onGnssNmeaCb(GnssNmeaNotification gnssNmeaNotification)
 
 void GnssAPIClient::onEngineLocationsInfoCb(uint32_t count,
             GnssLocationInfoNotification* engineLocationInfoNotification) {
-    mMutex.lock();
-    auto gnssCbIface_2_1(mGnssCbIface_2_1);
-    mMutex.unlock();
-
     if (nullptr == engineLocationInfoNotification) {
         LOC_LOGe("engineLocationInfoNotification is nullptr");
         return;
     }
+    GnssLocationInfoNotification* locPtr = nullptr;
+    bool foundSPE = false;
 
-    if (gnssCbIface_2_1 != nullptr) {
-        GnssLocationInfoNotification* locPtr = nullptr;
-        bool foundSPE = false;
-
-        for (int i = 0; i < count; i++) {
-            locPtr= engineLocationInfoNotification + i;
-
-            LOC_LOGv("count %d, type %d", i, locPtr->locOutputEngType);
-            if (locPtr->locOutputEngType == LOC_OUTPUT_ENGINE_SPE) {
-                foundSPE = true;
-                break;
-            }
+    for (int i = 0; i < count; i++) {
+        locPtr = engineLocationInfoNotification + i;
+        if (nullptr == locPtr) return;
+        LOC_LOGv("count %d, type %d", i, locPtr->locOutputEngType);
+        if (LOC_OUTPUT_ENGINE_SPE == locPtr->locOutputEngType) {
+            foundSPE = true;
+            break;
         }
-        if (foundSPE && nullptr != locPtr) {
-            V2_0::GnssLocation gnssLocation;
-            convertGnssLocation(locPtr->location, gnssLocation);
-            auto r = gnssCbIface_2_1->gnssLocationCb_2_0(gnssLocation);
-            if (!r.isOk()) {
-                LOC_LOGe("Error from gnssLocationCb_2_0 description=%s",
-                        r.description().c_str());
-            }
-        }
-    } else {
-        LOC_LOGw("No GNSS Interface ready for onEngineLocationsInfoCb");
+    }
+    if (foundSPE) {
+        onTrackingCb(locPtr->location);
     }
 }
 
