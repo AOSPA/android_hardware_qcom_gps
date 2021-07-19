@@ -601,6 +601,17 @@ public:
     uint8_t mBatteryPct;
 };
 
+class InEmergencyCallDataItem: public IDataItemCore {
+public:
+    InEmergencyCallDataItem(bool isEmergency = false) :
+            mIsEmergency(isEmergency) {mId = IN_EMERGENCY_CALL_DATA_ITEM_ID;}
+    virtual ~InEmergencyCallDataItem() {}
+    virtual void stringify(string& /*valueStr*/) override;
+    virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
+    // Data members
+    bool mIsEmergency;
+};
+
 } // namespace loc_core
 
 #endif //DATAITEM_CONCRETETYPES_H

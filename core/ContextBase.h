@@ -78,7 +78,6 @@ typedef struct loc_gps_cfg_s
     double         CONSTRAINED_TIME_UNCERTAINTY_THRESHOLD;
     uint32_t       CONSTRAINED_TIME_UNCERTAINTY_ENERGY_BUDGET;
     uint32_t       POSITION_ASSISTED_CLOCK_ESTIMATOR_ENABLED;
-    char           PROXY_APP_PACKAGE_NAME[LOC_MAX_PARAM_STRING];
     uint32_t       CP_MTLR_ES;
     uint32_t       GNSS_DEPLOYMENT;
     uint32_t       CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED;
@@ -275,6 +274,7 @@ public:
                    } else {
                        sQwesFeatureMask &= ~LOCATION_CAPABILITIES_QWES_VPE;
                    }
+               break;
                case LOCATION_QWES_FEATURE_TYPE_DGNSS:
                    if (itr->second) {
                        sQwesFeatureMask |= LOCATION_CAPABILITIES_QWES_DGNSS;

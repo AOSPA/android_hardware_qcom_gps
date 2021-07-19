@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -76,6 +76,9 @@ IDataItemCore* DataItemsFactoryProxy::createNewDataItem(IDataItemCore* dataItem)
         break;
     case MANUFACTURER_DATA_ITEM_ID:
         mydi = new ManufacturerDataItem(*((ManufacturerDataItem*)dataItem));
+        break;
+    case IN_EMERGENCY_CALL_DATA_ITEM_ID:
+        mydi = new InEmergencyCallDataItem(*((InEmergencyCallDataItem*)dataItem));
         break;
     case ASSISTED_GPS_DATA_ITEM_ID:
         mydi = new AssistedGpsDataItem(*((AssistedGpsDataItem*)dataItem));

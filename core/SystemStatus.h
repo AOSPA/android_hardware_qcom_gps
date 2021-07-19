@@ -779,6 +779,21 @@ public:
     }
 };
 
+class SystemStatusInEmergencyCall : public SystemStatusItemBase {
+public:
+    InEmergencyCallDataItem mDataItem;
+    inline SystemStatusInEmergencyCall(bool value = false): mDataItem(value) {}
+    inline SystemStatusInEmergencyCall(const InEmergencyCallDataItem& itemBase):
+            mDataItem(itemBase) {}
+    inline bool equals(const SystemStatusItemBase& peer) override {
+        return mDataItem.mIsEmergency ==
+                    ((const SystemStatusInEmergencyCall&)peer).mDataItem.mIsEmergency;
+    }
+    inline void dump(void) override {
+        LOC_LOGd("In Emergency Call: %d", mDataItem.mIsEmergency);
+    }
+};
+
 /******************************************************************************
  SystemStatusReports
 ******************************************************************************/
@@ -818,6 +833,7 @@ public:
     std::vector<SystemStatusServiceStatus>    mServiceStatus;
     std::vector<SystemStatusModel>            mModel;
     std::vector<SystemStatusManufacturer>     mManufacturer;
+    std::vector<SystemStatusInEmergencyCall>  mInEmergencyCall;
     std::vector<SystemStatusAssistedGps>      mAssistedGps;
     std::vector<SystemStatusScreenState>      mScreenState;
     std::vector<SystemStatusPowerConnectState> mPowerConnectState;
@@ -875,6 +891,7 @@ public:
     bool updatePowerConnectState(bool charging);
     void resetNetworkInfo();
     bool eventOptInStatus(bool userConsent);
+    bool eventInEmergencyCall(bool isEmergency);
 };
 
 } // namespace loc_core

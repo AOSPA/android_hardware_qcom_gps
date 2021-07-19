@@ -354,6 +354,23 @@ GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
         out.elapsedRealTime = ulpLocation.gpsLocation.elapsedRealTime;
         out.elapsedRealTimeUnc = ulpLocation.gpsLocation.elapsedRealTimeUnc;
     }
+    out.qualityType = LOCATION_STANDALONE_QUALITY_TYPE;
+    if (GPS_LOCATION_EXTENDED_HAS_NAV_SOLUTION_MASK & locationExtended.flags) {
+        if (LOC_NAV_MASK_DGNSS_CORRECTION == locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_DGNSS_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_RTK_CORRECTION == locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_RTK_FIXED_CORRECTION == locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_PPP_CORRECTION == locationExtended.navSolutionMask) {
+            //If HEPE<5cm, we shall claim ‘FIXED’; otherwise, ‘FLOAT’
+            out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
+            if (GPS_LOCATION_EXTENDED_HAS_VERT_UNC & locationExtended.flags &&
+                    locationExtended.vert_unc < 0.05) {
+                    out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
+            }
+        }
+    }
 }
 
 /* This is utility routine that computes number of SV used
@@ -4968,6 +4985,7 @@ GnssAdapter::requestOdcpiEvent(OdcpiRequestInfo& request)
 void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
 {
     if (nullptr != mOdcpiRequestCb) {
+        bool sendEmergencyCallStatusEvent = false;
         LOC_LOGd("request: type %d, tbf %d, isEmergency %d"
                  " requestActive: %d timerActive: %d",
                  request.type, request.tbfMillis, request.isEmergencyMode,
@@ -4980,6 +4998,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
                 mOdcpiRequestCb(request);
                 mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
                 mOdcpiTimer.start();
+                sendEmergencyCallStatusEvent = true;
             // if the current active odcpi session is non-emergency, and the new
             // odcpi request is emergency, replace the odcpi request with new request
             // and restart the timer
@@ -4992,6 +5011,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
                 } else {
                     mOdcpiTimer.start();
                 }
+                sendEmergencyCallStatusEvent = true;
             // if ODCPI request is not active but the timer is active, then
             // just update the active state and wait for timer to expire
             // before requesting new ODCPI to avoid spamming ODCPI requests
@@ -5011,8 +5031,19 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             LOC_LOGd("request: type %d, isEmergency %d", request.type, request.isEmergencyMode);
             mOdcpiRequestCb(request);
             mOdcpiStateMask = 0;
+            sendEmergencyCallStatusEvent = true;
         } else {
             LOC_LOGE("Invalid ODCPI request type..");
+        }
+
+        // Raise InEmergencyCall event
+        if (sendEmergencyCallStatusEvent && request.isEmergencyMode) {
+            SystemStatus* systemstatus = getSystemStatus();
+            if (nullptr != systemstatus) {
+                systemstatus->eventInEmergencyCall(0 != mOdcpiStateMask);
+            } else {
+                LOC_LOGe("Failed to get system status instance.");
+            }
         }
     } else {
         LOC_LOGw("ODCPI request not supported");

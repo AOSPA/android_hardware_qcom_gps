@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -120,6 +120,8 @@
 
 #define OEM_GTP_UPLAOD_TRIGGER_READY_FIELD_NAME "OEM-GTP-UPLOAD-TRIGGER-READY"
 #define BATTERYLEVEL_FIELD_BATTERY_PCT "BATTERY_PCT"
+
+#define IN_EMERGENCY_CALL_FIELD_NAME "IS_EMERGENCY"
 
 namespace loc_core
 {
@@ -558,6 +560,19 @@ int32_t AirplaneModeDataItem::copyFrom(IDataItemCore* src) {
     EXIT_LOG_WITH_ERROR("%d", result);
     return result;
 }
+void InEmergencyCallDataItem::stringify(string& valueStr) {
+    int32_t result = 0;
+    ENTRY_LOG();
+    do {
+        STRINGIFY_ERROR_CHECK_AND_DOWN_CAST(
+                InEmergencyCallDataItem, IN_EMERGENCY_CALL_DATA_ITEM_ID);
+        valueStr.clear ();
+        valueStr += IN_EMERGENCY_CALL_FIELD_NAME;
+        valueStr += ": ";
+        valueStr += (d->mIsEmergency) ? ("true") : ("false");
+    } while (0);
+    EXIT_LOG_WITH_ERROR("%d", result);
+}
 int32_t ENHDataItem::copyFrom(IDataItemCore* src) {
     int32_t result = -1;
     ENTRY_LOG();
@@ -890,6 +905,18 @@ int32_t BtDeviceScanDetailsDataItem::copyFrom(IDataItemCore* src) {
             s->mReceiveTimestamp = d->mReceiveTimestamp;
         }
         if (s->mErrorCause != d->mErrorCause) {s->mErrorCause = d->mErrorCause;}
+        result = 0;
+    } while (0);
+    EXIT_LOG("%d", result);
+    return result;
+}
+int32_t InEmergencyCallDataItem::copyFrom(IDataItemCore* src) {
+    int32_t result = -1;
+    ENTRY_LOG();
+    do {
+        COPIER_ERROR_CHECK_AND_DOWN_CAST(
+                InEmergencyCallDataItem, IN_EMERGENCY_CALL_DATA_ITEM_ID);
+        s->mIsEmergency = d->mIsEmergency;
         result = 0;
     } while (0);
     EXIT_LOG("%d", result);
