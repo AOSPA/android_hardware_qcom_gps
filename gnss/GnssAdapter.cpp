@@ -5136,16 +5136,21 @@ void GnssAdapter::injectOdcpiCommand(const Location& location)
     struct MsgInjectOdcpi : public LocMsg {
         GnssAdapter& mAdapter;
         Location mLocation;
-        inline MsgInjectOdcpi(GnssAdapter& adapter, const Location& location) :
+        inline MsgInjectOdcpi(GnssAdapter& adapter, const Location& location, ContextBase& context):
                 LocMsg(),
                 mAdapter(adapter),
-                mLocation(location) {}
+                mLocation(location) {
+            // Update techMask to tell whether ALE FLP or Android FLP
+            if (context.getLBSProxyBase()->getIzatFusedProviderOverride()) {
+                mLocation.techMask |= LOCATION_TECHNOLOGY_HYBRID_ALE_BIT;
+            }
+        }
         inline virtual void proc() const {
             mAdapter.injectOdcpi(mLocation);
         }
     };
 
-    sendMsg(new MsgInjectOdcpi(*this, location));
+    sendMsg(new MsgInjectOdcpi(*this, location, *mContext));
 }
 
 void GnssAdapter::injectOdcpi(const Location& location)
