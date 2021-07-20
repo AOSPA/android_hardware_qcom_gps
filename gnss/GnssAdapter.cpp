@@ -142,6 +142,7 @@ GnssAdapter::GnssAdapter() :
     mXtraObserver(mSystemStatus->getOsObserver(), mMsgTask),
     mBlockCPIInfo{},
     mDreIntEnabled(false),
+    mPpeEnabled(false),
     mLocSystemInfo{},
     mPowerOn(false),
     mAllowFlpNetworkFixes(0),
@@ -698,6 +699,23 @@ GnssAdapter::convertLocationInfo(GnssLocationInfoNotification& out,
 
     out.flags |= GNSS_LOCATION_INFO_SESSION_STATUS_BIT;
     out.sessionStatus = status;
+
+    if (GPS_LOCATION_EXTENDED_HAS_INTEGRITY_RISK_USED & locationExtended.flags) {
+        out.flags |= GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT;
+        out.integrityRiskUsed = locationExtended.integrityRiskUsed;
+    }
+    if (GPS_LOCATION_EXTENDED_HAS_PROTECT_ALONG_TRACK & locationExtended.flags) {
+        out.flags |= GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT;
+        out.protectAlongTrack = locationExtended.protectAlongTrack;
+    }
+    if (GPS_LOCATION_EXTENDED_HAS_PROTECT_CROSS_TRACK & locationExtended.flags) {
+        out.flags |= GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT;
+        out.protectCrossTrack = locationExtended.protectCrossTrack;
+    }
+    if (GPS_LOCATION_EXTENDED_HAS_PROTECT_VERTICAL & locationExtended.flags) {
+        out.flags |= GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT;
+        out.protectVertical = locationExtended.protectVertical;
+    }
 }
 
 inline uint32_t
@@ -6630,6 +6648,47 @@ uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmea
     return sessionId;
 }
 
+uint32_t GnssAdapter::configEngineIntegrityRiskCommand(
+        PositioningEngineMask engType, uint32_t integrityRisk) {
+
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, eng type 0x%x, integrity risk %u, ppe enabled %d",
+             sessionId, engType, integrityRisk, mPpeEnabled);
+
+    struct MsgConfigEngineIntegrityRisk : public LocMsg {
+        GnssAdapter&          mAdapter;
+        uint32_t              mSessionId;
+        PositioningEngineMask mEngType;
+        uint32_t              mIntegrityRisk;
+
+        inline MsgConfigEngineIntegrityRisk(GnssAdapter& adapter,
+                                            uint32_t sessionId,
+                                            PositioningEngineMask engType,
+                                            uint32_t integrityRisk) :
+            LocMsg(),
+            mAdapter(adapter),
+            mSessionId(sessionId),
+            mEngType(engType),
+            mIntegrityRisk(integrityRisk) {}
+        inline virtual void proc() const {
+            LocationError err = LOCATION_ERROR_NOT_SUPPORTED;
+            // Currently, only PPE engine supports integrity risk config request
+            if ((mEngType == PRECISE_POSITIONING_ENGINE) && (mAdapter.mPpeEnabled == true)) {
+                if (true == mAdapter.mEngHubProxy->configEngineIntegrityRisk(
+                        mEngType, mIntegrityRisk)) {
+                    err = LOCATION_ERROR_SUCCESS;
+                }
+            }
+            mAdapter.reportResponse(err, mSessionId);
+        }
+    };
+
+    sendMsg(new MsgConfigEngineIntegrityRisk(*this, sessionId, engType, integrityRisk));
+
+    return sessionId;
+}
+
 void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig)
 {
     struct MsgReportGnssConfig : public LocMsg {
@@ -6705,10 +6764,12 @@ GnssAdapter::initEngHubProxy() {
                 (processInfoList[i].proc_status == ENABLED)) {
                 pluginDaemonEnabled = true;
                 // check if this is DRE-INT engine
-                if ((processInfoList[i].args[1]!= nullptr) &&
-                    (strncmp(processInfoList[i].args[1], "DRE-INT", sizeof("DRE-INT")) == 0)) {
-                    mDreIntEnabled = true;
-                    break;
+                if (processInfoList[i].args[1]!= nullptr) {
+                    if (strncmp(processInfoList[i].args[1], "DRE-INT", sizeof("DRE-INT")) == 0) {
+                        mDreIntEnabled = true;
+                    } else if (strncmp(processInfoList[i].args[1], "PPE", sizeof("PPE")) == 0) {
+                        mPpeEnabled = true;
+                    }
                 }
             }
         }

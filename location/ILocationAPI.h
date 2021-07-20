@@ -652,6 +652,53 @@ public:
     virtual uint32_t setOptInStatus(bool userConsent) {
         return 0;
     }
+
+    /** @brief
+        This API is used to instruct the specified engine to use
+        the provided integrity risk level for protection level
+        calculation in position report. This API can be called via
+        a position session is in progress.  <br/>
+
+        Prior to calling this API for a particular engine, the
+        engine shall not calcualte the protection levels and shall
+        not include the protection levels in its position report.
+        <br/>
+
+        Currently, only PPE engine will support this function.
+        LocConfigCb() will return LOC_INT_RESPONSE_NOT_SUPPORTED
+        when request is made to none-PPE engines. <br/>
+
+        @param
+        engType: the engine that is instructed to use the specified
+        integrity risk level for protection level calculation. The
+        protection level will be returned back in
+        LocationClientApi::GnssLocation. <br/>
+
+        @param
+        integrityRisk: the integrity risk level used for
+        calculating protection level in
+        LocationClientApi::GnssLocation. <br/>
+
+        The integrity risk is defined as a probability per epoch,
+        in unit of 2.5e-10. The valid range for actual integrity is
+        [2.5e-10, 1-2.5e-10]), this corresponds to range of [1,
+        4e9-1] of this parameter. <br/>
+
+        If the specified value of integrityRisk is NOT in the valid
+        range of [1, 4e9-1], the engine shall disable/invalidate
+        the protection levels in the position report. <br/>
+
+        @return true, if the API request has been accepted. The
+        status will be returned via configCB. When returning
+        true, LocConfigCb() will be invoked to deliver
+        asynchronous processing status.
+        <br/>
+
+        @return false, if the API request has not been accepted for
+        further processing. <br/>
+    */
+    virtual uint32_t configEngineIntegrityRisk(
+            PositioningEngineMask engType, uint32_t integrityRisk) = 0;
 };
 
 #endif /* ILOCATIONAPI_H */

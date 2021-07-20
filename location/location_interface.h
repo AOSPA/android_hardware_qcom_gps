@@ -115,6 +115,7 @@ struct GnssInterface {
                                      LocEngineRunState engState);
     uint32_t (*configOutputNmeaTypes)(GnssNmeaTypesMask enabledNmeaTypes);
     uint32_t (*setOptInStatus)(bool userConsent);
+    uint32_t (*configEngineIntegrityRisk)(PositioningEngineMask engineType, uint32_t integrityRisk);
 };
 
 struct BatchingInterface {

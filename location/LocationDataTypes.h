@@ -214,6 +214,10 @@ typedef enum {
     GNSS_LOCATION_INFO_DR_SOLUTION_STATUS_MASK_BIT      = (1ULL<<31), // Valid DR solution status
     GNSS_LOCATION_INFO_ALTITUDE_ASSUMED_BIT             = (1ULL<<32), // Valid altitude assumed
     GNSS_LOCATION_INFO_SESSION_STATUS_BIT               = (1ULL<<33), // session status
+    GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT    = (1ULL<<34), // integrity risk used
+    GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<35), // along-track protection level
+    GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<36), // Cross-track protection level
+    GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<37), // vertical protection level
 } GnssLocationInfoFlagBits;
 
 typedef enum {
@@ -1279,6 +1283,14 @@ typedef struct {
     bool altitudeAssumed;
     // location session status
     loc_sess_status sessionStatus;
+    // integrity risk used for protection level parameters.
+    uint32_t integrityRiskUsed;
+    // along-track protection level
+    float    protectAlongTrack;
+    // cross-track protection level
+    float    protectCrossTrack;
+    // vertical component protection level
+    float    protectVertical;
 } GnssLocationInfoNotification;
 
 typedef struct {

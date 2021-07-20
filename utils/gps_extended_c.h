@@ -405,6 +405,14 @@ typedef uint64_t GpsLocationExtendedFlags;
 #define GPS_LOCATION_EXTENDED_HAS_DR_SOLUTION_STATUS_MASK        0x800000000000
 /** GpsLocationExtended has altitudeAssumed. */
 #define GPS_LOCATION_EXTENDED_HAS_ALTITUDE_ASSUMED               0x1000000000000
+/** GpsLocationExtended has integrityRiskUsed. */
+#define GPS_LOCATION_EXTENDED_HAS_INTEGRITY_RISK_USED            0x2000000000000
+/** GpsLocationExtended has protectAlongTrack. */
+#define GPS_LOCATION_EXTENDED_HAS_PROTECT_ALONG_TRACK            0x4000000000000
+/** GpsLocationExtended has protectCrossTrack. */
+#define GPS_LOCATION_EXTENDED_HAS_PROTECT_CROSS_TRACK            0x8000000000000
+/** GpsLocationExtended has protectVertical. */
+#define GPS_LOCATION_EXTENDED_HAS_PROTECT_VERTICAL               0x10000000000000
 
 typedef uint32_t LocNavSolutionMask;
 /* Bitmask to specify whether SBAS ionospheric correction is used  */
@@ -851,6 +859,27 @@ typedef struct {
      *  true:  Altitude is assumed; there may not be enough
      *         satellites to determine the precise altitude. */
     bool altitudeAssumed;
+
+    /** Integrity risk used for protection level parameters.
+     *  Unit of 2.5e-10. Valid range is [1 to (4e9-1)].
+     *  Other values means integrity risk is disabled and
+     *  GnssLocation::protectAlongTrack,
+     *  GnssLocation::protectCrossTrack and
+     *  GnssLocation::protectVertical will not be available.
+     */
+    uint32_t integrityRiskUsed;
+    /** Along-track protection level at specified integrity risk, in
+     *  unit of meter.
+     */
+    float    protectAlongTrack;
+   /** Cross-track protection level at specified integrity risk, in
+     *  unit of meter.
+     */
+    float    protectCrossTrack;
+    /** Vertical component protection level at specified integrity
+     *  risk, in unit of meter.
+     */
+    float    protectVertical;
 } GpsLocationExtended;
 
 // struct that contains complete position info from engine
