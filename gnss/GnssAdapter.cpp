@@ -4047,7 +4047,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
 
     if (reportToGnssClient || reportToFlpClient) {
         GnssLocationInfoNotification locationInfo = {};
-        list<trackingCallback> cbRunnables = {};
+        list<trackingCallback> cbRunnables;
         convertLocationInfo(locationInfo, locationExtended, status);
         convertLocation(locationInfo.location, ulpLocation, locationExtended);
         logLatencyInfo();
