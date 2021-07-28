@@ -31,7 +31,7 @@ LOCAL_SHARED_LIBRARIES := \
     android.hardware.gnss-V1-ndk_platform \
     liblog \
     libcutils \
-    libqti_vndfwk_detect \
+    libqti_vndfwk_detect_vendor \
     libutils \
     libloc_core \
     libgps.utils \
@@ -72,7 +72,7 @@ LOCAL_SHARED_LIBRARIES := \
     libutils \
     libgps.utils \
     liblocation_api \
-    libqti_vndfwk_detect \
+    libqti_vndfwk_detect_vendor \
     libbinder_ndk \
 
 LOCAL_SHARED_LIBRARIES += \
