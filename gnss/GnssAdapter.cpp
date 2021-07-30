@@ -4006,6 +4006,31 @@ GnssAdapter::isFlpClient(LocationCallbacks& locationCallbacks)
             locationCallbacks.engineLocationsInfoCb == nullptr);
 }
 
+bool GnssAdapter::needReportForClient(LocationAPI* client, enum loc_sess_status status) {
+    if (LOC_SESS_SUCCESS == status || (client == nullptr && LOC_SESS_INTERMEDIATE == status &&
+                mDistanceBasedTrackingSessions.size() > 0)) {
+        return true;
+    }
+    if (status != LOC_SESS_FAILURE) {
+        for (auto it = mDistanceBasedTrackingSessions.begin();
+                it != mDistanceBasedTrackingSessions.end(); ++it) {
+            if (it->first.client == client) { // Always report intermediate fixes to dbt clients
+                return true;
+            }
+        }
+    }
+    for (auto it = mTimeBasedTrackingSessions.begin();
+            it != mTimeBasedTrackingSessions.end(); ++it) {
+        // report intermediate fix when TBT session allows, like flp;
+        // report any fix (even failed fix) when TBT session allows, like LE.
+        if ((it->first.client == client || client == nullptr) &&
+                it->second.qualityLevelAccepted >= status) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
         const struct timespec32_t &apTimeStamp)
 {
@@ -4103,10 +4128,10 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
                             enum loc_sess_status status,
                             LocPosTechMask techMask)
 {
-    bool reportToGnssClient = needReportForGnssClient(ulpLocation, status, techMask);
-    bool reportToFlpClient = needReportForFlpClient(status, techMask);
+    bool reportToAllClients = needReportForGnssClient(ulpLocation, status, techMask);
+    bool reportToAnyClient = needReportForFlpClient(status, techMask);
 
-    if (reportToGnssClient || reportToFlpClient) {
+    if (reportToAllClients || reportToAnyClient) {
         GnssLocationInfoNotification locationInfo = {};
         list<trackingCallback> cbRunnables;
         convertLocationInfo(locationInfo, locationExtended, status);
@@ -4115,24 +4140,26 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
         logLatencyInfo();
 
         for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if ((reportToGnssClient && !isFlpClient(it->second))) {
-                if (nullptr != it->second.gnssLocationInfoCb) {
-                    it->second.gnssLocationInfoCb(locationInfo);
-                } else if ((nullptr != it->second.engineLocationsInfoCb) &&
-                           (false == initEngHubProxy())) {
-                    // if engine hub is disabled, this is SPE fix from modem
-                    // we need to mark one copy marked as fused and one copy marked as PPE
-                    // and dispatch it to the engineLocationsInfoCb
-                    GnssLocationInfoNotification engLocationsInfo[2];
-                    engLocationsInfo[0] = locationInfo;
-                    engLocationsInfo[0].locOutputEngType = LOC_OUTPUT_ENGINE_FUSED;
-                    engLocationsInfo[0].flags |= GNSS_LOCATION_INFO_OUTPUT_ENG_TYPE_BIT;
-                    engLocationsInfo[1] = locationInfo;
-                    it->second.engineLocationsInfoCb(2, engLocationsInfo);
-                } else if (nullptr != it->second.trackingCb) {
-                    it->second.trackingCb(locationInfo.location);
+            bool isFlpClnt = isFlpClient(it->second);
+            if (!isFlpClnt) {
+                if ((reportToAllClients || needReportForClient(it->first, status))) {
+                    if ((nullptr != it->second.engineLocationsInfoCb) &&
+                            (false == initEngHubProxy())) {
+                        // if engine hub is disabled, this is SPE fix from modem
+                        // we need to have one copy marked as fused and leave the other copy
+                        // unmodified (which is marked as SPE fix in LocAPIV02.cpp) and
+                        // dispatch both copies to the engineLocationsInfoCb
+                        GnssLocationInfoNotification engLocationsInfo[2];
+                        engLocationsInfo[0] = locationInfo;
+                        engLocationsInfo[0].locOutputEngType = LOC_OUTPUT_ENGINE_FUSED;
+                        engLocationsInfo[0].flags |= GNSS_LOCATION_INFO_OUTPUT_ENG_TYPE_BIT;
+                        engLocationsInfo[1] = locationInfo;
+                        it->second.engineLocationsInfoCb(2, engLocationsInfo);
+                    } else if (nullptr != it->second.trackingCb) {
+                        it->second.trackingCb(locationInfo.location);
+                    }
                 }
-            } else if (reportToFlpClient && isFlpClient(it->second)) {
+            } else if (reportToAnyClient) {
                 if (nullptr != it->second.trackingCb) {
                     cbRunnables.emplace_back([ cb=it->second.trackingCb ] (Location location) {
                         cb(location);
@@ -4152,7 +4179,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
 
         mGnssSvIdUsedInPosAvail = false;
         mGnssMbSvIdUsedInPosAvail = false;
-        if (reportToGnssClient) {
+        if (reportToAllClients) {
             if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
                 mGnssSvIdUsedInPosAvail = true;
                 mGnssSvIdUsedInPosition = locationExtended.gnss_sv_used_ids;
@@ -4185,7 +4212,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
         bool blank_fix = ((0 == ulpLocation.gpsLocation.latitude) &&
                           (0 == ulpLocation.gpsLocation.longitude) &&
                           (LOC_RELIABILITY_NOT_SET == locationExtended.horizontal_reliability));
-        uint8_t generate_nmea = (reportToGnssClient && status != LOC_SESS_FAILURE && !blank_fix);
+        uint8_t generate_nmea = (reportToAllClients && status != LOC_SESS_FAILURE && !blank_fix);
         bool custom_nmea_gga = (1 == ContextBase::mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED);
         bool isTagBlockGroupingEnabled =
                 (1 == ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED);
@@ -4283,7 +4310,8 @@ GnssAdapter::reportEnginePositions(unsigned int count,
     }
     if (needReportEnginePositions) {
         for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if (nullptr != it->second.engineLocationsInfoCb) {
+            if ((nullptr != it->second.engineLocationsInfoCb) &&
+                (needReportForClient(it->first, engLocation->sessionStatus))) {
                 it->second.engineLocationsInfoCb(count, locationInfo);
             }
         }
