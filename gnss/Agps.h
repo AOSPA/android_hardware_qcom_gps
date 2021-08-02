@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, 2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -168,7 +168,7 @@ public:
 
     /* Getter/Setter methods */
     void setAPN(char* apn, unsigned int len);
-    inline char* getAPN() const { return (char*)mAPN; }
+    inline char* getAPN() const { return mAPN; }
     inline uint32_t getAPNLen() const { return mAPNLen; }
     inline void setBearer(AGpsBearerType bearer) { mBearer = bearer; }
     inline LocApnTypeMask getApnTypeMask() const { return mApnTypeMask; }
