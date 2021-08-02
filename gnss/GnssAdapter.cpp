@@ -5274,7 +5274,45 @@ GnssAdapter::invokeGnssEnergyConsumedCallback(uint64_t energyConsumedSinceFirstB
         mGnssEnergyConsumedCb = nullptr;
     }
     if (!mGnssPowerStatisticsInit) {
+        /* We need to change the reference in case HAL process restarts (i.e. crashes)
+           We maintain mBootReferenceEnergy value in the file system
+           At the point mBootReferenceEnergy needs to get initialized we will use
+           the following logic:
+
+           if (boot time > 30 sec)
+                use the value in the file system for mBootReferenceEnergy
+           else
+                use the value we get here from the modem for mBootReferenceEnergy */
+
+        struct timespec currentTime = {};
+        int64_t sinceBootTimeNanos = 0;
+        FILE *fp = NULL;
+
         mBootReferenceEnergy = energyConsumedSinceFirstBoot;
+        if (NULL != (fp = fopen("/data/vendor/location/energy.conf", "a+b"))) {
+            rewind(fp);
+            if (ElapsedRealtimeEstimator::getCurrentTime(currentTime, sinceBootTimeNanos)) {
+                LOC_LOGv("sinceBootTimeNanos: %" PRIu64 " ", sinceBootTimeNanos);
+                if ((uint32_t)(sinceBootTimeNanos / 1000000000) > 30) {
+                    int fr = fread(&mBootReferenceEnergy, sizeof(mBootReferenceEnergy), 1, fp);
+                    if (1 != fr) {
+                        mBootReferenceEnergy = energyConsumedSinceFirstBoot;
+                        LOC_LOGw("fread failed ferror(fp)=%d fr=%d", ferror(fp), fr);
+                    }
+                } else {
+                    fwrite(&mBootReferenceEnergy, sizeof(mBootReferenceEnergy), 1, fp);
+                }
+            } else {
+                LOC_LOGw("getCurrentTime failed");
+                fwrite(&mBootReferenceEnergy, sizeof(mBootReferenceEnergy), 1, fp);
+            }
+            fclose(fp);
+        } else {
+            LOC_LOGw("fopen failed");
+        }
+        LOC_LOGd("mBootReferenceEnergy: %" PRIu64 " energyConsumedSinceFirstBoot: %" PRIu64 " ",
+                 mBootReferenceEnergy, energyConsumedSinceFirstBoot);
+
         mGnssPowerStatisticsInit = true;
         mPowerElapsedRealTimeCal.reset();
     } else if (nullptr != mPowerIndicationCb) {
@@ -7021,8 +7059,9 @@ GnssAdapter::parseDoublesString(char* dString) {
 }
 
 void GnssAdapter::initGnssPowerStatistics() {
-    mGnssPowerStatisticsInit = false;
-    mLocApi->getGnssEnergyConsumed();
+    if (!mGnssPowerStatisticsInit) {
+        mLocApi->getGnssEnergyConsumed();
+    }
 }
 
 void
