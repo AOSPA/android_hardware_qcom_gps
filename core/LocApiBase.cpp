@@ -205,24 +205,29 @@ bool LocApiBase::needReport(const UlpLocation& ulpLocation,
 {
     bool reported = false;
 
-    if (LOC_SESS_SUCCESS == status) {
-        // this is a final fix
-        LocPosTechMask mask =
-            LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID;
-        // it is a Satellite fix or a sensor fix
-        reported = (mask & techMask);
-    }
-    else if (LOC_SESS_INTERMEDIATE == status &&
-        LOC_SESS_INTERMEDIATE == ContextBase::mGps_conf.INTERMEDIATE_POS) {
-        // this is a intermediate fix and we accept intermediate
-
-        // it is NOT the case that
-        // there is inaccuracy; and
-        // we care about inaccuracy; and
-        // the inaccuracy exceeds our tolerance
-        reported = !((ulpLocation.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ACCURACY) &&
-            (ContextBase::mGps_conf.ACCURACY_THRES != 0) &&
-            (ulpLocation.gpsLocation.accuracy > ContextBase::mGps_conf.ACCURACY_THRES));
+    if (LOC_SESS_INTERMEDIATE == ContextBase::mGps_conf.INTERMEDIATE_POS) {
+        // if intermediate fix is allowed, we will report out intermediate or final fixes
+        // when one of below two conditions are met:
+        // 1: if accuracy level is do not care, report out all intermediate or final fixes
+        // 2: otherwise, the accuracy level will need to be valid and less than threshold
+        if (LOC_SESS_FAILURE != status) {
+            if ((ContextBase::mGps_conf.ACCURACY_THRES != 0) &&
+                    (((ulpLocation.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ACCURACY) == 0) ||
+                     (ulpLocation.gpsLocation.accuracy >= ContextBase::mGps_conf.ACCURACY_THRES))) {
+                reported = false;
+            } else {
+                reported = true;
+            }
+        }
+    } else {
+        // intermediate fix is not allowed, only can report out final fixes
+        if (LOC_SESS_SUCCESS == status) {
+            // this is a final fix
+            LocPosTechMask mask =
+                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID;
+            // it is a Satellite fix or a sensor fix
+            reported = (mask & techMask);
+        }
     }
 
     return reported;
