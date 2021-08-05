@@ -1407,6 +1407,13 @@ struct GnssConfigSetAssistanceServer {
     }
 };
 
+typedef uint32_t GnssSatellitePvtFlagsMask;
+typedef enum {
+    GNSS_SATELLITE_PVT_POSITION_VELOCITY_CLOCK_INFO_BIT = (1 << 0),
+    GNSS_SATELLITE_PVT_IONO_BIT = (1 << 1),
+    GNSS_SATELLITE_PVT_TROPO_BIT = (1 << 2),
+} GnssSatellitePvtFlagsBits;
+
 typedef struct {
     double posXMeters;
     double posYMeters;
@@ -1428,6 +1435,7 @@ typedef struct {
 } GnssSatelliteClockInfo;
 
 typedef struct {
+    GnssSatellitePvtFlagsMask flags;
     GnssSatellitePositionEcef satPosEcef;
     GnssSatelliteVelocityEcef satVelEcef;
     GnssSatelliteClockInfo satClockInfo;

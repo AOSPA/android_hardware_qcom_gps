@@ -75,6 +75,7 @@ private:
     void convertGnssState(GnssMeasurementsData& in, GnssMeasurement& out);
     void convertGnssAccumulatedDeltaRangeState(GnssMeasurementsData& in, GnssMeasurement& out);
     void convertGnssMultipathIndicator(GnssMeasurementsData& in, GnssMeasurement& out);
+    void convertGnssSatellitePvtFlags(GnssMeasurementsData& in, GnssMeasurement& out);
     void convertGnssSatellitePvt(GnssMeasurementsData& in, GnssMeasurement& out);
     void convertGnssClock(GnssMeasurementsClock& in, GnssClock& out);
     void convertElapsedRealtimeNanos(GnssMeasurementsNotification& in,
