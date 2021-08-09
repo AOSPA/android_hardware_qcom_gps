@@ -1389,7 +1389,7 @@ typedef struct {
     float elevation;   // elevation of SV (in degrees)
     float azimuth;     // azimuth of SV (in degrees)
     GnssSvOptionsMask gnssSvOptionsMask; // Bitwise OR of GnssSvOptionsBits
-    float carrierFrequencyHz; // carrier frequency of the signal tracked
+    double carrierFrequencyHz; // carrier frequency of the signal tracked
     GnssSignalTypeMask gnssSignalTypeMask; // Specifies GNSS signal type
     double basebandCarrierToNoiseDbHz; // baseband signal strength
     uint16_t  gloFrequency; // GLONASS Frequency channel number
@@ -1465,7 +1465,7 @@ typedef struct {
     GnssMeasurementsAdrStateMask adrStateMask; // bitwise OR of GnssMeasurementsAdrStateBits
     double adrMeters;
     double adrUncertaintyMeters;
-    float carrierFrequencyHz;
+    double carrierFrequencyHz;
     int64_t carrierCycles;
     double carrierPhase;
     double carrierPhaseUncertainty;
@@ -1487,7 +1487,7 @@ typedef struct {
 
 typedef struct {
     GnssSvType svType;
-    float carrierFrequencyHz;
+    double carrierFrequencyHz;
     GnssMeasurementsCodeType codeType;
     char otherCodeTypeName[GNSS_MAX_NAME_LENGTH];
 } GnssMeasurementsSignalType;
@@ -1505,7 +1505,7 @@ typedef struct {
     GnssSingleSatCorrectionMask flags;
     GnssSvType svType;
     uint16_t svId;
-    float carrierFrequencyHz;
+    double carrierFrequencyHz;
     float probSatIsLos;
     float excessPathLengthMeters;
     float excessPathLengthUncertaintyMeters;
