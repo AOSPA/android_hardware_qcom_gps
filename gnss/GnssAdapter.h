@@ -554,7 +554,9 @@ public:
     bool needReportForAllClients(const UlpLocation& ulpLocation,
             enum loc_sess_status status, LocPosTechMask techMask);
     bool needReportForClient(LocationAPI* client, enum loc_sess_status status);
-    bool needReportForAnyClient(enum loc_sess_status status);
+    inline bool needReportForAnyClient(enum loc_sess_status status) {
+        return needReportForClient(nullptr, status);
+    }
     bool needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
         const struct timespec32_t &apTimeStamp);
     void reportPosition(const UlpLocation &ulpLocation,

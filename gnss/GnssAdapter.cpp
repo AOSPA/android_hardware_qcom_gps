@@ -3997,41 +3997,29 @@ GnssAdapter::needReportForAllClients(const UlpLocation& ulpLocation,
     return reported || LocApiBase::needReport(ulpLocation, status, techMask);
 }
 
-bool
-GnssAdapter::needReportForClient(LocationAPI* client, enum loc_sess_status status)
-{
-    if (LOC_SESS_INTERMEDIATE == status) {
-        for (auto it = mTimeBasedTrackingSessions.begin();
-            it != mTimeBasedTrackingSessions.end(); ++it) {
-            if (it->first.client == client && it->second.allowReportsWithAnyAccuracy) {
-                return true;
-            }
-        }
+bool GnssAdapter::needReportForClient(LocationAPI* client, enum loc_sess_status status) {
+    if (LOC_SESS_SUCCESS == status || (client == nullptr && LOC_SESS_INTERMEDIATE == status &&
+                mDistanceBasedTrackingSessions.size() > 0)) {
+        return true;
+    }
+    if (status != LOC_SESS_FAILURE) {
         for (auto it = mDistanceBasedTrackingSessions.begin();
-            it != mDistanceBasedTrackingSessions.end(); ++it) {
+                it != mDistanceBasedTrackingSessions.end(); ++it) {
             if (it->first.client == client) { // Always report intermediate fixes to dbt clients
                 return true;
             }
         }
     }
-    return (LOC_SESS_SUCCESS == status);
-}
-
-bool
-GnssAdapter::needReportForAnyClient(enum loc_sess_status status)
-{
-    if (LOC_SESS_INTERMEDIATE == status) {
-        if (mDistanceBasedTrackingSessions.size() > 0) {
+    for (auto it = mTimeBasedTrackingSessions.begin();
+            it != mTimeBasedTrackingSessions.end(); ++it) {
+        // report intermediate fix when TBT session allows, like flp;
+        // report any fix (even failed fix) when TBT session allows, like LE.
+        if ((it->first.client == client || client == nullptr) &&
+                it->second.qualityLevelAccepted >= status) {
             return true;
         }
-        for (auto it = mTimeBasedTrackingSessions.begin();
-            it != mTimeBasedTrackingSessions.end(); ++it) {
-            if (it->second.allowReportsWithAnyAccuracy) {
-                return true;
-            }
-        }
     }
-    return (LOC_SESS_SUCCESS == status);
+    return false;
 }
 
 bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
@@ -4291,7 +4279,8 @@ GnssAdapter::reportEnginePositions(unsigned int count,
     }
     if (needReportEnginePositions) {
         for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if (nullptr != it->second.engineLocationsInfoCb) {
+            if (nullptr != it->second.engineLocationsInfoCb &&
+                    needReportForClient(it->first, engLocation->sessionStatus)) {
                 it->second.engineLocationsInfoCb(count, locationInfo);
             }
         }

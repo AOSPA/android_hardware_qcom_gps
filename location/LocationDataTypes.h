@@ -1018,23 +1018,28 @@ typedef enum {
     GNSS_POWER_MODE_M5   /* Background Mode */
 } GnssPowerMode;
 
+typedef enum {
+    QUALITY_HIGH_ACCU_FIX_ONLY = 0,       /* Only allow valid fix with high accuracy */
+    QUALITY_ANY_VALID_FIX,                /* Allow fix with any accuracy, like intermediate fix */
+    QUALITY_ANY_OR_FAILED_FIX,            /* Allow fix of any type, even failed fix */
+} FixQualityLevel;
+
 struct TrackingOptions : LocationOptions {
     GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
                                 sessions */
     uint32_t tbm;  /* Time interval between measurements specified in millis.
                       Applicable to background power modes */
-    bool allowReportsWithAnyAccuracy; /* Send through position reports with
-                                         any accuracy. */
+    FixQualityLevel qualityLevelAccepted; /* Send through position reports with which accuracy. */
 
     inline TrackingOptions() :
             LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
-            allowReportsWithAnyAccuracy(false) {}
+            qualityLevelAccepted(QUALITY_HIGH_ACCU_FIX_ONLY) {}
     inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
             LocationOptions(), powerMode(m), tbm(t),
-            allowReportsWithAnyAccuracy(false) { LocationOptions::size = s; }
+            qualityLevelAccepted(QUALITY_HIGH_ACCU_FIX_ONLY) { LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
             LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
-            allowReportsWithAnyAccuracy(false) {}
+            qualityLevelAccepted(QUALITY_HIGH_ACCU_FIX_ONLY) {}
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;
