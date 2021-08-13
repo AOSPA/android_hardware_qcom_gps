@@ -308,6 +308,9 @@ GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
         out.conformityIndex = locationExtended.conformityIndex;
     }
     out.timestamp = ulpLocation.gpsLocation.timestamp;
+    if (GPS_LOCATION_EXTENDED_HAS_POS_TECH_MASK & locationExtended.flags) {
+        out.flags |= LOCATION_HAS_TECH_MASK_BIT;
+    }
     if (LOC_POS_TECH_MASK_SATELLITE & locationExtended.tech_mask) {
         out.techMask |= LOCATION_TECHNOLOGY_GNSS_BIT;
     }
@@ -356,19 +359,21 @@ GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
     }
     out.qualityType = LOCATION_STANDALONE_QUALITY_TYPE;
     if (GPS_LOCATION_EXTENDED_HAS_NAV_SOLUTION_MASK & locationExtended.flags) {
-        if (LOC_NAV_MASK_DGNSS_CORRECTION == locationExtended.navSolutionMask) {
-            out.qualityType = LOCATION_DGNSS_QUALITY_TYPE;
-        } else if (LOC_NAV_MASK_RTK_CORRECTION == locationExtended.navSolutionMask) {
-            out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
-        } else if (LOC_NAV_MASK_RTK_FIXED_CORRECTION == locationExtended.navSolutionMask) {
+        out.flags |= LOCATION_HAS_QUALITY_TYPE_BIT;
+        if ((LOC_NAV_MASK_RTK_FIXED_CORRECTION & locationExtended.navSolutionMask) &&
+                (LOC_NAV_MASK_RTK_CORRECTION & locationExtended.navSolutionMask)) {
             out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
-        } else if (LOC_NAV_MASK_PPP_CORRECTION == locationExtended.navSolutionMask) {
-            //If HEPE<5cm, we shall claim ‘FIXED’; otherwise, ‘FLOAT’
+        } else if (LOC_NAV_MASK_RTK_CORRECTION & locationExtended.navSolutionMask) {
             out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
-            if (GPS_LOCATION_EXTENDED_HAS_VERT_UNC & locationExtended.flags &&
-                    locationExtended.vert_unc < 0.05) {
-                    out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
+        } else if (LOC_NAV_MASK_PPP_CORRECTION & locationExtended.navSolutionMask) {
+            //If HEPE<5cm, we shall claim 'FIXED'; otherwise, 'FLOAT'
+            out.qualityType = LOCATION_FLOAT_QUALITY_TYPE;
+            if ((LOC_GPS_LOCATION_HAS_ACCURACY & ulpLocation.gpsLocation.flags) &&
+                    (ulpLocation.gpsLocation.accuracy < 0.05)) {
+                out.qualityType = LOCATION_FIXED_QUALITY_TYPE;
             }
+        } else if (LOC_NAV_MASK_DGNSS_CORRECTION & locationExtended.navSolutionMask) {
+            out.qualityType = LOCATION_DGNSS_QUALITY_TYPE;
         }
     }
 }
@@ -750,6 +755,9 @@ GnssAdapter::convertLppeCp(const GnssConfigLppeControlPlaneMask lppeControlPlane
     if (GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT & lppeControlPlaneMask) {
         mask |= (1<<4);
     }
+    if (GNSS_CONFIG_LPPE_CONTROL_PLANE_CIV_ADDRESS_BIT & lppeControlPlaneMask) {
+        mask |= (1<<5);
+    }
     return mask;
 }
 
@@ -771,6 +779,9 @@ GnssAdapter::convertLppeUp(const GnssConfigLppeUserPlaneMask lppeUserPlaneMask)
     }
     if (GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT & lppeUserPlaneMask) {
         mask |= (1<<4);
+    }
+    if (GNSS_CONFIG_LPPE_USER_PLANE_CIV_ADDRESS_BIT & lppeUserPlaneMask) {
+        mask |= (1<<5);
     }
     return mask;
 }
@@ -5136,16 +5147,21 @@ void GnssAdapter::injectOdcpiCommand(const Location& location)
     struct MsgInjectOdcpi : public LocMsg {
         GnssAdapter& mAdapter;
         Location mLocation;
-        inline MsgInjectOdcpi(GnssAdapter& adapter, const Location& location) :
+        inline MsgInjectOdcpi(GnssAdapter& adapter, const Location& location, ContextBase& context):
                 LocMsg(),
                 mAdapter(adapter),
-                mLocation(location) {}
+                mLocation(location) {
+            // Update techMask to tell whether ALE FLP or Android FLP
+            if (context.getLBSProxyBase()->getIzatFusedProviderOverride()) {
+                mLocation.techMask |= LOCATION_TECHNOLOGY_HYBRID_ALE_BIT;
+            }
+        }
         inline virtual void proc() const {
             mAdapter.injectOdcpi(mLocation);
         }
     };
 
-    sendMsg(new MsgInjectOdcpi(*this, location));
+    sendMsg(new MsgInjectOdcpi(*this, location, *mContext));
 }
 
 void GnssAdapter::injectOdcpi(const Location& location)
@@ -5258,7 +5274,45 @@ GnssAdapter::invokeGnssEnergyConsumedCallback(uint64_t energyConsumedSinceFirstB
         mGnssEnergyConsumedCb = nullptr;
     }
     if (!mGnssPowerStatisticsInit) {
+        /* We need to change the reference in case HAL process restarts (i.e. crashes)
+           We maintain mBootReferenceEnergy value in the file system
+           At the point mBootReferenceEnergy needs to get initialized we will use
+           the following logic:
+
+           if (boot time > 30 sec)
+                use the value in the file system for mBootReferenceEnergy
+           else
+                use the value we get here from the modem for mBootReferenceEnergy */
+
+        struct timespec currentTime = {};
+        int64_t sinceBootTimeNanos = 0;
+        FILE *fp = NULL;
+
         mBootReferenceEnergy = energyConsumedSinceFirstBoot;
+        if (NULL != (fp = fopen("/data/vendor/location/energy.conf", "a+b"))) {
+            rewind(fp);
+            if (ElapsedRealtimeEstimator::getCurrentTime(currentTime, sinceBootTimeNanos)) {
+                LOC_LOGv("sinceBootTimeNanos: %" PRIu64 " ", sinceBootTimeNanos);
+                if ((uint32_t)(sinceBootTimeNanos / 1000000000) > 30) {
+                    int fr = fread(&mBootReferenceEnergy, sizeof(mBootReferenceEnergy), 1, fp);
+                    if (1 != fr) {
+                        mBootReferenceEnergy = energyConsumedSinceFirstBoot;
+                        LOC_LOGw("fread failed ferror(fp)=%d fr=%d", ferror(fp), fr);
+                    }
+                } else {
+                    fwrite(&mBootReferenceEnergy, sizeof(mBootReferenceEnergy), 1, fp);
+                }
+            } else {
+                LOC_LOGw("getCurrentTime failed");
+                fwrite(&mBootReferenceEnergy, sizeof(mBootReferenceEnergy), 1, fp);
+            }
+            fclose(fp);
+        } else {
+            LOC_LOGw("fopen failed");
+        }
+        LOC_LOGd("mBootReferenceEnergy: %" PRIu64 " energyConsumedSinceFirstBoot: %" PRIu64 " ",
+                 mBootReferenceEnergy, energyConsumedSinceFirstBoot);
+
         mGnssPowerStatisticsInit = true;
         mPowerElapsedRealTimeCal.reset();
     } else if (nullptr != mPowerIndicationCb) {
@@ -5568,7 +5622,7 @@ void GnssAdapter::dataConnOpenCommand(
 
             std::function<void(int)> wdsPdnTypeCb = std::bind(&GnssAdapter::reportPdnTypeFromWds,
                     &mAdapter, std::placeholders::_1, mAgpsType, apn, mBearerType);
-           if (getPdnTypeFunc != nullptr) {
+           if (getPdnTypeFunc != nullptr && apn.length() > 0) {
                LOC_LOGv("dlGetSymFromLib success");
                (*getPdnTypeFunc)(apn, wdsPdnTypeCb);
            } else {
@@ -5578,8 +5632,7 @@ void GnssAdapter::dataConnOpenCommand(
     };
     // Added inital length checks for apnlen check to avoid security issues
     // In case of failure reporting the same
-    if (NULL == apnName || apnLen <= 0 || apnLen > MAX_APN_LEN ||
-            (strlen(apnName) != (unsigned)apnLen)) {
+    if (NULL == apnName || apnLen > MAX_APN_LEN || (strlen(apnName) != apnLen)) {
         LOC_LOGe("%s]: incorrect apnlen length or incorrect apnName", __func__);
         mAgpsManager.reportAtlClosed(agpsType);
     } else {
@@ -7005,8 +7058,9 @@ GnssAdapter::parseDoublesString(char* dString) {
 }
 
 void GnssAdapter::initGnssPowerStatistics() {
-    mGnssPowerStatisticsInit = false;
-    mLocApi->getGnssEnergyConsumed();
+    if (!mGnssPowerStatisticsInit) {
+        mLocApi->getGnssEnergyConsumed();
+    }
 }
 
 void

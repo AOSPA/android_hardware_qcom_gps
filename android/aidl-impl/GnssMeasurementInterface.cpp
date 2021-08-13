@@ -89,12 +89,13 @@ void GnssMeasurementInterface::onGnssMeasurementsCb(
     std::unique_lock<std::mutex> lock(mMutex);
     LOC_LOGd("(count: %u active: %d)", gnssMeasurementsNotification.count, mTracking);
     if (mTracking) {
-        if (mGnssMeasurementCbIface != nullptr) {
+        auto gnssMeasurementCbIface = mGnssMeasurementCbIface;
+        if (gnssMeasurementCbIface != nullptr) {
             GnssData gnssData = {};
             convertGnssData(gnssMeasurementsNotification, gnssData);
             printGnssData(gnssData);
             lock.unlock();
-            mGnssMeasurementCbIface->gnssMeasurementCb(gnssData);
+            gnssMeasurementCbIface->gnssMeasurementCb(gnssData);
         }
     }
 }

@@ -79,6 +79,8 @@ typedef enum {
     LOCATION_HAS_SPOOF_MASK            = (1<<8), // location has valid spoof mask
     LOCATION_HAS_ELAPSED_REAL_TIME     = (1<<9), // location has valid elapsed real time
     LOCATION_HAS_CONFORMITY_INDEX_BIT  = (1<<10), // location has valid conformity index
+    LOCATION_HAS_QUALITY_TYPE_BIT      = (1<<11), // location has valid quality type
+    LOCATION_HAS_TECH_MASK_BIT         = (1<<12), // location has valid tech mask
 } LocationFlagsBits;
 
 typedef uint16_t LocationTechnologyMask;
@@ -96,6 +98,7 @@ typedef enum {
     LOCATION_TECHNOLOGY_VEH_BIT                      = (1<<9), // using vehicular data
     LOCATION_TECHNOLOGY_VIS_BIT                      = (1<<10), // using visual data
     LOCATION_TECHNOLOGY_DGNSS_BIT                    = (1<<11),  // DGNSS
+    LOCATION_TECHNOLOGY_HYBRID_ALE_BIT               = (1<<12), // HYBRID using ALE POS
 } LocationTechnologyBits;
 
 typedef uint32_t LocationSpoofMask;
@@ -425,6 +428,7 @@ typedef enum {
     GNSS_CONFIG_LPPE_CONTROL_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                              // SENSOR_BARO_MEASUREMENTS
     GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT = (1<<4), // NON_E911
+    GNSS_CONFIG_LPPE_CONTROL_PLANE_CIV_ADDRESS_BIT          = (1<<5), // CIV_ADDRESS
 } GnssConfigLppeControlPlaneBits;
 
 // Technology for LPPe User Plane
@@ -436,6 +440,7 @@ typedef enum {
     GNSS_CONFIG_LPPE_USER_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                             // SENSOR_BARO_MEASUREMENTS
     GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT = (1<<4), // NON_E911
+    GNSS_CONFIG_LPPE_USER_PLANE_CIV_ADDRESS_BIT           = (1<<5), // CIV_ADDRESS
 } GnssConfigLppeUserPlaneBits;
 
 // Positioning Protocol on A-GLONASS system

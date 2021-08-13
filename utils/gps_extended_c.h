@@ -148,7 +148,8 @@ typedef enum {
     /**<  Support the configuration for DSDA   */
     LOC_SUPPORTED_FEATURE_DSDA_CONFIGURATION,
     /**<  Support the Multiple Attribution Apps(UTH clients Lock control) feature   */
-    LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS
+    LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS,
+    LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE, /**< Support the FLP, NLP Z-Source provider feature */
 } loc_supported_feature_enum;
 
 typedef struct {
