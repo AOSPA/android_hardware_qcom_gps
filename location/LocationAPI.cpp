@@ -86,6 +86,51 @@ static const T1* loadLocationInterface(const char* library, const char* name) {
     }
 }
 
+static void loadLibGnss() {
+
+    if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
+        gData.gnssInterface =
+            (GnssInterface*)loadLocationInterface<GnssInterface,
+                getGnssInterface>("libgnss.so", "getGnssInterface");
+        if (NULL == gData.gnssInterface) {
+            gGnssLoadFailed = true;
+            LOC_LOGW("%s:%d]: No gnss interface available", __func__, __LINE__);
+        } else {
+            gData.gnssInterface->initialize();
+        }
+    }
+}
+
+static void loadLibBatching() {
+
+    if (NULL == gData.batchingInterface && !gBatchingLoadFailed) {
+        gData.batchingInterface =
+            (BatchingInterface*)loadLocationInterface<BatchingInterface,
+             getBatchingInterface>("libbatching.so", "getBatchingInterface");
+        if (NULL == gData.batchingInterface) {
+            gBatchingLoadFailed = true;
+            LOC_LOGW("%s:%d]: No batching interface available", __func__, __LINE__);
+        } else {
+            gData.batchingInterface->initialize();
+        }
+    }
+}
+
+static void loadLibGeofencing() {
+
+    if (NULL == gData.geofenceInterface && !gGeofenceLoadFailed) {
+        gData.geofenceInterface =
+           (GeofenceInterface*)loadLocationInterface<GeofenceInterface,
+           getGeofenceInterface>("libgeofencing.so", "getGeofenceInterface");
+        if (NULL == gData.geofenceInterface) {
+            gGeofenceLoadFailed = true;
+            LOC_LOGW("%s:%d]: No geofence interface available", __func__, __LINE__);
+        } else {
+            gData.geofenceInterface->initialize();
+        }
+    }
+}
+
 static bool needsGnssTrackingInfo(LocationCallbacks& locationCallbacks)
 {
     return (locationCallbacks.gnssLocationInfoCb != nullptr ||
@@ -181,17 +226,7 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
     pthread_mutex_lock(&gDataMutex);
 
     if (isGnssClient(locationCallbacks)) {
-        if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
-            gData.gnssInterface =
-                (GnssInterface*)loadLocationInterface<GnssInterface,
-                    getGnssInterface>("libgnss.so", "getGnssInterface");
-            if (NULL == gData.gnssInterface) {
-                gGnssLoadFailed = true;
-                LOC_LOGW("%s:%d]: No gnss interface available", __func__, __LINE__);
-            } else {
-                gData.gnssInterface->initialize();
-            }
-        }
+        loadLibGnss();
         if (NULL != gData.gnssInterface) {
             gData.gnssInterface->addClient(newLocationAPI, locationCallbacks);
             if (!requestedCapabilities) {
@@ -202,17 +237,7 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
     }
 
     if (isBatchingClient(locationCallbacks)) {
-        if (NULL == gData.batchingInterface && !gBatchingLoadFailed) {
-            gData.batchingInterface =
-                (BatchingInterface*)loadLocationInterface<BatchingInterface,
-                 getBatchingInterface>("libbatching.so", "getBatchingInterface");
-            if (NULL == gData.batchingInterface) {
-                gBatchingLoadFailed = true;
-                LOC_LOGW("%s:%d]: No batching interface available", __func__, __LINE__);
-            } else {
-                gData.batchingInterface->initialize();
-            }
-        }
+        loadLibBatching();
         if (NULL != gData.batchingInterface) {
             gData.batchingInterface->addClient(newLocationAPI, locationCallbacks);
             if (!requestedCapabilities) {
@@ -223,23 +248,22 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
     }
 
     if (isGeofenceClient(locationCallbacks)) {
-        if (NULL == gData.geofenceInterface && !gGeofenceLoadFailed) {
-            gData.geofenceInterface =
-               (GeofenceInterface*)loadLocationInterface<GeofenceInterface,
-               getGeofenceInterface>("libgeofencing.so", "getGeofenceInterface");
-            if (NULL == gData.geofenceInterface) {
-                gGeofenceLoadFailed = true;
-                LOC_LOGW("%s:%d]: No geofence interface available", __func__, __LINE__);
-            } else {
-                gData.geofenceInterface->initialize();
-            }
-        }
+        loadLibGeofencing();
         if (NULL != gData.geofenceInterface) {
             gData.geofenceInterface->addClient(newLocationAPI, locationCallbacks);
             if (!requestedCapabilities) {
                 gData.geofenceInterface->requestCapabilities(newLocationAPI);
                 requestedCapabilities = true;
             }
+        }
+    }
+
+    if (!requestedCapabilities && locationCallbacks.capabilitiesCb != nullptr) {
+        loadLibGnss();
+        if (NULL != gData.gnssInterface) {
+            gData.gnssInterface->addClient(newLocationAPI, locationCallbacks);
+            gData.gnssInterface->requestCapabilities(newLocationAPI);
+            requestedCapabilities = true;
         }
     }
 
@@ -337,17 +361,7 @@ LocationAPI::updateCallbacks(LocationCallbacks& locationCallbacks)
     pthread_mutex_lock(&gDataMutex);
 
     if (isGnssClient(locationCallbacks)) {
-        if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
-            gData.gnssInterface =
-                (GnssInterface*)loadLocationInterface<GnssInterface,
-                    getGnssInterface>("libgnss.so", "getGnssInterface");
-            if (NULL == gData.gnssInterface) {
-                gGnssLoadFailed = true;
-                LOC_LOGW("%s:%d]: No gnss interface available", __func__, __LINE__);
-            } else {
-                gData.gnssInterface->initialize();
-            }
-        }
+        loadLibGnss();
         if (NULL != gData.gnssInterface) {
             // either adds new Client or updates existing Client
             gData.gnssInterface->addClient(this, locationCallbacks);
@@ -355,17 +369,7 @@ LocationAPI::updateCallbacks(LocationCallbacks& locationCallbacks)
     }
 
     if (isBatchingClient(locationCallbacks)) {
-        if (NULL == gData.batchingInterface && !gBatchingLoadFailed) {
-            gData.batchingInterface =
-                (BatchingInterface*)loadLocationInterface<BatchingInterface,
-                 getBatchingInterface>("libbatching.so", "getBatchingInterface");
-            if (NULL == gData.batchingInterface) {
-                gBatchingLoadFailed = true;
-                LOC_LOGW("%s:%d]: No batching interface available", __func__, __LINE__);
-            } else {
-                gData.batchingInterface->initialize();
-            }
-        }
+        loadLibBatching();
         if (NULL != gData.batchingInterface) {
             // either adds new Client or updates existing Client
             gData.batchingInterface->addClient(this, locationCallbacks);
@@ -373,17 +377,7 @@ LocationAPI::updateCallbacks(LocationCallbacks& locationCallbacks)
     }
 
     if (isGeofenceClient(locationCallbacks)) {
-        if (NULL == gData.geofenceInterface && !gGeofenceLoadFailed) {
-            gData.geofenceInterface =
-                (GeofenceInterface*)loadLocationInterface<GeofenceInterface,
-                 getGeofenceInterface>("libgeofencing.so", "getGeofenceInterface");
-            if (NULL == gData.geofenceInterface) {
-                gGeofenceLoadFailed = true;
-                LOC_LOGW("%s:%d]: No geofence interface available", __func__, __LINE__);
-            } else {
-                gData.geofenceInterface->initialize();
-            }
-        }
+        loadLibGeofencing();
         if (NULL != gData.geofenceInterface) {
             // either adds new Client or updates existing Client
             gData.geofenceInterface->addClient(this, locationCallbacks);
@@ -671,17 +665,7 @@ LocationControlAPI::createInstance(LocationControlCallbacks& locationControlCall
         controlAPI = gData.controlAPI;
     } else {
         if (nullptr != locationControlCallbacks.responseCb && NULL == gData.controlAPI) {
-            if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
-                gData.gnssInterface =
-                    (GnssInterface*)loadLocationInterface<GnssInterface,
-                        getGnssInterface>("libgnss.so", "getGnssInterface");
-                if (NULL == gData.gnssInterface) {
-                    gGnssLoadFailed = true;
-                    LOC_LOGW("%s:%d]: No gnss interface available", __func__, __LINE__);
-                } else {
-                    gData.gnssInterface->initialize();
-                }
-            }
+            loadLibGnss();
             if (NULL != gData.gnssInterface) {
                 gData.controlAPI = new LocationControlAPI();
                 gData.controlCallbacks = locationControlCallbacks;
