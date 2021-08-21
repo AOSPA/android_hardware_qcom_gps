@@ -276,6 +276,7 @@ class GnssAdapter : public LocAdapterBase {
     GnssReportLoggerUtil mLogger;
     bool mDreIntEnabled;
     bool mPpeEnabled;
+    ElapsedRealtimeEstimator mPositionElapsedRealTimeCal;
 
     /* === NativeAgpsHandler ======================================================== */
     NativeAgpsHandler mNativeAgpsHandler;
@@ -298,6 +299,8 @@ class GnssAdapter : public LocAdapterBase {
     inline void initOdcpi(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
     inline void injectOdcpi(const Location& location);
     static bool isFlpClient(LocationCallbacks& locationCallbacks);
+    void fillElapsedRealTime(const GpsLocationExtended& locationExtended,
+                             Location& out);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
