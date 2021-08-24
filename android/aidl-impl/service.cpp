@@ -65,12 +65,14 @@ int main() {
 
     std::shared_ptr<GnssAidl> gnssAidl = ndk::SharedRefBase::make<GnssAidl>();
     const std::string instance = std::string() + GnssAidl::descriptor + "/default";
-    binder_status_t status =
+    if (gnssAidl != nullptr) {
+        binder_status_t status =
             AServiceManager_addService(gnssAidl->asBinder().get(), instance.c_str());
-    if (STATUS_OK == status) {
-        ALOGD("register IGnss AIDL service success");
-    } else {
-        ALOGD("Error while register IGnss AIDL service, status: %d", status);
+        if (STATUS_OK == status) {
+            ALOGD("register IGnss AIDL service success");
+        } else {
+            ALOGD("Error while register IGnss AIDL service, status: %d", status);
+        }
     }
 
     int vendorInfo = getVendorEnhancedInfo();

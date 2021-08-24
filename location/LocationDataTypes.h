@@ -1018,23 +1018,28 @@ typedef enum {
     GNSS_POWER_MODE_M5   /* Background Mode */
 } GnssPowerMode;
 
+typedef enum {
+    QUALITY_HIGH_ACCU_FIX_ONLY = 0,       /* Only allow valid fix with high accuracy */
+    QUALITY_ANY_VALID_FIX,                /* Allow fix with any accuracy, like intermediate fix */
+    QUALITY_ANY_OR_FAILED_FIX,            /* Allow fix of any type, even failed fix */
+} FixQualityLevel;
+
 struct TrackingOptions : LocationOptions {
     GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
                                 sessions */
     uint32_t tbm;  /* Time interval between measurements specified in millis.
                       Applicable to background power modes */
-    bool allowReportsWithAnyAccuracy; /* Send through position reports with
-                                         any accuracy. */
+    FixQualityLevel qualityLevelAccepted; /* Send through position reports with which accuracy. */
 
     inline TrackingOptions() :
             LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
-            allowReportsWithAnyAccuracy(false) {}
+            qualityLevelAccepted(QUALITY_HIGH_ACCU_FIX_ONLY) {}
     inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
             LocationOptions(), powerMode(m), tbm(t),
-            allowReportsWithAnyAccuracy(false) { LocationOptions::size = s; }
+            qualityLevelAccepted(QUALITY_HIGH_ACCU_FIX_ONLY) { LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
             LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
-            allowReportsWithAnyAccuracy(false) {}
+            qualityLevelAccepted(QUALITY_HIGH_ACCU_FIX_ONLY) {}
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;
@@ -1389,7 +1394,7 @@ typedef struct {
     float elevation;   // elevation of SV (in degrees)
     float azimuth;     // azimuth of SV (in degrees)
     GnssSvOptionsMask gnssSvOptionsMask; // Bitwise OR of GnssSvOptionsBits
-    float carrierFrequencyHz; // carrier frequency of the signal tracked
+    double carrierFrequencyHz; // carrier frequency of the signal tracked
     GnssSignalTypeMask gnssSignalTypeMask; // Specifies GNSS signal type
     double basebandCarrierToNoiseDbHz; // baseband signal strength
     uint16_t  gloFrequency; // GLONASS Frequency channel number
@@ -1412,6 +1417,13 @@ struct GnssConfigSetAssistanceServer {
     }
 };
 
+typedef uint32_t GnssSatellitePvtFlagsMask;
+typedef enum {
+    GNSS_SATELLITE_PVT_POSITION_VELOCITY_CLOCK_INFO_BIT = (1 << 0),
+    GNSS_SATELLITE_PVT_IONO_BIT = (1 << 1),
+    GNSS_SATELLITE_PVT_TROPO_BIT = (1 << 2),
+} GnssSatellitePvtFlagsBits;
+
 typedef struct {
     double posXMeters;
     double posYMeters;
@@ -1433,6 +1445,7 @@ typedef struct {
 } GnssSatelliteClockInfo;
 
 typedef struct {
+    GnssSatellitePvtFlagsMask flags;
     GnssSatellitePositionEcef satPosEcef;
     GnssSatelliteVelocityEcef satVelEcef;
     GnssSatelliteClockInfo satClockInfo;
@@ -1465,7 +1478,7 @@ typedef struct {
     GnssMeasurementsAdrStateMask adrStateMask; // bitwise OR of GnssMeasurementsAdrStateBits
     double adrMeters;
     double adrUncertaintyMeters;
-    float carrierFrequencyHz;
+    double carrierFrequencyHz;
     int64_t carrierCycles;
     double carrierPhase;
     double carrierPhaseUncertainty;
@@ -1487,7 +1500,7 @@ typedef struct {
 
 typedef struct {
     GnssSvType svType;
-    float carrierFrequencyHz;
+    double carrierFrequencyHz;
     GnssMeasurementsCodeType codeType;
     char otherCodeTypeName[GNSS_MAX_NAME_LENGTH];
 } GnssMeasurementsSignalType;
@@ -1505,7 +1518,7 @@ typedef struct {
     GnssSingleSatCorrectionMask flags;
     GnssSvType svType;
     uint16_t svId;
-    float carrierFrequencyHz;
+    double carrierFrequencyHz;
     float probSatIsLos;
     float excessPathLengthMeters;
     float excessPathLengthUncertaintyMeters;

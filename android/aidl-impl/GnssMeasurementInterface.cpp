@@ -444,8 +444,22 @@ void GnssMeasurementInterface::convertGnssMultipathIndicator(
     }
 }
 
+void GnssMeasurementInterface::convertGnssSatellitePvtFlags(GnssMeasurementsData& in,
+                                                            GnssMeasurement& out) {
+
+    if (in.satellitePvt.flags & GNSS_SATELLITE_PVT_POSITION_VELOCITY_CLOCK_INFO_BIT)
+        out.satellitePvt.flags |= out.satellitePvt.HAS_POSITION_VELOCITY_CLOCK_INFO;
+    if (in.satellitePvt.flags & GNSS_SATELLITE_PVT_IONO_BIT)
+        out.satellitePvt.flags |= out.satellitePvt.HAS_IONO;
+    if (in.satellitePvt.flags & GNSS_SATELLITE_PVT_TROPO_BIT)
+        out.satellitePvt.flags |= out.satellitePvt.HAS_TROPO;
+}
+
 void GnssMeasurementInterface::convertGnssSatellitePvt(
         GnssMeasurementsData& in, GnssMeasurement& out) {
+
+    // flags
+    convertGnssSatellitePvtFlags(in, out);
 
     // satPosEcef
     out.satellitePvt.satPosEcef.posXMeters = in.satellitePvt.satPosEcef.posXMeters;
@@ -587,7 +601,8 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  data.measurements[i].satelliteInterSignalBiasNs,
                  data.measurements[i].satelliteInterSignalBiasUncertaintyNs
             );
-        LOC_LOGd("      satellitePvt.satPosEcef.posXMeters: %.2f,"
+        LOC_LOGd("      satellitePvt.flags: 0x%04x,"
+                 " satellitePvt.satPosEcef.posXMeters: %.2f,"
                  " satellitePvt.satPosEcef.posYMeters: %.2f,"
                  " satellitePvt.satPosEcef.posZMeters: %.2f,"
                  " satellitePvt.satPosEcef.ureMeters: %.2f,"
@@ -600,6 +615,7 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  " satellitePvt.satClockInfo.satClkDriftMps: %.2f,"
                  " satellitePvt.ionoDelayMeters: %.2f,"
                  " satellitePvt.tropoDelayMeters: %.2f",
+                 data.measurements[i].satellitePvt.flags,
                  data.measurements[i].satellitePvt.satPosEcef.posXMeters,
                  data.measurements[i].satellitePvt.satPosEcef.posYMeters,
                  data.measurements[i].satellitePvt.satPosEcef.posZMeters,
