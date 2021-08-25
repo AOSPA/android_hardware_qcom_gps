@@ -721,15 +721,17 @@ static uint32_t loc_nmea_generate_GSA(const GpsLocationExtended &locationExtende
         }
 
         // Add the position/horizontal/vertical DOP values
-        if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_DOP)
-        {
+        if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_DOP) {
             length = snprintf(pMarker, lengthRemaining, "%.1f,%.1f,%.1f,",
                     locationExtended.pdop,
                     locationExtended.hdop,
                     locationExtended.vdop);
-        }
-        else
-        {   // no dop
+        } else if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_EXT_DOP) {
+            length = snprintf(pMarker, lengthRemaining, "%.1f,%.1f,%.1f,",
+                locationExtended.extDOP.PDOP,
+                locationExtended.extDOP.HDOP,
+                locationExtended.extDOP.VDOP);
+        } else {   // no dop
             length = snprintf(pMarker, lengthRemaining, ",,,");
         }
         pMarker += length;
@@ -1846,6 +1848,9 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_DOP) {
                 length = snprintf(pMarker, lengthRemaining, "%02d,%.1f,",
                                   svUsedCount, locationExtended.hdop);
+            } else if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_EXT_DOP) {
+                length = snprintf(pMarker, lengthRemaining, "%02d,%.1f,",
+                                  svUsedCount, locationExtended.extDOP.HDOP);
             }
             else {   // no hdop
                 length = snprintf(pMarker, lengthRemaining, "%02d,,",
@@ -2008,6 +2013,9 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             {
                 length = snprintf(pMarker, lengthRemaining, "%s,%02d,%.1f,",
                                   ggaGpsQuality, svUsedCount, locationExtended.hdop);
+            } else if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_EXT_DOP) {
+                length = snprintf(pMarker, lengthRemaining, "%s,%02d,%.1f,",
+                                  ggaGpsQuality, svUsedCount, locationExtended.extDOP.HDOP);
             }
             else
             {   // no hdop
