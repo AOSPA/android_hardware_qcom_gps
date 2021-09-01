@@ -55,7 +55,7 @@
  *============================================================================*/
 
 /* Parameter data */
-static uint32_t DEBUG_LEVEL = 0xff;
+static uint32_t DEBUG_LEVEL = UINT32_MAX;
 static uint32_t TIMESTAMP = 0;
 static uint32_t DATUM_TYPE = 0;
 static bool sVendorEnhanced = true;
@@ -441,13 +441,14 @@ void loc_read_conf_long(const char* conf_file_name, const loc_param_s_type* conf
     FILE *conf_fp = NULL;
 
     log_buffer_init(false);
-    if((conf_fp = fopen(conf_file_name, "r")) != NULL)
+    if ((conf_fp = fopen(conf_file_name, "r")) != NULL)
     {
         LOC_LOGd("using %s", conf_file_name);
         if(table_length && config_table) {
             loc_read_conf_r_long(conf_fp, config_table, table_length, string_len);
             rewind(conf_fp);
-        } else {
+        }
+        if (DEBUG_LEVEL == UINT32_MAX) {
             /* Read default config entries*/
             loc_read_conf_r(conf_fp, loc_param_table, loc_param_num);
             /* Initialize logging mechanism with parsed data */
