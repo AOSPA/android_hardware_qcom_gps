@@ -73,7 +73,7 @@ void MeasurementCorrections::GnssMeasurementCorrectionsDeathRecipient::serviceDi
 }
 
 MeasurementCorrections::MeasurementCorrections(Gnss* gnss) : mGnss(gnss) {
-    mGnssMeasurementCorrectionsDeathRecipient = new GnssMeasurementCorrectionsDeathRecipient(this);
+    mGnssMeasurementCorrectionsDeathRecipient = new GnssMeasurementCorrectionsDeathRecipient();
     spMeasurementCorrections = this;
 }
 

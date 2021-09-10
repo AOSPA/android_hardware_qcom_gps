@@ -83,10 +83,10 @@ static std::string getVersionString() {
 void Gnss::GnssDeathRecipient::serviceDied(uint64_t cookie, const wp<IBase>& who) {
     LOC_LOGE("%s] service died. cookie: %llu, who: %p",
             __FUNCTION__, static_cast<unsigned long long>(cookie), &who);
-    if (mGnss != nullptr) {
-        mGnss->getGnssInterface()->resetNetworkInfo();
-        mGnss->stop();
-        mGnss->cleanup();
+    auto gnss = mGnss.promote();
+    if (gnss != nullptr) {
+        gnss->getGnssInterface()->resetNetworkInfo();
+        gnss->cleanup();
     }
 }
 
@@ -106,7 +106,7 @@ Gnss::Gnss() {
     // clear pending GnssConfig
     memset(&mPendingConfig, 0, sizeof(GnssConfig));
 
-    mGnssDeathRecipient = new GnssDeathRecipient(this);
+    mGnssDeathRecipient = new GnssDeathRecipient(sGnss);
 }
 
 Gnss::~Gnss() {
@@ -338,7 +338,7 @@ Return<sp<V1_0::IGnssNi>> Gnss::getExtensionGnssNi()  {
 Return<sp<V1_0::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement() {
     ENTRY_LOG_CALLFLOW();
     if (mGnssMeasurement == nullptr)
-        mGnssMeasurement = new GnssMeasurement();
+        mGnssMeasurement = new GnssMeasurement(mGnssMeasurement);
     return mGnssMeasurement;
 }
 
@@ -350,12 +350,12 @@ Return<sp<V1_0::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration()  {
 
 Return<sp<V1_0::IGnssGeofencing>> Gnss::getExtensionGnssGeofencing()  {
     ENTRY_LOG_CALLFLOW();
-    mGnssGeofencingIface = new GnssGeofencing();
+    mGnssGeofencingIface = new GnssGeofencing(mGnssGeofencingIface);
     return mGnssGeofencingIface;
 }
 
 Return<sp<V1_0::IGnssBatching>> Gnss::getExtensionGnssBatching()  {
-    mGnssBatching = new GnssBatching();
+    mGnssBatching = new GnssBatching(mGnssBatching);
     return mGnssBatching;
 }
 
@@ -406,7 +406,7 @@ Return<bool> Gnss::setPositionMode_1_1(V1_0::IGnss::GnssPositionMode mode,
 Return<sp<V1_1::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement_1_1() {
     ENTRY_LOG_CALLFLOW();
     if (mGnssMeasurement == nullptr)
-        mGnssMeasurement = new GnssMeasurement();
+        mGnssMeasurement = new GnssMeasurement(mGnssMeasurement);
     return mGnssMeasurement;
 }
 
