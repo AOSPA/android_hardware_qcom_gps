@@ -34,14 +34,14 @@ void GnssMeasurement::GnssMeasurementDeathRecipient::serviceDied(
         uint64_t cookie, const wp<IBase>& who) {
     LOC_LOGE("%s] service died. cookie: %llu, who: %p",
             __FUNCTION__, static_cast<unsigned long long>(cookie), &who);
-    if (mGnssMeasurement != nullptr) {
-        mGnssMeasurement->close();
+    auto gssMeasurement = mGnssMeasurement.promote();
+    if (gssMeasurement != nullptr) {
+        gssMeasurement->close();
     }
 }
 
-GnssMeasurement::GnssMeasurement() {
-    mGnssMeasurementDeathRecipient = new GnssMeasurementDeathRecipient(this);
-    mApi = new MeasurementAPIClient();
+GnssMeasurement::GnssMeasurement(const sp<GnssMeasurement>& self) :
+        mSelf(self), mApi(new MeasurementAPIClient()) {
 }
 
 GnssMeasurement::~GnssMeasurement() {
@@ -74,6 +74,9 @@ Return<GnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallback(
     clearInterfaces();
 
     mGnssMeasurementCbIface = callback;
+    if (mGnssMeasurementDeathRecipient == nullptr) {
+        mGnssMeasurementDeathRecipient = new GnssMeasurementDeathRecipient(mSelf);
+    }
     mGnssMeasurementCbIface->linkToDeath(mGnssMeasurementDeathRecipient, 0);
 
     return mApi->measurementSetCallback(callback);
@@ -133,6 +136,9 @@ Return<GnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallback_1_1(
     clearInterfaces();
 
     mGnssMeasurementCbIface_1_1 = callback;
+    if (mGnssMeasurementDeathRecipient == nullptr) {
+        mGnssMeasurementDeathRecipient = new GnssMeasurementDeathRecipient(mSelf);
+    }
     mGnssMeasurementCbIface_1_1->linkToDeath(mGnssMeasurementDeathRecipient, 0);
 
     GnssPowerMode powerMode = enableFullTracking?
@@ -164,6 +170,9 @@ Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallba
     clearInterfaces();
 
     mGnssMeasurementCbIface_2_0 = callback;
+    if (mGnssMeasurementDeathRecipient == nullptr) {
+        mGnssMeasurementDeathRecipient = new GnssMeasurementDeathRecipient(mSelf);
+    }
     mGnssMeasurementCbIface_2_0->linkToDeath(mGnssMeasurementDeathRecipient, 0);
 
     GnssPowerMode powerMode = enableFullTracking ?
@@ -195,6 +204,9 @@ Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallba
     clearInterfaces();
 
     mGnssMeasurementCbIface_2_1 = callback;
+    if (mGnssMeasurementDeathRecipient == nullptr) {
+        mGnssMeasurementDeathRecipient = new GnssMeasurementDeathRecipient(mSelf);
+    }
     mGnssMeasurementCbIface_2_1->linkToDeath(mGnssMeasurementDeathRecipient, 0);
 
     GnssPowerMode powerMode = enableFullTracking ?
