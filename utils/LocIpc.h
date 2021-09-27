@@ -177,7 +177,7 @@ public:
     virtual unique_ptr<LocIpcRecver> getRecver(const shared_ptr<ILocIpcListener>& listener) {
         return nullptr;
     }
-    inline virtual void copyDestAddrFrom(const LocIpcSender& otherSender) {}
+    inline virtual bool copyDestAddrFrom(const LocIpcSender& otherSender) { return true; }
 };
 
 class LocIpcRecver {
