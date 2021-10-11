@@ -36,7 +36,7 @@ void GnssMeasurement::GnssMeasurementDeathRecipient::serviceDied(
             __FUNCTION__, static_cast<unsigned long long>(cookie), &who);
     auto gssMeasurement = mGnssMeasurement.promote();
     if (gssMeasurement != nullptr) {
-        gssMeasurement->close();
+        gssMeasurement->handleClientDeath();
     }
 }
 
@@ -49,6 +49,19 @@ GnssMeasurement::~GnssMeasurement() {
         mApi->destroy();
         mApi = nullptr;
     }
+}
+
+void GnssMeasurement::handleClientDeath() {
+
+    close();
+    if (mApi != nullptr) {
+        mApi->measurementSetCallback(nullptr);
+        mApi->measurementSetCallback_1_1(nullptr);
+        mApi->measurementSetCallback_2_0(nullptr);
+    }
+    mGnssMeasurementCbIface = nullptr;
+    mGnssMeasurementCbIface_1_1 = nullptr;
+    mGnssMeasurementCbIface_2_0 = nullptr;
 }
 
 // Methods from ::android::hardware::gnss::V1_0::IGnssMeasurement follow.

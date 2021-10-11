@@ -69,6 +69,8 @@ struct GnssMeasurement : public V2_0::IGnssMeasurement {
         const wp<GnssMeasurement> mGnssMeasurement;
     };
 
+    void handleClientDeath();
+
  private:
     // this has to be a reference, not a copy
     // because the pointer is not set when mSelf is assigned

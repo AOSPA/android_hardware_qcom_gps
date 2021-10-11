@@ -68,6 +68,8 @@ struct Gnss : public BnGnss {
     // These methods are not part of the IGnss base class.
     GnssAPIClient* getApi();
     ndk::ScopedAStatus updateConfiguration(GnssConfig& gnssConfig);
+    void handleClientDeath();
+
 private:
     GnssAPIClient* mApi;
     shared_ptr<GnssConfiguration> mGnssConfiguration = nullptr;

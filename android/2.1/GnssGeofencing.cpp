@@ -36,7 +36,7 @@ void GnssGeofencing::GnssGeofencingDeathRecipient::serviceDied(
             __FUNCTION__, static_cast<unsigned long long>(cookie), &who);
     auto gnssGeofencing = mGnssGeofencing.promote();
     if (gnssGeofencing != nullptr) {
-        gnssGeofencing->removeAllGeofences();
+        gnssGeofencing->handleClientDeath();
     }
 }
 
@@ -45,6 +45,15 @@ GnssGeofencing::~GnssGeofencing() {
         mApi->destroy();
         mApi = nullptr;
     }
+}
+
+void GnssGeofencing::handleClientDeath() {
+
+    removeAllGeofences();
+    if (mApi != nullptr) {
+        mApi->upcateCallback(nullptr);
+    }
+    mGnssGeofencingCbIface = nullptr;
 }
 
 // Methods from ::android::hardware::gnss::V1_0::IGnssGeofencing follow.

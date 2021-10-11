@@ -36,8 +36,7 @@ void GnssBatching::GnssBatchingDeathRecipient::serviceDied(
             __FUNCTION__, static_cast<unsigned long long>(cookie), &who);
     auto gnssBatching = mGnssBatching.promote();
     if (gnssBatching != nullptr) {
-        gnssBatching->stop();
-        gnssBatching->cleanup();
+        gnssBatching->handleClientDeath();
     }
 }
 
@@ -48,6 +47,14 @@ GnssBatching::~GnssBatching() {
     }
 }
 
+GnssBatching::handleClientDeath() {
+    stop();
+    cleanup();
+    if (mApi != nullptr) {
+        mApi->gnssUpdateCallbacks(nullptr);
+    }
+    mGnssBatchingCbIface = nullptr;
+}
 
 // Methods from ::android::hardware::gnss::V1_0::IGnssBatching follow.
 Return<bool> GnssBatching::init(const sp<IGnssBatchingCallback>& callback) {

@@ -152,6 +152,8 @@ struct Gnss : public IGnss {
         const wp<Gnss> mGnss;
     };
 
+    void handleClientDeath();
+
  private:
     sp<GnssDeathRecipient> mGnssDeathRecipient = nullptr;
 
@@ -165,7 +167,7 @@ struct Gnss : public IGnss {
     sp<V2_0::IAGnssRil> mGnssRil = nullptr;
     sp<GnssMeasurement> mGnssMeasurement = nullptr;
     sp<V2_0::IGnssConfiguration> mGnssConfig = nullptr;
-    sp<V2_0::IGnssBatching> mGnssBatching = nullptr;
+    sp<GnssBatching> mGnssBatching = nullptr;
     sp<V2_0::IGnssDebug> mGnssDebug = nullptr;
     sp<V2_0::IGnssCallback> mGnssCbIface_2_0 = nullptr;
     sp<IMeasurementCorrections> mGnssMeasCorr = nullptr;
