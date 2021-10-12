@@ -82,13 +82,9 @@ struct MeasurementCorrections : public V1_1::IMeasurementCorrections {
 private:
     mutable std::mutex mMutex;
     struct GnssMeasurementCorrectionsDeathRecipient : hidl_death_recipient {
-        GnssMeasurementCorrectionsDeathRecipient(
-            sp<MeasurementCorrections> gnssMeasurementCorrections) :
-                    mGnssMeasurementCorrections(gnssMeasurementCorrections) {
-        }
+        GnssMeasurementCorrectionsDeathRecipient() = default;
         ~GnssMeasurementCorrectionsDeathRecipient() = default;
         virtual void serviceDied(uint64_t cookie, const wp<IBase>& who) override;
-        sp<MeasurementCorrections> mGnssMeasurementCorrections;
     };
     Gnss* mGnss = nullptr;
     sp<GnssMeasurementCorrectionsDeathRecipient> mGnssMeasurementCorrectionsDeathRecipient =
