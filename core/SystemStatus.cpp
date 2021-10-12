@@ -1293,8 +1293,7 @@ IOsObserver* SystemStatus::getOsObserver()
 }
 
 SystemStatus::SystemStatus(const MsgTask* msgTask) :
-    mSysStatusObsvr(this, msgTask)
-{
+    mSysStatusObsvr(this, msgTask), mTracking(false) {
     int result = 0;
     ENTRY_LOG ();
     mCache.mLocation.clear();
@@ -1603,10 +1602,12 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
 
 @return     true when successfully done
 ******************************************************************************/
-bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly) const
-{
+bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly) const {
     pthread_mutex_lock(&mMutexSystemStatus);
-
+    if (!mTracking) {
+        pthread_mutex_unlock(&mMutexSystemStatus);
+        return true;
+    }
     if (isLatestOnly) {
         // push back only the latest report and return it
         getIteminReport(report.mLocation, mCache.mLocation);
@@ -1789,6 +1790,15 @@ bool SystemStatus::eventInEmergencyCall(bool isEmergency)
     SystemStatusInEmergencyCall s(isEmergency);
     mSysStatusObsvr.notify({&s.mDataItem});
     return true;
+}
+
+/******************************************************************************
+@brief      API to update engine tracking state
+******************************************************************************/
+void SystemStatus::setTracking(bool tracking) {
+    pthread_mutex_lock(&mMutexSystemStatus);
+    mTracking = tracking;
+    pthread_mutex_unlock(&mMutexSystemStatus);
 }
 } // namespace loc_core
 

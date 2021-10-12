@@ -865,6 +865,7 @@ private:
     // Data members
     static pthread_mutex_t                    mMutexSystemStatus;
     SystemStatusReports mCache;
+    bool mTracking;
 
     template <typename TYPE_REPORT, typename TYPE_ITEM>
     bool setIteminReport(TYPE_REPORT& report, TYPE_ITEM&& s);
@@ -894,6 +895,7 @@ public:
     void resetNetworkInfo();
     bool eventOptInStatus(bool userConsent);
     bool eventInEmergencyCall(bool isEmergency);
+    void setTracking(bool tracking);
 };
 
 } // namespace loc_core
