@@ -1077,22 +1077,11 @@ void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInMeasReport(
             mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs = svMeasSetHeader.gpsSystemTime.systemMsec;
             mTimePairMeasReport.qtimerTick = svMeasurementSet.svMeasSetHeader.refCountTicks;
             mTimePairMeasReport.timeUncMsec = svMeasurementSet.svMeasSetHeader.refCountTicksUnc;
-        } else if ((svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_GPS_SYSTEM_TIME_EXT) &&
-                   (svMeasSetHeader.gpsSystemTimeExt.systemRtc_valid) &&
-                   (svMeasSetHeader.gpsSystemTime.validityMask &
-                    GNSS_SYSTEM_CLK_TIME_BIAS_UNC_VALID)) {
-            mTimePairMeasReport.gpsTime.gpsWeek = svMeasSetHeader.gpsSystemTime.systemWeek;
-            mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs = svMeasSetHeader.gpsSystemTime.systemMsec;
-            // convert ms to tick
-            mTimePairMeasReport.qtimerTick =
-                    svMeasurementSet.svMeasSetHeader.gpsSystemTimeExt.systemRtcMs * 10 / 192;
-            mTimePairMeasReport.timeUncMsec =
-                    svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemClkTimeUncMs;
         }
 
-       LOC_LOGv("gps time (%d, %d), qtimer tick %" PRIi64 ", unc %f",
-                mTimePairMeasReport.gpsTime.gpsWeek,  mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs,
-                mTimePairMeasReport.qtimerTick, mTimePairMeasReport.timeUncMsec);
+        LOC_LOGv("gps time (%d, %d), qtimer tick %" PRIi64 ", unc %f",
+                 mTimePairMeasReport.gpsTime.gpsWeek,  mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs,
+                 mTimePairMeasReport.qtimerTick, mTimePairMeasReport.timeUncMsec);
     }
 }
 
