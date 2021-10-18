@@ -5185,8 +5185,11 @@ void GnssAdapter::initDefaultAgps() {
     }
 
     if (cbInfo.statusV4Cb == nullptr) {
-        LOC_LOGE("%s]: statusV4Cb is nullptr!", __func__);
-        dlclose(handle);
+        LOC_LOGe("statusV4Cb is nullptr!");
+        if (nullptr != handle) {
+            // handle could be null if dlGetSymFromLib fails
+            dlclose(handle);
+        }
         return;
     }
 
