@@ -52,11 +52,6 @@ LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_INIT_RC := android.hardware.gnss-aidl-service-qti.rc
 LOCAL_SRC_FILES := \
     service.cpp \
-    Gnss.cpp \
-    GnssConfiguration.cpp \
-    GnssPowerIndication.cpp \
-    GnssMeasurementInterface.cpp \
-    location_api/GnssAPIClient.cpp
 
 LOCAL_HEADER_LIBRARIES := \
     libgps.utils_headers \
@@ -82,6 +77,7 @@ LOCAL_SHARED_LIBRARIES += \
     android.hardware.gnss@2.0 \
     android.hardware.gnss@2.1 \
     android.hardware.gnss-V1-ndk_platform \
+    android.hardware.gnss-aidl-impl-qti
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
 
