@@ -6053,7 +6053,7 @@ uint32_t GnssAdapter::getNfwControlBits(const std::vector<std::string>& enabledN
         }
     }
 
-    nfwControlBits = ~nfwControlBits;
+    nfwControlBits = ~nfwControlBits & GNSS_CONFIG_GPS_LOCK_NFW_ALL;
     LOC_LOGd("nfwControlBits=0x%X", nfwControlBits);
     return nfwControlBits;
 }
