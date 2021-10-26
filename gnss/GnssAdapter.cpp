@@ -3000,6 +3000,8 @@ GnssAdapter::saveTrackingSession(LocationAPI* client, uint32_t sessionId,
         mTimeBasedTrackingSessions[key] = options;
     }
     reportPowerStateIfChanged();
+    // notify SystemStatus the engine tracking status
+    getSystemStatus()->setTracking(isInSession());
 }
 
 void
@@ -3016,6 +3018,7 @@ GnssAdapter::eraseTrackingSession(LocationAPI* client, uint32_t sessionId)
         }
     }
     reportPowerStateIfChanged();
+    getSystemStatus()->setTracking(isInSession());
 }
 
 bool GnssAdapter::setLocPositionMode(const LocPosMode& mode) {
@@ -3510,7 +3513,6 @@ GnssAdapter::stopTrackingCommand(LocationAPI* client, uint32_t id)
             } else {
                 mAdapter.reportResponse(mClient, LOCATION_ERROR_ID_UNKNOWN, mSessionId);
             }
-
         }
     };
 
@@ -5837,7 +5839,7 @@ bool GnssAdapter::getDebugReport(GnssDebugReport& r)
         return false;
     }
 
-    SystemStatusReports reports = {};
+    SystemStatusReports reports;
     systemstatus->getReport(reports, true);
 
     r.size = sizeof(r);
