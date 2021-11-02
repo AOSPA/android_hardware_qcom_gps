@@ -33,7 +33,7 @@
 #include <LocContext.h>
 #include <IOsObserver.h>
 #include <EngineHubProxyBase.h>
-#include <LocationAPI.h>
+#include <ILocationAPI.h>
 #include <Agps.h>
 #include <SystemStatus.h>
 #include <XtraSystemStatusObserver.h>
@@ -229,16 +229,13 @@ class GnssAdapter : public LocAdapterBase {
     void initAgps(const AgpsCbInfo& cbInfo);
 
     /* ==== NFW =========================================================================== */
-    NfwStatusCb mNfwCb;
-    IsInEmergencySession mIsE911Session;
     inline void initNfw(const NfwCbInfo& cbInfo) {
-        mNfwCb = (NfwStatusCb)cbInfo.visibilityControlCb;
-        mIsE911Session = (IsInEmergencySession)cbInfo.isInEmergencySession;
+        mControlCallbacks.nfwStatusCb = cbInfo.visibilityControlCb;
+        mControlCallbacks.isInEmergencyStatusCb = cbInfo.isInEmergencySession;
     }
 
     /* ==== Measurement Corrections========================================================= */
     bool mIsMeasCorrInterfaceOpen;
-    measCorrSetCapabilitiesCb mMeasCorrSetCapabilitiesCb;
     bool initMeasCorr(bool bSendCbWhenNotSupported);
     bool mIsAntennaInfoInterfaceOpened;
 
@@ -250,7 +247,6 @@ class GnssAdapter : public LocAdapterBase {
     void reportDGnssDataUsable(const GnssSvMeasurementSet &svMeasurementSet);
 
     /* ==== ODCPI ========================================================================== */
-    OdcpiRequestCallback mOdcpiRequestCb;
     bool mOdcpiRequestActive;
     OdcpiPrioritytype mCallbackPriority;
     OdcpiTimer mOdcpiTimer;
@@ -279,6 +275,8 @@ class GnssAdapter : public LocAdapterBase {
     std::queue<GnssLatencyInfo> mGnssLatencyInfoQueue;
     GnssReportLoggerUtil mLogger;
     bool mDreIntEnabled;
+    bool mPpeEnabled;
+    ElapsedRealtimeEstimator mPositionElapsedRealTimeCal;
 
     /* === NativeAgpsHandler ======================================================== */
     NativeAgpsHandler mNativeAgpsHandler;
@@ -298,9 +296,11 @@ class GnssAdapter : public LocAdapterBase {
                                  int totalSvCntInThisConstellation);
 
     /* ======== UTILITIES ================================================================== */
-    inline void initOdcpi(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
+    inline void initOdcpi(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
     inline void injectOdcpi(const Location& location);
     static bool isFlpClient(LocationCallbacks& locationCallbacks);
+    void fillElapsedRealTime(const GpsLocationExtended& locationExtended,
+                             Location& out);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
@@ -453,28 +453,29 @@ public:
     uint32_t gnssGetSecondaryBandConfigCommand();
     uint32_t configLeverArmCommand(const LeverArmConfigInfo& configInfo);
     uint32_t configRobustLocationCommand(bool enable, bool enableForE911);
-    bool openMeasCorrCommand(const measCorrSetCapabilitiesCb setCapabilitiesCb);
+    bool openMeasCorrCommand(const measCorrSetCapabilitiesCallback setCapabilitiesCb);
     bool measCorrSetCorrectionsCommand(const GnssMeasurementCorrections gnssMeasCorr);
     inline void closeMeasCorrCommand() { mIsMeasCorrInterfaceOpen = false; }
-    uint32_t antennaInfoInitCommand(const antennaInfoCb antennaInfoCallback);
+    uint32_t antennaInfoInitCommand(const antennaInfoCallback antennaInfoCallback);
+    void getGnssAntennaeInfoCommand();
     inline void antennaInfoCloseCommand() { mIsAntennaInfoInterfaceOpened = false; }
     uint32_t configMinGpsWeekCommand(uint16_t minGpsWeek);
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
     uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes);
+    uint32_t configEngineIntegrityRiskCommand(PositioningEngineMask engType,
+                                              uint32_t integrityRisk);
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
-    void initOdcpiCommand(const OdcpiRequestCallback& callback, OdcpiPrioritytype priority);
+    void initOdcpiCommand(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
     void injectOdcpiCommand(const Location& location);
     /* ======== RESPONSES ================================================================== */
     void reportResponse(LocationError err, uint32_t sessionId);
     void reportResponse(size_t count, LocationError* errs, uint32_t* ids);
     /* ======== UTILITIES ================================================================== */
     LocationControlCallbacks& getControlCallbacks() { return mControlCallbacks; }
-    void setControlCallbacks(const LocationControlCallbacks& controlCallbacks)
-    { mControlCallbacks = controlCallbacks; }
     void setAfwControlId(uint32_t id) { mAfwControlId = id; }
     uint32_t getAfwControlId() { return mAfwControlId; }
     virtual bool isInSession() { return !mTimeBasedTrackingSessions.empty(); }
@@ -511,7 +512,7 @@ public:
 
     virtual bool requestATL(int connHandle, LocAGpsType agps_type,
                             LocApnTypeMask apn_type_mask,
-                            LocSubId sub_id=LOC_DEFAULT_SUB);
+                            SubId sub_id=DEFAULT_SUB);
     virtual bool releaseATL(int connHandle);
     virtual bool requestOdcpiEvent(OdcpiRequestInfo& request);
     virtual bool reportDeleteAidingDataEvent(GnssAidingData& aidingData);
@@ -553,14 +554,14 @@ public:
     void saveGnssEnergyConsumedCallback(GnssEnergyConsumedCallback energyConsumedCb);
     void reportLocationSystemInfo(const LocationSystemInfo & locationSystemInfo);
     inline void reportNfwNotification(const GnssNfwNotification& notification) {
-        if (NULL != mNfwCb) {
-            mNfwCb(notification);
+        if (NULL != mControlCallbacks.nfwStatusCb) {
+            mControlCallbacks.nfwStatusCb(notification);
         }
     }
     void updatePowerState(PowerStateType powerState);
     inline bool getE911State(GnssNiType niType) {
-        if (NULL != mIsE911Session) {
-            return mIsE911Session();
+        if (NULL != mControlCallbacks.isInEmergencyStatusCb) {
+            return mControlCallbacks.isInEmergencyStatusCb();
         } else {
             /* On LE targets(mIsE911Session is NULL) with old modem
             and when (!LOC_SUPPORTED_FEATURE_LOCATION_PRIVACY) there is no way of
@@ -577,7 +578,7 @@ public:
 
 
     std::vector<double> parseDoublesString(char* dString);
-    void reportGnssAntennaInformation(const antennaInfoCb antennaInfoCallback);
+    void reportGnssAntennaInformation();
 
     /*======== GNSSDEBUG ================================================================*/
     bool getDebugReport(GnssDebugReport& report);
