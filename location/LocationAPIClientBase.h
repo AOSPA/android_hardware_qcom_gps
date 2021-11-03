@@ -392,11 +392,11 @@ private:
             pthread_mutex_unlock(&mBiDictMutex);
             return ret;
         }
-        std::vector<uint32_t> getAllSessions() {
+        std::vector<uint32_t> getAllIds() {
             std::vector<uint32_t> ret;
             pthread_mutex_lock(&mBiDictMutex);
-            for (auto it = mBackwardMap.begin(); it != mBackwardMap.end(); it++) {
-                ret.push_back(it->first);
+            for (auto idToSessionPair : mForwardMap) {
+                ret.push_back(idToSessionPair.first);
             }
             pthread_mutex_unlock(&mBiDictMutex);
             return ret;
