@@ -261,7 +261,8 @@ bool LocApiBase::needReport(const UlpLocation& ulpLocation,
         if (LOC_SESS_SUCCESS == status) {
             // this is a final fix
             LocPosTechMask mask =
-                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID;
+                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID |
+                LOC_POS_TECH_MASK_PROPAGATED;
             // it is a Satellite fix or a sensor fix
             reported = (mask & techMask);
         }

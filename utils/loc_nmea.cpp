@@ -1275,7 +1275,8 @@ static void loc_nmea_get_fix_quality(const UlpLocation & location,
                 if (locationExtended.gnss_sv_used_ids.navic_sv_used_ids_mask ? 1 : 0)
                     gnsModeIndicator[5] = 'A'; // A means autonomous
                 break;
-            } else if (LOC_POS_TECH_MASK_SENSORS & locationExtended.tech_mask){
+            } else if ((LOC_POS_TECH_MASK_SENSORS & locationExtended.tech_mask) ||
+                       (LOC_POS_TECH_MASK_PROPAGATED & locationExtended.tech_mask)){
                 ggaGpsQuality[0] = '6'; // 6 means estimated (dead reckoning)
                 rmcModeIndicator = 'E'; // E means estimated (dead reckoning)
                 vtgModeIndicator = 'E'; // E means estimated (dead reckoning)
