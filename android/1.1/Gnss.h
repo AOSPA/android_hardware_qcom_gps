@@ -123,6 +123,8 @@ struct Gnss : public IGnss {
         const wp<Gnss> mGnss;
     };
 
+    void handleClientDeath();
+
  private:
     sp<GnssDeathRecipient> mGnssDeathRecipient = nullptr;
 

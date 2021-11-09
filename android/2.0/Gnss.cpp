@@ -85,8 +85,7 @@ void Gnss::GnssDeathRecipient::serviceDied(uint64_t cookie, const wp<IBase>& who
             __FUNCTION__, static_cast<unsigned long long>(cookie), &who);
     auto gnss = mGnss.promote();
     if (gnss != nullptr) {
-        gnss->getGnssInterface()->resetNetworkInfo();
-        gnss->cleanup();
+        gnss->handleClientDeath();
     }
 }
 
@@ -115,6 +114,19 @@ Gnss::~Gnss() {
         mApi = nullptr;
     }
     sGnss = nullptr;
+}
+
+void Gnss::handleClientDeath() {
+    getGnssInterface()->resetNetworkInfo();
+    cleanup();
+    if (mApi != nullptr) {
+        mApi->gnssUpdateCallbacks(nullptr, nullptr);
+        mApi->gnssUpdateCallbacks_2_0(nullptr);
+    }
+    mGnssCbIface = nullptr;
+    mGnssNiCbIface = nullptr;
+    mGnssCbIface_1_1 = nullptr;
+    mGnssCbIface_2_0 = nullptr;
 }
 
 GnssAPIClient* Gnss::getApi() {

@@ -65,6 +65,7 @@ struct GnssGeofencing : public IGnssGeofencing {
     // This method is not part of the IGnss base class.
     // It is called by GnssGeofencingDeathRecipient to remove all geofences added so far.
     Return<void> removeAllGeofences();
+    void handleClientDeath();
 
  private:
     struct GnssGeofencingDeathRecipient : hidl_death_recipient {

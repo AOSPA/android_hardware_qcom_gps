@@ -34,9 +34,8 @@ namespace implementation {
 void gnssCallbackDied(void* cookie) {
     LOC_LOGe("IGnssCallback AIDL service died");
     Gnss* iface = static_cast<Gnss*>(cookie);
-    //clean up, i.e.  iface->close();
     if (iface != nullptr) {
-        iface->close();
+        iface->handleClientDeath();
     }
 }
 ndk::ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callback) {
@@ -80,6 +79,14 @@ Gnss::~Gnss() {
         mApi->destroy();
         mApi = nullptr;
     }
+}
+
+void Gnss::handleClientDeath() {
+    close();
+    if (mApi != nullptr) {
+        mApi->gnssUpdateCallbacks(mGnssCallback);
+    }
+    mGnssCallback = nullptr;
 }
 
 ndk::ScopedAStatus Gnss::updateConfiguration(GnssConfig& gnssConfig) {
