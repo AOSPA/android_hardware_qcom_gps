@@ -79,7 +79,7 @@ void GnssAPIClient::gnssUpdateCallbacks(const shared_ptr<IGnssCallback>& gpsCb) 
     mGnssCbIface = gpsCb;
     mMutex.unlock();
 
-    if (mGnssCbIface != nullptr) {
+    if (gpsCb != nullptr) {
         setCallbacks();
     }
 }
@@ -148,23 +148,24 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     LOC_LOGD("%s]: (%02x)", __FUNCTION__, capabilitiesMask);
     mLocationCapabilitiesMask = capabilitiesMask;
     mLocationCapabilitiesCached = true;
+    mMutex.lock();
+    auto gnssCbIface(mGnssCbIface);
+    mMutex.unlock();
 
-    if (mGnssCbIface != nullptr) {
-        uint32_t capabilities = 0;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT) {
-            capabilities |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
-        }
-        // CORRELATION_VECTOR not supported.
-        capabilities |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
-            capabilities |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS_FOR_DRIVING;
-        }
+    uint32_t capabilities = 0;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT) {
+        capabilities |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
+    }
+    // CORRELATION_VECTOR not supported.
+    capabilities |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
+        capabilities |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS_FOR_DRIVING;
+    }
 
-        if (mGnssCbIface != nullptr) {
-            auto r = mGnssCbIface->gnssSetCapabilitiesCb(capabilities);
-            if (!r.isOk()) {
-                LOC_LOGe("Error from AIDL gnssSetCapabilitiesCb");
-            }
+    if (gnssCbIface != nullptr) {
+        auto r = gnssCbIface->gnssSetCapabilitiesCb(capabilities);
+        if (!r.isOk()) {
+            LOC_LOGe("Error from AIDL gnssSetCapabilitiesCb");
         }
     }
 }
