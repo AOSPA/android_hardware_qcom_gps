@@ -380,7 +380,7 @@ public:
         reset();
     }
     int64_t getElapsedRealtimeEstimateNanos(int64_t curDataTimeNanos,
-            bool isCurDataTimeTrustable, int64_t tbf);
+            bool isCurDataTimeTrustable, int64_t tbfNanos);
     inline int64_t getElapsedRealtimeUncNanos() { return 5000000;}
     void reset();
     static int64_t getElapsedRealtimeQtimer(int64_t qtimerTicksAtOrigin);
