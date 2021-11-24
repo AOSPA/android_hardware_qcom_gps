@@ -205,24 +205,29 @@ bool LocApiBase::needReport(const UlpLocation& ulpLocation,
 {
     bool reported = false;
 
-    if (LOC_SESS_SUCCESS == status) {
-        // this is a final fix
-        LocPosTechMask mask =
-            LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID;
-        // it is a Satellite fix or a sensor fix
-        reported = (mask & techMask);
-    }
-    else if (LOC_SESS_INTERMEDIATE == status &&
-        LOC_SESS_INTERMEDIATE == ContextBase::mGps_conf.INTERMEDIATE_POS) {
-        // this is a intermediate fix and we accept intermediate
-
-        // it is NOT the case that
-        // there is inaccuracy; and
-        // we care about inaccuracy; and
-        // the inaccuracy exceeds our tolerance
-        reported = !((ulpLocation.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ACCURACY) &&
-            (ContextBase::mGps_conf.ACCURACY_THRES != 0) &&
-            (ulpLocation.gpsLocation.accuracy > ContextBase::mGps_conf.ACCURACY_THRES));
+    if (LOC_SESS_INTERMEDIATE == ContextBase::mGps_conf.INTERMEDIATE_POS) {
+        // if intermediate fix is allowed, we will report out intermediate or final fixes
+        // when one of below two conditions are met:
+        // 1: if accuracy level is do not care, report out all intermediate or final fixes
+        // 2: otherwise, the accuracy level will need to be valid and less than threshold
+        if (LOC_SESS_FAILURE != status) {
+            if ((ContextBase::mGps_conf.ACCURACY_THRES != 0) &&
+                    (((ulpLocation.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ACCURACY) == 0) ||
+                     (ulpLocation.gpsLocation.accuracy >= ContextBase::mGps_conf.ACCURACY_THRES))) {
+                reported = false;
+            } else {
+                reported = true;
+            }
+        }
+    } else {
+        // intermediate fix is not allowed, only can report out final fixes
+        if (LOC_SESS_SUCCESS == status) {
+            // this is a final fix
+            LocPosTechMask mask =
+                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID;
+            // it is a Satellite fix or a sensor fix
+            reported = (mask & techMask);
+        }
     }
 
     return reported;
@@ -330,7 +335,7 @@ void LocApiBase::reportPosition(UlpLocation& location,
              "altitude: %f\n  speed: %f\n  bearing: %f\n  accuracy: %f\n  "
              "timestamp: %" PRId64 "\n"
              "Session status: %d\n Technology mask: %u\n "
-             "SV used in fix (gps/glo/bds/gal/qzss) : \
+             "SV used in fix (gps/glo/bds/gal/qzss/navic) : \
              (0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
              location.gpsLocation.flags, location.position_source,
              location.gpsLocation.latitude, location.gpsLocation.longitude,
@@ -361,7 +366,7 @@ void LocApiBase::reportZppBestAvailableFix(LocGpsLocation &zppLoc,
         GpsLocationExtended &location_extended, LocPosTechMask tech_mask)
 {
     // loop through adapters, and deliver to the first handling adapter.
-    TO_1ST_HANDLING_LOCADAPTERS(mLocAdapters[i]->reportZppBestAvailableFix(zppLoc,
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportZppBestAvailableFix(zppLoc,
             location_extended, tech_mask));
 }
 
@@ -511,7 +516,7 @@ void LocApiBase::requestLocation()
 }
 
 void LocApiBase::requestATL(int connHandle, LocAGpsType agps_type,
-                            LocApnTypeMask apn_type_mask, LocSubId sub_id)
+                            LocApnTypeMask apn_type_mask, SubId sub_id)
 {
     // loop through adapters, and deliver to the first handling adapter.
     TO_1ST_HANDLING_LOCADAPTERS(
@@ -991,6 +996,8 @@ void ElapsedRealtimeEstimator::reset() {
     mPrevUtcTimeNanos = 0;
     mPrevBootTimeNanos = 0;
     mFixTimeStablizationThreshold = 5;
+    memset(&mTimePairPVTReport, 0, sizeof(mTimePairPVTReport));
+    memset(&mTimePairMeasReport, 0, sizeof(mTimePairMeasReport));
 }
 
 int64_t ElapsedRealtimeEstimator::getElapsedRealtimeQtimer(int64_t qtimerTicksAtOrigin) {
@@ -1031,6 +1038,102 @@ int64_t ElapsedRealtimeEstimator::getElapsedRealtimeQtimer(int64_t qtimerTicksAt
     }
     return elapsedRealTimeNanos;
 }
+
+void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInPvtReport(
+        const GpsLocationExtended& locationExtended) {
+
+    // Use GPS timestamp and qtimer tick for 1Hz PVT report for association
+    if ((locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GPS_TIME) &&
+            (locationExtended.gpsTime.gpsTimeOfWeekMs % 1000 == 0) &&
+            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK) &&
+            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC)) {
+        mTimePairPVTReport.gpsTime.gpsWeek = locationExtended.gpsTime.gpsWeek;
+        mTimePairPVTReport.gpsTime.gpsTimeOfWeekMs =
+                locationExtended.gpsTime.gpsTimeOfWeekMs;
+        mTimePairPVTReport.qtimerTick = locationExtended.systemTick;
+        mTimePairPVTReport.timeUncMsec = locationExtended.systemTickUnc;
+
+        LOC_LOGv("gps time (%d, %d), qtimer tick %" PRIi64 ", qtime unc %f",
+                 mTimePairPVTReport.gpsTime.gpsWeek, mTimePairPVTReport.gpsTime.gpsTimeOfWeekMs,
+                 mTimePairPVTReport.qtimerTick, mTimePairPVTReport.timeUncMsec);
+    }
+}
+
+void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInMeasReport(
+        const GnssSvMeasurementSet& svMeasurementSet) {
+
+    const GnssSvMeasurementHeader& svMeasSetHeader = svMeasurementSet.svMeasSetHeader;
+    // Use 1Hz measurement report timestamp and qtimer tick for association
+    if ((svMeasurementSet.isNhz == false) &&
+            (svMeasSetHeader.gpsSystemTime.validityMask & GNSS_SYSTEM_TIME_WEEK_VALID) &&
+            (svMeasSetHeader.gpsSystemTime.validityMask & GNSS_SYSTEM_TIME_WEEK_MS_VALID)) {
+
+        LOC_LOGv("gps time %d %d, meas unc %f, ref cnt tick %" PRIi64 ","
+                 "system rtc ms %" PRIi64 ", systemClkTimeUncMs %f",
+                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemWeek,
+                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemMsec,
+                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemClkTimeUncMs,
+                 svMeasurementSet.svMeasSetHeader.refCountTicks,
+                 svMeasurementSet.svMeasSetHeader.gpsSystemTimeExt.systemRtcMs,
+                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemClkTimeUncMs);
+        if ((svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS) &&
+                (svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS_UNC)) {
+            mTimePairMeasReport.gpsTime.gpsWeek = svMeasSetHeader.gpsSystemTime.systemWeek;
+            mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs = svMeasSetHeader.gpsSystemTime.systemMsec;
+            mTimePairMeasReport.qtimerTick = svMeasurementSet.svMeasSetHeader.refCountTicks;
+            mTimePairMeasReport.timeUncMsec = svMeasurementSet.svMeasSetHeader.refCountTicksUnc;
+        }
+
+        LOC_LOGv("gps time (%d, %d), qtimer tick %" PRIi64 ", unc %f",
+                 mTimePairMeasReport.gpsTime.gpsWeek,  mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs,
+                 mTimePairMeasReport.qtimerTick, mTimePairMeasReport.timeUncMsec);
+    }
+}
+
+#define MSEC_IN_ONE_WEEK 604800000LL
+bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
+        const GPSTimeStruct& gpsTimeAtOrigin, int64_t &bootTimeNsAtOrigin, float & bootTimeUnc) {
+    struct timespec curBootTime = {};
+    int64_t curBootTimeNs = 0;
+    int64_t curQTimerNSec = 0;
+    int64_t qtimerNsecAtOrigin = 0;
+    int64_t gpsTimeDiffMsec = 0;
+    GpsTimeQtimerTickPair timePair;
+
+    // We have valid association
+    if (mTimePairMeasReport.gpsTime.gpsWeek != 0) {
+        timePair = mTimePairMeasReport;
+        LOC_LOGv("user meas time association");
+    } else if (mTimePairPVTReport.gpsTime.gpsWeek != 0) {
+        LOC_LOGv("user PVT time association");
+        timePair = mTimePairPVTReport;
+    } else {
+        return false;
+    }
+
+    gpsTimeDiffMsec = (gpsTimeAtOrigin.gpsWeek - timePair.gpsTime.gpsWeek) * MSEC_IN_ONE_WEEK +
+                       (gpsTimeAtOrigin.gpsTimeOfWeekMs - timePair.gpsTime.gpsTimeOfWeekMs);
+    qtimerNsecAtOrigin = timePair.qtimerTick * 10000/192 + gpsTimeDiffMsec * 1000000;
+
+    clock_gettime(CLOCK_BOOTTIME, &curBootTime);
+    curBootTimeNs = ((int64_t)curBootTime.tv_sec) * 1000000000 + (int64_t)curBootTime.tv_nsec;
+    // qtimer freq: 19200000, so
+    // so 1 tick equals 1000,000,000/19,200,000 ns = 10000/192
+    curQTimerNSec = getQTimerTickCount() * 10000/192;
+    bootTimeNsAtOrigin = curBootTimeNs - (curQTimerNSec - qtimerNsecAtOrigin);
+
+    bootTimeUnc = timePair.timeUncMsec;
+    LOC_LOGv("gpsTimeAtOrigin (%d, %d), timepair: gps (%d, %d), "
+             "qtimer nsec =%" PRIi64 ", curQTimerNSec=%" PRIi64 " qtimerNsecAtOrigin=%" PRIi64 ""
+             " curBoottimeNSec=%" PRIi64 " bootimeNsecAtOrigin=%" PRIi64 ", boottime unc =%f",
+             gpsTimeAtOrigin.gpsWeek, gpsTimeAtOrigin.gpsTimeOfWeekMs,
+             timePair.gpsTime.gpsWeek, timePair.gpsTime.gpsTimeOfWeekMs,
+             timePair.qtimerTick * 100000 / 192,
+             curQTimerNSec, qtimerNsecAtOrigin, curBootTimeNs, bootTimeNsAtOrigin, bootTimeUnc);
+
+    return true;
+}
+
 
 bool ElapsedRealtimeEstimator::getCurrentTime(
         struct timespec& currentTime, int64_t& sinceBootTimeNanos)
