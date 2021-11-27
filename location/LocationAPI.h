@@ -668,7 +668,7 @@ public:
         @param
         enable: true/false to enable / disable permission
     */
-    virtual void enableNfwLocationAccess(bool enable) override;
+    virtual void enableNfwLocationAccess(std::vector<std::string>& enabledNfws) override;
 
     /** @brief
         This API is used to instruct the specified engine to use

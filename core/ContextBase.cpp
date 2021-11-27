@@ -88,7 +88,6 @@ const loc_param_s_type ContextBase::mGps_conf_table[] =
            &mGps_conf.CONSTRAINED_TIME_UNCERTAINTY_ENERGY_BUDGET, NULL, 'n'},
   {"POSITION_ASSISTED_CLOCK_ESTIMATOR_ENABLED",
            &mGps_conf.POSITION_ASSISTED_CLOCK_ESTIMATOR_ENABLED, NULL, 'n'},
-  {"PROXY_APP_PACKAGE_NAME",         &mGps_conf.PROXY_APP_PACKAGE_NAME,         NULL, 's' },
   {"CP_MTLR_ES",                     &mGps_conf.CP_MTLR_ES,                     NULL, 'n' },
   {"GNSS_DEPLOYMENT",  &mGps_conf.GNSS_DEPLOYMENT, NULL, 'n'},
   {"CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED",
@@ -340,7 +339,7 @@ void ContextBase::setEngineCapabilities(uint64_t supportedMsgMask,
                     (void *)featureList, sizeof(ContextBase::sFeaturesSupported));
         }
         mGps_conf.AGPS_CONFIG_INJECT &=
-                !(isFeatureSupported(LOC_SUPPORTED_FEATURE_QMI_AGNSS_CONFIG_DISABLED));
+                !(isFeatureSupported(LOC_SUPPORTED_FEATURE_DSDA_CONFIGURATION));
 
         /* */
         if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION)) {

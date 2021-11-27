@@ -85,7 +85,7 @@ struct GnssInterface {
                      int blockDurationMsec, double latLonDiffThreshold);
     void (*setEsStatusCallback)(std::function<void(bool)> esStatusCb);
     void (*getGnssEnergyConsumed)(GnssEnergyConsumedCallback energyConsumedCb);
-    void (*enableNfwLocationAccess)(bool enable);
+    void (*enableNfwLocationAccess)(std::vector<std::string>& enabledNfws);
     void (*nfwInit)(const NfwCbInfo& cbInfo);
     void (*getPowerStateChanges)(std::function<void(bool)> powerStateCb);
     void (*injectLocationExt)(const GnssLocationInfoNotification &locationInfo);
