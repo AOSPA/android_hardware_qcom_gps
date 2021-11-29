@@ -106,6 +106,7 @@ public:
     inline virtual bool getSatellitePVT(GnssSvPolynomial& svPolynomial,
             GnssSvMeasurementHeader& svMeasSetHeader,
             GnssMeasurementsData& measurementData) { return false; }
+    inline virtual float getGeoidalSeparation(double latitude, double longitude) { return 0.0; }
 };
 
 class LocApiBase {
