@@ -4159,7 +4159,9 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
             bool isFlpClnt = isFlpClient(it->second);
             if (!isFlpClnt) {
                 if ((reportToAllClients || needReportForClient(it->first, status))) {
-                    if ((nullptr != it->second.engineLocationsInfoCb) &&
+                    if (nullptr != it->second.gnssLocationInfoCb) {
+                        it->second.gnssLocationInfoCb(locationInfo);
+                    } else if ((nullptr != it->second.engineLocationsInfoCb) &&
                             (false == initEngHubProxy())) {
                         // if engine hub is disabled, this is SPE fix from modem
                         // we need to have one copy marked as fused and leave the other copy
