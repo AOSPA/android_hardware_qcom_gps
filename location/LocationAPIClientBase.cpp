@@ -50,8 +50,6 @@ LocationAPIControlClient::LocationAPIControlClient() :
         mRequestQueues[i].reset((uint32_t)0);
     }
 
-    memset(&mConfig, 0, sizeof(GnssConfig));
-
     LocationControlCallbacks locationControlCallbacks;
     locationControlCallbacks.size = sizeof(LocationControlCallbacks);
 
@@ -147,21 +145,15 @@ uint32_t LocationAPIControlClient::locAPIGnssUpdateConfig(GnssConfig config)
 
     pthread_mutex_lock(&mMutex);
     if (mLocationControlAPI) {
-        if (mConfig.equals(config)) {
-            LOC_LOGv("GnssConfig is identical to previous call");
-            retVal = LOCATION_ERROR_SUCCESS;
-        } else {
-            mConfig = config;
-            uint32_t* idArray = mLocationControlAPI->gnssUpdateConfig(config);
-            LOC_LOGv("gnssUpdateConfig return array: %p", idArray);
-            if (nullptr != idArray) {
-                if (nullptr != mRequestQueues[CTRL_REQUEST_CONFIG_UPDATE].getSessionArrayPtr()) {
-                    mRequestQueues[CTRL_REQUEST_CONFIG_UPDATE].reset(idArray);
-                }
-                mRequestQueues[CTRL_REQUEST_CONFIG_UPDATE].push(new GnssUpdateConfigRequest(*this));
-                retVal = LOCATION_ERROR_SUCCESS;
-                delete [] idArray;
+        uint32_t* idArray = mLocationControlAPI->gnssUpdateConfig(config);
+        LOC_LOGv("gnssUpdateConfig return array: %p", idArray);
+        if (nullptr != idArray) {
+            if (nullptr != mRequestQueues[CTRL_REQUEST_CONFIG_UPDATE].getSessionArrayPtr()) {
+                mRequestQueues[CTRL_REQUEST_CONFIG_UPDATE].reset(idArray);
             }
+            mRequestQueues[CTRL_REQUEST_CONFIG_UPDATE].push(new GnssUpdateConfigRequest(*this));
+            retVal = LOCATION_ERROR_SUCCESS;
+            delete [] idArray;
         }
     }
     pthread_mutex_unlock(&mMutex);
