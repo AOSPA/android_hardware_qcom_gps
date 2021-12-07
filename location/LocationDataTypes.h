@@ -81,6 +81,7 @@ typedef enum {
     LOCATION_HAS_CONFORMITY_INDEX_BIT  = (1<<10), // location has valid conformity index
     LOCATION_HAS_QUALITY_TYPE_BIT      = (1<<11), // location has valid quality type
     LOCATION_HAS_TECH_MASK_BIT         = (1<<12), // location has valid tech mask
+    LOCATION_HAS_ELAPSED_REAL_TIME_BIT = (1<<13), // location has valid elapsed real time
 } LocationFlagsBits;
 
 typedef uint16_t LocationTechnologyMask;
