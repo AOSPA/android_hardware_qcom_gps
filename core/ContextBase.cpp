@@ -193,6 +193,12 @@ void ContextBase::readConfig()
         /* default configuration QTI GNSS H/W */
         mGps_conf.GNSS_DEPLOYMENT = 0;
         mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED = 0;
+        /* default NMEA Tag Block Grouping is disabled */
+        mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED = 0;
+        /* default configuration for NI_SUPL_DENY_ON_NFW_LOCKED */
+        mGps_conf.NI_SUPL_DENY_ON_NFW_LOCKED = 1;
+        /* By default NMEA Printing is disabled */
+        mGps_conf.ENABLE_NMEA_PRINT = 0;
 
 #ifdef USE_GLIB
         // For LE target, disable by default
