@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2021 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2022 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1103,16 +1103,20 @@ bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
     // We have valid association
     if (mTimePairMeasReport.gpsTime.gpsWeek != 0) {
         timePair = mTimePairMeasReport;
-        LOC_LOGv("user meas time association");
+        LOC_LOGv("use meas time association");
     } else if (mTimePairPVTReport.gpsTime.gpsWeek != 0) {
-        LOC_LOGv("user PVT time association");
+        LOC_LOGv("use PVT time association");
         timePair = mTimePairPVTReport;
     } else {
         return false;
     }
 
-    gpsTimeDiffMsec = (gpsTimeAtOrigin.gpsWeek - timePair.gpsTime.gpsWeek) * MSEC_IN_ONE_WEEK +
-                       (gpsTimeAtOrigin.gpsTimeOfWeekMs - timePair.gpsTime.gpsTimeOfWeekMs);
+    int64_t originMsec = (int64_t)gpsTimeAtOrigin.gpsWeek * (int64_t)MSEC_IN_ONE_WEEK +
+                         (int64_t)gpsTimeAtOrigin.gpsTimeOfWeekMs;
+    int64_t timePairMsec = (int64_t)timePair.gpsTime.gpsWeek * (int64_t)MSEC_IN_ONE_WEEK +
+                            (int64_t)timePair.gpsTime.gpsTimeOfWeekMs;
+    gpsTimeDiffMsec = originMsec - timePairMsec;
+
     qtimerNsecAtOrigin = timePair.qtimerTick * 10000/192 + gpsTimeDiffMsec * 1000000;
 
     clock_gettime(CLOCK_BOOTTIME, &curBootTime);
