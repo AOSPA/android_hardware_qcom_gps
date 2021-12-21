@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -118,7 +118,7 @@ public :
     bool updateConnections(uint64_t allConnections,
             loc_core::NetworkInfoType* networkHandleInfo, bool roaming);
     bool updateTac(const string& tac);
-    bool updateMccMnc(const string& mccmnc);
+    bool updateMccMnc(const string& mccmncCountry);
     bool updateXtraThrottle(const bool enabled);
     inline const MsgTask* getMsgTask() { return mMsgTask; }
     void subscribe(bool yes);
