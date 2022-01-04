@@ -4923,19 +4923,21 @@ GnssAdapter::reportGnssMeasurementsEvent(const GnssMeasurements& gnssMeasurement
         struct MsgReportGnssMeasurementData : public LocMsg {
             GnssAdapter& mAdapter;
             GnssMeasurements mGnssMeasurements;
-            GnssMeasurementsNotification mMeasurementsNotify;
             inline MsgReportGnssMeasurementData(GnssAdapter& adapter,
                                                 const GnssMeasurements& gnssMeasurements,
                                                 int msInWeek) :
                     LocMsg(),
                     mAdapter(adapter),
-                    mMeasurementsNotify(gnssMeasurements.gnssMeasNotification) {
+                    mGnssMeasurements(gnssMeasurements) {
                 if (-1 != msInWeek) {
-                    mAdapter.getAgcInformation(mMeasurementsNotify, msInWeek);
+                    mAdapter.getAgcInformation(mGnssMeasurements.gnssMeasNotification, msInWeek);
                 }
             }
+
             inline virtual void proc() const {
-                mAdapter.reportGnssMeasurementData(mMeasurementsNotify);
+                mAdapter.mPositionElapsedRealTimeCal.saveGpsTimeAndQtimerPairInMeasReport(
+                        mGnssMeasurements.gnssSvMeasurementSet);
+                mAdapter.reportGnssMeasurementData(mGnssMeasurements.gnssMeasNotification);
             }
         };
 
