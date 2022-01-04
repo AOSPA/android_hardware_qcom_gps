@@ -147,6 +147,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SIGNAL_ID_NAVIC_SRS    4
 #define SIGNAL_ID_NAVIC_L1SPS  5
 
+static LocPosTechMask techMaskGnss = LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_HYBRID;
 
 typedef struct loc_nmea_sv_meta_s
 {
@@ -653,7 +654,8 @@ SIDE EFFECTS
    N/A
 
 ===========================================================================*/
-static uint32_t loc_nmea_generate_GSA(const GpsLocationExtended &locationExtended,
+static uint32_t loc_nmea_generate_GSA(const UlpLocation &location,
+                              const GpsLocationExtended &locationExtended,
                               char* sentence,
                               int bufSize,
                               loc_nmea_sv_meta* sv_meta_p,
@@ -695,7 +697,7 @@ static uint32_t loc_nmea_generate_GSA(const GpsLocationExtended &locationExtende
         mask = mask >> 1;
     }
 
-    if (svUsedCount == 0) {
+    if (svUsedCount == 0 && (locationExtended.tech_mask & techMaskGnss)) {
         return 0;
     } else {
         sentenceNumber = 1;
@@ -715,12 +717,13 @@ static uint32_t loc_nmea_generate_GSA(const GpsLocationExtended &locationExtende
             pMarker += lengthTagBlock;
             lengthRemaining -= lengthTagBlock;
         }
-        if (sv_meta_p->totalSvUsedCount == 0)
-            fixType = '1'; // no fix
-        else if (sv_meta_p->totalSvUsedCount <= 3)
-            fixType = '2'; // 2D fix
-        else
+        if (location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ALTITUDE) {
             fixType = '3'; // 3D fix
+        } else if (location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_LAT_LONG) {
+            fixType = '2'; // 2D fix
+        } else {
+            fixType = '1'; // no fix
+        }
 
         // Start printing the sentence
         // Format: $--GSA,a,x,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,p.p,h.h,v.v,s*cc
@@ -1456,7 +1459,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             // -------------------
             // ---$GPGSA/$GNGSA---
             // -------------------
-            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+            count = loc_nmea_generate_GSA(location, locationExtended, sentence, sizeof(sentence),
                             loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_GPS,
                             GNSS_SIGNAL_GPS_L1CA, true), nmeaArraystr, isTagBlockGroupingEnabled);
             if (count > 0)
@@ -1469,7 +1472,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             // -------------------
             // ---$GLGSA/$GNGSA---
             // -------------------
-            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+            count = loc_nmea_generate_GSA(location, locationExtended, sentence, sizeof(sentence),
                             loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_GLONASS,
                             GNSS_SIGNAL_GLONASS_G1, true), nmeaArraystr, isTagBlockGroupingEnabled);
             if (count > 0)
@@ -1482,7 +1485,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             // -------------------
             // ---$GAGSA/$GNGSA---
             // -------------------
-            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+            count = loc_nmea_generate_GSA(location, locationExtended, sentence, sizeof(sentence),
                             loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_GALILEO,
                             GNSS_SIGNAL_GALILEO_E1, true), nmeaArraystr, isTagBlockGroupingEnabled);
             if (count > 0)
@@ -1495,7 +1498,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             // ----------------------------
             // ---$GBGSA/$GNGSA (BEIDOU)---
             // ----------------------------
-            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+            count = loc_nmea_generate_GSA(location, locationExtended, sentence, sizeof(sentence),
                             loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_BEIDOU,
                             GNSS_SIGNAL_BEIDOU_B1I, true), nmeaArraystr, isTagBlockGroupingEnabled);
             if (count > 0)
@@ -1508,7 +1511,8 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             // --------------------------
             // ---$GQGSA/$GNGSA (QZSS)---
             // --------------------------
-            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+
+            count = loc_nmea_generate_GSA(location, locationExtended, sentence, sizeof(sentence),
                             loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_QZSS,
                             GNSS_SIGNAL_QZSS_L1CA, true), nmeaArraystr, isTagBlockGroupingEnabled);
             if (count > 0)
@@ -1521,8 +1525,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
             // --------------------------
             // ---$GIGSA/$GNGSA (NavIC)---
             // --------------------------
-
-            count = loc_nmea_generate_GSA(locationExtended, sentence, sizeof(sentence),
+            count = loc_nmea_generate_GSA(location, locationExtended, sentence, sizeof(sentence),
                             loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_NAVIC,
                             GNSS_SIGNAL_NAVIC_L5, true), nmeaArraystr, isTagBlockGroupingEnabled);
             if (count > 0)
@@ -1532,9 +1535,9 @@ void loc_nmea_generate_pos(const UlpLocation &location,
                 talker[1] = sv_meta.talker[1];
             }
 
-            // if svUsedCount is 0, it means we do not generate any GSA sentence yet.
-            // in this case, generate an empty GSA sentence
-            if (svUsedCount == 0) {
+            // if svUsedCount is 0 and teckMask include GNSS, it means we do not generate any GSA
+            // sentence yet. in this case, generate an empty GSA sentence
+            if (svUsedCount == 0 && (locationExtended.tech_mask & techMaskGnss)) {
                 strlcpy(sentence, "$GPGSA,A,1,,,,,,,,,,,,,,,,", sizeof(sentence));
                 length = loc_nmea_put_checksum(sentence, sizeof(sentence), false);
                 nmeaArraystr.push_back(sentence);
@@ -1655,7 +1658,8 @@ void loc_nmea_generate_pos(const UlpLocation &location,
                     (0 != sv_cache_info.glo_used_mask) ||
                     (0 != sv_cache_info.gal_used_mask) ||
                     (0 != sv_cache_info.qzss_used_mask) ||
-                    (0 != sv_cache_info.bds_used_mask));
+                    (0 != sv_cache_info.bds_used_mask) ||
+                    (location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_LAT_LONG));
 
             if (validFix) {
                 length = snprintf(pMarker, lengthRemaining, "$%sRMC,%02d%02d%02d.%02d,A,",
