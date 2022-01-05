@@ -16,6 +16,10 @@ libgnss_la_SOURCES = \
     Agps.cpp \
     NativeAgpsHandler.cpp
 
+if USE_FEATURE_AUTOMOTIVE
+AM_CFLAGS += -DFEATURE_AUTOMOTIVE
+endif
+
 if USE_GLIB
 libgnss_la_CFLAGS = -DUSE_GLIB $(AM_CFLAGS) @GLIB_CFLAGS@
 libgnss_la_LDFLAGS = -lstdc++ -Wl,-z,defs -lpthread @GLIB_LIBS@ -shared -avoid-version

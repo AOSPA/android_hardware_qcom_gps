@@ -21,8 +21,7 @@ LOCAL_HEADER_LIBRARIES := \
     libgps.utils_headers \
     libloc_core_headers \
     libloc_pla_headers \
-    liblocation_api_headers \
-    liblocbatterylistener_headers
+    liblocation_api_headers
 
 LOCAL_SHARED_LIBRARIES := \
     libbase \
@@ -36,7 +35,7 @@ LOCAL_SHARED_LIBRARIES := \
     libloc_core \
     libgps.utils \
     libdl \
-    liblocation_api \
+    liblocation_api
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
 
@@ -51,7 +50,7 @@ LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_INIT_RC := android.hardware.gnss-aidl-service-qti.rc
 LOCAL_SRC_FILES := \
-    service.cpp \
+    service.cpp
 
 LOCAL_HEADER_LIBRARIES := \
     libgps.utils_headers \
@@ -68,7 +67,7 @@ LOCAL_SHARED_LIBRARIES := \
     libgps.utils \
     liblocation_api \
     libqti_vndfwk_detect_vendor \
-    libbinder_ndk \
+    libbinder_ndk
 
 LOCAL_SHARED_LIBRARIES += \
     libhidlbase \

@@ -819,9 +819,9 @@ void LocationAPIClientBase::locAPIResumeGeofences(
 
 void LocationAPIClientBase::locAPIRemoveAllGeofences()
 {
-    std::vector<uint32_t> sessionsVec = mGeofenceBiDict.getAllSessions();
-    if (sessionsVec.size() > 0) {
-        locAPIRemoveGeofences(sessionsVec.size(), &sessionsVec[0]);
+    std::vector<uint32_t> idsVec = mGeofenceBiDict.getAllIds();
+    if (idsVec.size() > 0) {
+        locAPIRemoveGeofences(idsVec.size(), &idsVec[0]);
     }
 }
 
