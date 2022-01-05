@@ -350,13 +350,8 @@ GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
     }
 
     if (LOC_GPS_LOCATION_HAS_SPOOF_MASK & ulpLocation.gpsLocation.flags) {
-        out.flags |= LOCATION_HAS_SPOOF_MASK;
+        out.flags |= LOCATION_HAS_SPOOF_MASK_BIT;
         out.spoofMask = ulpLocation.gpsLocation.spoof_mask;
-    }
-    if (LOC_GPS_LOCATION_HAS_ELAPSED_REAL_TIME & ulpLocation.gpsLocation.flags) {
-        out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME;
-        out.elapsedRealTime = ulpLocation.gpsLocation.elapsedRealTime;
-        out.elapsedRealTimeUnc = ulpLocation.gpsLocation.elapsedRealTimeUnc;
     }
 }
 
@@ -378,7 +373,7 @@ void GnssAdapter::fillElapsedRealTime(const GpsLocationExtended& locationExtende
             out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
             out.elapsedRealTime = mPositionElapsedRealTimeCal.getElapsedRealtimeEstimateNanos(
                     locationTimeNanos, isCurDataTimeTrustable,
-                    (int64_t)mLocPositionMode.min_interval * 1000);
+                    (int64_t)mLocPositionMode.min_interval * 1000000);
             out.elapsedRealTimeUnc = mPositionElapsedRealTimeCal.getElapsedRealtimeUncNanos();
         }
 #endif //FEATURE_AUTOMOTIVE
@@ -4164,7 +4159,9 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
             bool isFlpClnt = isFlpClient(it->second);
             if (!isFlpClnt) {
                 if ((reportToAllClients || needReportForClient(it->first, status))) {
-                    if ((nullptr != it->second.engineLocationsInfoCb) &&
+                    if (nullptr != it->second.gnssLocationInfoCb) {
+                        it->second.gnssLocationInfoCb(locationInfo);
+                    } else if ((nullptr != it->second.engineLocationsInfoCb) &&
                             (false == initEngHubProxy())) {
                         // if engine hub is disabled, this is SPE fix from modem
                         // we need to have one copy marked as fused and leave the other copy

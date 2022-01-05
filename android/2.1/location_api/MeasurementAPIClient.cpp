@@ -438,7 +438,6 @@ static void convertGnssData_2_0(GnssMeasurementsNotification& in,
 static void convertGnssMeasurementsCodeType(GnssMeasurementsCodeType& inCodeType,
         char* inOtherCodeTypeName, ::android::hardware::hidl_string& out)
 {
-    memset(&out, 0, sizeof(out));
     switch(inCodeType) {
         case GNSS_MEASUREMENTS_CODE_TYPE_A:
             out = "A";
