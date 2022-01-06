@@ -66,6 +66,8 @@ struct AGnss : public V2_0::IAGnss {
     Gnss* mGnss = nullptr;
     std::mutex mMutex;
     sp<V2_0::IAGnssCallback> mAGnssCbIface = nullptr;
+
+    AGpsExtType mType;
 };
 
 }  // namespace implementation
