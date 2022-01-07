@@ -288,6 +288,7 @@ class GnssAdapter : public LocAdapterBase {
     std::queue<GnssLatencyInfo> mGnssLatencyInfoQueue;
     GnssReportLoggerUtil mLogger;
     bool mDreIntEnabled;
+    ElapsedRealtimeEstimator mPositionElapsedRealTimeCal;
 
     /* === NativeAgpsHandler ======================================================== */
     NativeAgpsHandler mNativeAgpsHandler;
@@ -314,6 +315,8 @@ class GnssAdapter : public LocAdapterBase {
     inline void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr)
     { mLocApi->injectPositionAndCivicAddress(location, addr);}
     static bool isFlpClient(LocationCallbacks& locationCallbacks);
+    void fillElapsedRealTime(const GpsLocationExtended& locationExtended,
+                             Location& out);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;

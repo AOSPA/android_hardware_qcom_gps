@@ -429,6 +429,9 @@ typedef uint64_t GpsLocationExtendedFlags;
 #define GPS_LOCATION_EXTENDED_HAS_DR_SOLUTION_STATUS_MASK        0x800000000000
 /** GpsLocationExtended has altitudeAssumed. */
 #define GPS_LOCATION_EXTENDED_HAS_ALTITUDE_ASSUMED               0x1000000000000
+#define GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK                    0x2000000000000
+/** GpsLocationExtended has system tick unc. */
+#define GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC                0x4000000000000
 
 typedef uint32_t LocNavSolutionMask;
 /* Bitmask to specify whether SBAS ionospheric correction is used  */
@@ -875,6 +878,10 @@ typedef struct {
      *  true:  Altitude is assumed; there may not be enough
      *         satellites to determine the precise altitude. */
     bool altitudeAssumed;
+    /** System Tick at GPS Time */
+    uint64_t systemTick;
+    /** Uncertainty for System Tick at GPS Time in milliseconds   */
+    float systemTickUnc;
 } GpsLocationExtended;
 
 // struct that contains complete position info from engine
@@ -1518,6 +1525,7 @@ typedef uint64_t GpsSvMeasHeaderFlags;
 #define GNSS_SV_MEAS_HEADER_HAS_GLOG1G2_TIME_BIAS             0x200000000
 #define GNSS_SV_MEAS_HEADER_HAS_BDSB1IB1C_TIME_BIAS           0x400000000
 #define GNSS_SV_MEAS_HEADER_HAS_GALE1E5B_TIME_BIAS            0x800000000
+#define GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS_UNC           0x1000000000
 
 typedef struct
 {
@@ -1571,6 +1579,7 @@ typedef struct
 
     /** Receiver tick at frame count */
     uint64_t                                    refCountTicks;
+    float                                       refCountTicksUnc;
 
     /** DGNSS corrections source type RTCM, 3GPP etc, if DGNSS was
      *  used for these measurements. */
