@@ -4009,6 +4009,18 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
             mAdapter.mPositionElapsedRealTimeCal
                     .saveGpsTimeAndQtimerPairInPvtReport(mLocationExtended);
 
+            // save sv used in fix and mb sv used in fix info
+            mAdapter.mGnssSvIdUsedInPosAvail = false;
+            mAdapter.mGnssMbSvIdUsedInPosAvail = false;
+            if (mLocationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
+                mAdapter.mGnssSvIdUsedInPosAvail = true;
+                mAdapter.mGnssSvIdUsedInPosition = mLocationExtended.gnss_sv_used_ids;
+                if (mLocationExtended.flags & GPS_LOCATION_EXTENDED_HAS_MULTIBAND) {
+                    mAdapter.mGnssMbSvIdUsedInPosAvail = true;
+                    mAdapter.mGnssMbSvIdUsedInPosition = mLocationExtended.gnss_mb_sv_used_ids;
+                }
+            }
+
             if (true == mAdapter.initEngHubProxy()){
                 // send the SPE fix to engine hub
                 mAdapter.mEngHubProxy->gnssReportPosition(mUlpLocation, mLocationExtended, mStatus);
@@ -4224,6 +4236,11 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
 {
     bool reportToAllClients = needReportForAllClients(ulpLocation, status, techMask);
     bool reportToAnyClient = needReportForAnyClient(status);
+
+    LOC_LOGd("reportToAllClients %d, reportToAnyClient %d, status %d, eng type %d, "
+             "eng hub inited %d",
+             reportToAllClients, reportToAnyClient, status,
+             locationExtended.locOutputEngType, initEngHubProxy());
 
     if (reportToAllClients || reportToAnyClient) {
         GnssLocationInfoNotification locationInfo = {};
@@ -4587,9 +4604,6 @@ GnssAdapter::reportSv(GnssSvNotification& svNotify)
         string s = ss.str();
         reportNmea(s.c_str(), s.length());
     }
-
-    mGnssSvIdUsedInPosAvail = false;
-    mGnssMbSvIdUsedInPosAvail = false;
 
     // report to engine hub to deliver to registered plugin
     mEngHubProxy->gnssReportSv(svNotify);
