@@ -216,6 +216,10 @@ typedef enum {
     GNSS_LOCATION_INFO_DR_SOLUTION_STATUS_MASK_BIT      = (1ULL<<31), // Valid DR solution status
     GNSS_LOCATION_INFO_ALTITUDE_ASSUMED_BIT             = (1ULL<<32), // Valid altitude assumed
     GNSS_LOCATION_INFO_SESSION_STATUS_BIT               = (1ULL<<33), // session status
+    GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT    = (1ULL<<34), // integrity risk used
+    GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<35), // along-track protection level
+    GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<36), // Cross-track protection level
+    GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<37), // vertical protection level
 } GnssLocationInfoFlagBits;
 
 typedef enum {
@@ -553,8 +557,10 @@ typedef enum {
     GNSS_SV_OPTIONS_HAS_ALMANAC_BIT             = (1<<1),
     GNSS_SV_OPTIONS_USED_IN_FIX_BIT             = (1<<2),
     GNSS_SV_OPTIONS_HAS_CARRIER_FREQUENCY_BIT   = (1<<3),
-    GNSS_SV_OPTIONS_HAS_GNSS_SIGNAL_TYPE_BIT          = (1<<4),
+    GNSS_SV_OPTIONS_HAS_GNSS_SIGNAL_TYPE_BIT    = (1<<4),
     GNSS_SV_OPTIONS_HAS_BASEBAND_CARRIER_TO_NOISE_BIT = (1<<5),
+    GNSS_SV_OPTIONS_HAS_ELEVATION_BIT           = (1<<6),
+    GNSS_SV_OPTIONS_HAS_AZIMUTH_BIT             = (1<<7),
 } GnssSvOptionsBits;
 
 typedef enum {
@@ -637,6 +643,8 @@ typedef enum {
     GNSS_MEASUREMENTS_DATA_SATELLITE_PVT_BIT                = (1<<23),
     GNSS_MEASUREMENTS_DATA_CORRELATION_VECTOR_BIT           = (1<<24),
     GNSS_MEASUREMENTS_DATA_GNSS_SIGNAL_TYPE_BIT             = (1<<25),
+    GNSS_MEASUREMENTS_DATA_GLO_FREQUENCY_BIT                = (1<<26),
+    GNSS_MEASUREMENTS_DATA_BASEBAND_CARRIER_TO_NOISE_BIT    = (1<<27),
 } GnssMeasurementsDataFlagsBits;
 
 typedef uint32_t GnssMeasurementsStateMask;
@@ -1340,6 +1348,14 @@ typedef struct {
     bool altitudeAssumed;
     // location session status
     loc_sess_status sessionStatus;
+    // integrity risk used for protection level parameters.
+    uint32_t integrityRiskUsed;
+    // along-track protection level
+    float    protectAlongTrack;
+    // cross-track protection level
+    float    protectCrossTrack;
+    // vertical component protection level
+    float    protectVertical;
 } GnssLocationInfoNotification;
 
 typedef struct {
@@ -2030,6 +2046,185 @@ enum GnssNmeaTypesMask {
     NMEA_TYPE_ALL        = 0xffffffff,
 };
 
+/* ODCPI Request Info */
+enum OdcpiRequestType {
+    ODCPI_REQUEST_TYPE_START,
+    ODCPI_REQUEST_TYPE_STOP
+};
+
+/* ODCPI callback priorities*/
+enum OdcpiPrioritytype {
+    ODCPI_HANDLER_PRIORITY_LOW,
+    ODCPI_HANDLER_PRIORITY_DEFAULT = ODCPI_HANDLER_PRIORITY_LOW,
+    ODCPI_HANDLER_PRIORITY_MEDIUM,
+    ODCPI_HANDLER_PRIORITY_HIGH
+};
+
+struct OdcpiRequestInfo {
+    uint32_t size;
+    OdcpiRequestType type;
+    uint32_t tbfMillis;
+    bool isEmergencyMode;
+    bool isCivicAddressRequired;
+};
+
+/** AGPS type */
+typedef enum {
+    AGPS_TYPE_INVALID = - 1,
+    AGPS_TYPE_ANY = 0,
+    AGPS_TYPE_SUPL,
+    AGPS_TYPE_C2K,
+    AGPS_TYPE_WWAN_ANY,
+    AGPS_TYPE_WIFI,
+    AGPS_TYPE_SUPL_ES
+} AGpsType;
+
+typedef enum {
+    DEFAULT_SUB = 0,
+    PRIMARY_SUB = 1,
+    SECONDARY_SUB =  2,
+    TERTIARY_SUB =  3
+} SubId;
+
+typedef uint32_t AGpsTypeMask;
+typedef enum {
+    AGPS_ATL_TYPE_SUPL    = 1 << 0,
+    AGPS_ATL_TYPE_SUPL_ES = 1 << 1,
+    AGPS_ATL_TYPE_WWAN    = 1 << 2,
+}  AGpsTypeBits;
+
+/** AGPS status event values. */
+typedef enum {
+    AGPS_REQUEST_AGPS_DATA_CONN  = 1,
+    /** GPS releases the AGPS data connection. */
+    AGPS_RELEASE_AGPS_DATA_CONN,
+    /** AGPS data connection initiated */
+    AGPS_DATA_CONNECTED,
+    /** AGPS data connection completed */
+    AGPS_DATA_CONN_DONE,
+    /** AGPS data connection failed */
+    AGPS_DATA_CONN_FAILED
+} AGpsStatusValue;
+
+typedef uint32_t ApnTypeMask;
+typedef enum {
+    /**<  Denotes APN type for Default/Internet traffic  */
+    APN_TYPE_DEFAULT_BIT = (1 << 0),
+    /**<  Denotes  APN type for IP Multimedia Subsystem  */
+    APN_TYPE_IMS_BIT = (1 << 1),
+    /**<  Denotes APN type for Multimedia Messaging Service  */
+    APN_TYPE_MMS_BIT = (1 << 2),
+    /**<  Denotes APN type for Dial Up Network  */
+    APN_TYPE_DUN_BIT = (1 << 3),
+    /**<  Denotes APN type for Secure User Plane Location  */
+    APN_TYPE_SUPL_BIT = (1 << 4),
+    /**<  Denotes APN type for High Priority Mobile Data  */
+    APN_TYPE_HIPRI_BIT = (1 << 5),
+    /**<  Denotes APN type for over the air administration  */
+    APN_TYPE_FOTA_BIT = (1 << 6),
+    /**<  Denotes APN type for Carrier Branded Services  */
+    APN_TYPE_CBS_BIT = (1 << 7),
+    /**<  Denotes APN type for Initial Attach  */
+    APN_TYPE_IA_BIT = (1 << 8),
+    /**<  Denotes APN type for emergency  */
+    APN_TYPE_EMERGENCY_BIT  = (1 << 9)
+} ApnTypeBits;
+
+
+/*
+ * Represents the status of AGNSS augmented to support IPv4.
+ */
+struct AGnssExtStatusIpV4 {
+    AGpsType         type;
+    ApnTypeMask      apnTypeMask;
+    AGpsStatusValue  status;
+    /*
+     * 32-bit IPv4 address.
+     */
+    uint32_t          ipV4Addr;
+    SubId             subId;
+};
+
+typedef struct {
+    uint32_t size;                        // set to sizeof
+    double x;
+    double xUncertainty;
+    double y;
+    double yUncertainty;
+    double z;
+    double zUncertainty;
+} GnssCoordinate;
+
+
+typedef struct {
+    uint32_t size;                        // set to sizeof
+    double carrierFrequencyMHz;
+    GnssCoordinate phaseCenterOffsetCoordinateMillimeters;
+    std::vector<std::vector<double>> phaseCenterVariationCorrectionMillimeters;
+    std::vector<std::vector<double>> phaseCenterVariationCorrectionUncertaintyMillimeters;
+    std::vector<std::vector<double>> signalGainCorrectionDbi;
+    std::vector<std::vector<double>> signalGainCorrectionUncertaintyDbi;
+} GnssAntennaInformation;
+
+typedef struct {
+    uint32_t size;                        // set to sizeof
+    bool requiresNmeaLocation;
+    std::string hostNameOrIp;    // null terminated string
+    std::string mountPoint;      // null terminated string
+    std::string username;        // null terminated string
+    std::string password;        // null terminated string
+    uint32_t port;
+    bool useSSL;
+} GnssNtripConnectionParams;
+
+/*
+* Represents the the Nfw Notification structure
+*/
+#define GNSS_MAX_NFW_APP_STRING_LEN 64
+#define GNSS_MAX_NFW_STRING_LEN  20
+
+typedef enum {
+    GNSS_NFW_CTRL_PLANE = 0,
+    GNSS_NFW_SUPL = 1,
+    GNSS_NFW_IMS = 10,
+    GNSS_NFW_SIM = 11,
+    GNSS_NFW_OTHER_PROTOCOL_STACK = 100
+} GnssNfwProtocolStack;
+
+typedef enum {
+    GNSS_NFW_CARRIER = 0,
+    GNSS_NFW_OEM = 10,
+    GNSS_NFW_MODEM_CHIPSET_VENDOR = 11,
+    GNSS_NFW_GNSS_CHIPSET_VENDOR = 12,
+    GNSS_NFW_OTHER_CHIPSET_VENDOR = 13,
+    GNSS_NFW_AUTOMOBILE_CLIENT = 20,
+    GNSS_NFW_OTHER_REQUESTOR = 100
+} GnssNfwRequestor;
+
+typedef enum {
+    GNSS_NFW_REJECTED = 0,
+    GNSS_NFW_ACCEPTED_NO_LOCATION_PROVIDED = 1,
+    GNSS_NFW_ACCEPTED_LOCATION_PROVIDED = 2,
+} GnssNfwResponseType;
+
+typedef struct {
+    char                    proxyAppPackageName[GNSS_MAX_NFW_APP_STRING_LEN];
+    GnssNfwProtocolStack    protocolStack;
+    char                    otherProtocolStackName[GNSS_MAX_NFW_STRING_LEN];
+    GnssNfwRequestor        requestor;
+    char                    requestorId[GNSS_MAX_NFW_STRING_LEN];
+    GnssNfwResponseType     responseType;
+    bool                    inEmergencyMode;
+    bool                    isCachedLocation;
+} GnssNfwNotification;
+
+typedef uint16_t GnssMeasurementCorrectionsCapabilitiesMask;
+typedef enum {
+    GNSS_MEAS_CORR_LOS_SATS            = 1 << 0,
+    GNSS_MEAS_CORR_EXCESS_PATH_LENGTH  = 1 << 1,
+    GNSS_MEAS_CORR_REFLECTING_PLANE    = 1 << 2,
+} GnssMeasurementCorrectionsCapabilities;
+
 /* Provides the capabilities of the system
    capabilities callback is called once soon after createInstance is called */
 typedef std::function<void(
@@ -2164,6 +2359,42 @@ typedef enum {
     LOCATION_ADAPTER_GEOFENCE_TYPE_BIT  = (1<<2)  // adapter type is geo fence
 } LocationAdapterTypeBits;
 
+typedef std::function <void(
+    AGnssExtStatusIpV4 status
+)> agnssStatusIpV4Callback;
+
+
+/* Callback to send ODCPI request to framework */
+typedef std::function<void(
+    const OdcpiRequestInfo& request
+)> odcpiRequestCallback;
+
+/*
+* Callback with Measurement corrections information.
+*/
+typedef std::function<void(
+    GnssMeasurementCorrectionsCapabilitiesMask capabilities
+)> measCorrSetCapabilitiesCallback;
+
+
+/*
+* Callback with Antenna information.
+*/
+typedef std::function<void(
+    std::vector<GnssAntennaInformation> gnssAntennaInformations
+)> antennaInfoCallback;
+
+/*
+* Callback with NFW information.
+*/
+typedef std::function<void(
+    GnssNfwNotification notification
+)> nfwStatusCallback;
+
+typedef std::function<bool(
+)> isInEmergencySessionCallback;
+
+
 typedef struct {
     uint32_t size; // set to sizeof(LocationCallbacks)
     capabilitiesCallback capabilitiesCb;             // mandatory
@@ -2186,35 +2417,18 @@ typedef struct {
 } LocationCallbacks;
 
 typedef struct {
-    uint32_t size;                        // set to sizeof
-    double x;
-    double xUncertainty;
-    double y;
-    double yUncertainty;
-    double z;
-    double zUncertainty;
-} GnssCoordinate;
+    size_t size; // set to sizeof(LocationControlCallbacks)
+    responseCallback responseCb;                     // mandatory
+    collectiveResponseCallback collectiveResponseCb; // mandatory
+    gnssConfigCallback gnssConfigCb;                 // optional
+    odcpiRequestCallback odcpiReqCb;                 //optional
+    measCorrSetCapabilitiesCallback measCorrSetCapabilitiesCb; // optional
+    antennaInfoCallback antennaInfoCb;               //optional
+    agnssStatusIpV4Callback   agpsStatusIpV4Cb;      //optional
+    nfwStatusCallback nfwStatusCb;                   // optional
+    isInEmergencySessionCallback isInEmergencyStatusCb; // optional
+} LocationControlCallbacks;
 
-typedef struct {
-    uint32_t size;                        // set to sizeof
-    double carrierFrequencyMHz;
-    GnssCoordinate phaseCenterOffsetCoordinateMillimeters;
-    std::vector<std::vector<double>> phaseCenterVariationCorrectionMillimeters;
-    std::vector<std::vector<double>> phaseCenterVariationCorrectionUncertaintyMillimeters;
-    std::vector<std::vector<double>> signalGainCorrectionDbi;
-    std::vector<std::vector<double>> signalGainCorrectionUncertaintyDbi;
-} GnssAntennaInformation;
-
-typedef struct {
-    uint32_t size;                        // set to sizeof
-    bool requiresNmeaLocation;
-    std::string hostNameOrIp;    // null terminated string
-    std::string mountPoint;      // null terminated string
-    std::string username;        // null terminated string
-    std::string password;        // null terminated string
-    uint32_t port;
-    bool useSSL;
-} GnssNtripConnectionParams;
 
 typedef struct {
     uint64_t meQtimer1;
@@ -2263,5 +2477,8 @@ enum PowerStateType {
     POWER_STATE_SHUTDOWN = 3
 };
 
+typedef uint64_t NetworkHandle;
+#define NETWORK_HANDLE_UNKNOWN  ~0
+#define MAX_NETWORK_HANDLES 10
 
 #endif /* LOCATIONDATATYPES_H */
