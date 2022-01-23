@@ -25,7 +25,6 @@ LOCAL_HEADER_LIBRARIES := \
 
 LOCAL_SHARED_LIBRARIES := \
     libbase \
-    libhidlbase \
     libbinder_ndk \
     android.hardware.gnss-V1-ndk_platform \
     liblog \
@@ -79,9 +78,5 @@ LOCAL_SHARED_LIBRARIES += \
     android.hardware.gnss-aidl-impl-qti
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
-
-ifneq ($(LOC_HIDL_VERSION),)
-LOCAL_CFLAGS += -DLOC_HIDL_VERSION='"$(LOC_HIDL_VERSION)"'
-endif
 
 include $(BUILD_EXECUTABLE)

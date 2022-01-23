@@ -106,6 +106,7 @@ public:
     inline virtual bool getSatellitePVT(GnssSvPolynomial& svPolynomial,
             GnssSvMeasurementHeader& svMeasSetHeader,
             GnssMeasurementsData& measurementData) { return false; }
+    inline virtual float getGeoidalSeparation(double latitude, double longitude) { return 0.0; }
 };
 
 class LocApiBase {
@@ -355,6 +356,12 @@ public:
 };
 
 class ElapsedRealtimeEstimator {
+    typedef struct {
+        GPSTimeStruct gpsTime;
+        int64_t qtimerTick;
+        float timeUncMsec; // in milli-seconds
+    } GpsTimeQtimerTickPair;
+
 private:
     int64_t mCurrentClockDiff;
     int64_t mPrevUtcTimeNanos;
@@ -362,16 +369,26 @@ private:
     int64_t mFixTimeStablizationThreshold;
     int64_t mInitialTravelTime;
     int64_t mPrevDataTimeNanos;
-public:
+    // association between gps time and qtimer value
+    // the two variable saves a pair of gps time and qtimer time
+    // read at the same point
+    GpsTimeQtimerTickPair mTimePairPVTReport;
+    GpsTimeQtimerTickPair mTimePairMeasReport;
 
-    ElapsedRealtimeEstimator(int64_t travelTimeNanosEstimate):
-            mInitialTravelTime(travelTimeNanosEstimate) {reset();}
+public:
+    inline ElapsedRealtimeEstimator(int64_t travelTimeNanosEstimate) :
+            mInitialTravelTime(travelTimeNanosEstimate) {
+        reset();
+    }
     int64_t getElapsedRealtimeEstimateNanos(int64_t curDataTimeNanos,
-            bool isCurDataTimeTrustable, int64_t tbf);
+            bool isCurDataTimeTrustable, int64_t tbfNanos);
     inline int64_t getElapsedRealtimeUncNanos() { return 5000000;}
     void reset();
-
     static int64_t getElapsedRealtimeQtimer(int64_t qtimerTicksAtOrigin);
+    bool getElapsedRealtimeForGpsTime(const GPSTimeStruct& gpsTimeAtOrigin,
+                            int64_t &elapsedTime, float & elpasedTimeUnc);
+    void saveGpsTimeAndQtimerPairInPvtReport(const GpsLocationExtended& locationExtended);
+    void saveGpsTimeAndQtimerPairInMeasReport(const GnssSvMeasurementSet& svMeasurementSet);
     static bool getCurrentTime(struct timespec& currentTime, int64_t& sinceBootTimeNanos);
 };
 

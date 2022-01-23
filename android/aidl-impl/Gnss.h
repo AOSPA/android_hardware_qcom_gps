@@ -32,8 +32,6 @@
 #include "GnssConfiguration.h"
 #include "GnssPowerIndication.h"
 #include "GnssMeasurementInterface.h"
-#include <hidl/MQDescriptor.h>
-#include <hidl/Status.h>
 
 namespace android {
 namespace hardware {

@@ -194,7 +194,6 @@ private:
     LocationControlAPI* mLocationControlAPI;
     RequestQueue mRequestQueues[CTRL_REQUEST_MAX];
     bool mEnabled;
-    GnssConfig mConfig;
 };
 
 class LocationAPIClientBase {

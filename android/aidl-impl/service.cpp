@@ -26,8 +26,6 @@
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
 #include "Gnss.h"
-#include <hidl/HidlSupport.h>
-#include <hidl/HidlTransportSupport.h>
 #include <pthread.h>
 #include <log_util.h>
 
@@ -54,7 +52,6 @@ using android::OK;
 typedef int vendorEnhancedServiceMain(int /* argc */, char* /* argv */ []);
 
 using GnssAidl = ::android::hardware::gnss::aidl::implementation::Gnss;
-using android::hardware::configureRpcThreadpool;
 using ::android::hardware::gnss::V1_0::GnssLocation;
 using android::hardware::gnss::V2_1::IGnss;
 
@@ -98,17 +95,6 @@ int main() {
         if (NULL != aidlMainMethod) {
             ALOGI("start LocAidl service");
             (*aidlMainMethod)(0, NULL);
-        } else {
-            #ifdef LOC_HIDL_VERSION
-                #define VENDOR_ENHANCED_LIB "vendor.qti.gnss@" LOC_HIDL_VERSION "-service.so"
-                void* libHandle = NULL;
-                vendorEnhancedServiceMain* vendorEnhancedMainMethod = (vendorEnhancedServiceMain*)
-                        dlGetSymFromLib(libHandle, VENDOR_ENHANCED_LIB, "main");
-                if (NULL != vendorEnhancedMainMethod) {
-                    (*vendorEnhancedMainMethod)(0, NULL);
-                }
-            #endif
-
         }
         // Loc AIDL service end
         joinRpcThreadpool();
