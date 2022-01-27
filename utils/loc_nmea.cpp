@@ -28,6 +28,8 @@
  */
 
 /*
+Changes from Qualcomm Innovation Center are provided under the following license:
+
 Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -2156,7 +2158,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
     //Send blank NMEA reports for non-final fixes
     else {
         if (mEnabledNmeaTypes & NMEA_TYPE_GSA) {
-            strlcpy(sentence, "$GPGSA,A,1,,,,,,,,,,,,,,,,", sizeof(sentence)); 
+            strlcpy(sentence, "$GPGSA,A,1,,,,,,,,,,,,,,,,", sizeof(sentence));
             length = loc_nmea_put_checksum(sentence, sizeof(sentence), false);
             nmeaArraystr.push_back(sentence);
         }
