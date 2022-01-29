@@ -5468,8 +5468,7 @@ GnssAdapter::invokeGnssEnergyConsumedCallback(uint64_t energyConsumedSinceFirstB
                  mBootReferenceEnergy,
                  gnssPowerStatistics.totalEnergyMilliJoule);
 
-        gnssPowerStatistics.elapsedRealTime =
-                mPowerElapsedRealTimeCal.getElapsedRealtimeEstimateNanos(0, 0, 0);
+        gnssPowerStatistics.elapsedRealTime = elapsedRealtime();
         gnssPowerStatistics.elapsedRealTimeUnc =
                 mPowerElapsedRealTimeCal.getElapsedRealtimeUncNanos();
         mPowerIndicationCb(gnssPowerStatistics);
