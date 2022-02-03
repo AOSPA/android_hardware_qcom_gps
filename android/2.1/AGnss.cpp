@@ -32,7 +32,7 @@ namespace implementation {
 
 static AGnss* spAGnss = nullptr;
 
-AGnss::AGnss(Gnss* gnss) : mGnss(gnss) {
+AGnss::AGnss(Gnss* gnss) : mGnss(gnss), mType(LOC_AGPS_TYPE_INVALID) {
     spAGnss = this;
 
     LocationControlCallbacks locCtrlCbs;
@@ -54,6 +54,9 @@ void AGnss::statusCb(AGpsExtType type, AGpsStatusValue status) {
 
     V2_0::IAGnssCallback::AGnssType  aType;
     IAGnssCallback::AGnssStatusValue aStatus;
+
+    // cache the AGps Type
+    mType = type;
 
     switch (type) {
     case AGPS_TYPE_SUPL:
@@ -142,18 +145,20 @@ Return<bool> AGnss::dataConnFailed() {
 Return<bool> AGnss::dataConnOpen(uint64_t /*networkHandle*/, const hidl_string& apn,
         V2_0::IAGnss::ApnIpType apnIpType) {
 
-    if(mGnss == nullptr || mGnss->getLocationControlApi() == nullptr){
+    if (mGnss == nullptr || mGnss->getLocationControlApi() == nullptr){
         LOC_LOGE("Null GNSS interface");
         return false;
     }
 
-    /* Validate */
-    if(apn.empty()){
-        LOC_LOGE("Invalid APN");
-        return false;
+    std::string apnString(apn.c_str());
+    // During Emergency SUPL, an apn name of "sos" means that no
+    // apn was found, like in the simless case, so apn is cleared
+    if (LOC_AGPS_TYPE_SUPL_ES == mType && "sos" == apnString) {
+        LOC_LOGD("dataConnOpen APN name = [sos] cleared");
+        apnString.clear();
     }
 
-    LOC_LOGD("dataConnOpen APN name = [%s]", apn.c_str());
+    LOC_LOGD("dataConnOpen APN name = [%s]", apnString.c_str());
 
     AGpsBearerType bearerType;
     switch (apnIpType) {
@@ -172,7 +177,7 @@ Return<bool> AGnss::dataConnOpen(uint64_t /*networkHandle*/, const hidl_string& 
     }
 
     mGnss->getLocationControlApi()->agpsDataConnOpen(
-       AGPS_TYPE_SUPL, apn.c_str(), apn.size(), (int)bearerType);
+       AGPS_TYPE_SUPL, apnString.c_str(), apnString.size(), (int)bearerType);
     return true;
 }
 
