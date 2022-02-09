@@ -235,14 +235,8 @@ void ContextBase::readConfig()
         mGps_conf.NI_SUPL_DENY_ON_NFW_LOCKED = 1;
         /* By default NMEA Printing is disabled */
         mGps_conf.ENABLE_NMEA_PRINT = 0;
-
-#ifdef USE_GLIB
-        // For LE target, disable by default
+        /* Robust location by default disabled */
         mGps_conf.ROBUST_LOCATION_ENABLED = 0x0;
-#else
-        // enable robust location and robust location on E911
-        mGps_conf.ROBUST_LOCATION_ENABLED = 0x11;
-#endif
 
         UTIL_READ_CONF(LOC_PATH_GPS_CONF, mGps_conf_table);
         UTIL_READ_CONF(LOC_PATH_SAP_CONF, mSap_conf_table);
