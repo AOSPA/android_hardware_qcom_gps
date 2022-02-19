@@ -371,10 +371,10 @@ void LocApiBase::reportPosition(UlpLocation& location,
                                 int msInWeek)
 {
     // print the location info before delivering
-    LOC_LOGD("flags: %d\n  source: %d\n  latitude: %f\n  longitude: %f\n  "
+    LOC_LOGD("flags: 0x%x\n  source: %d\n  latitude: %f\n  longitude: %f\n  "
              "altitude: %f\n  speed: %f\n  bearing: %f\n  accuracy: %f\n  "
              "timestamp: %" PRId64 "\n"
-             "Session status: %d\n Technology mask: %u\n "
+             "Session status: %d\n Technology mask: 0x%x\n "
              "SV used in fix (gps/glo/bds/gal/qzss/navic) : \
              (0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
              location.gpsLocation.flags, location.position_source,
@@ -527,6 +527,11 @@ void LocApiBase::reportLocationSystemInfo(const LocationSystemInfo& locationSyst
 {
     // loop through adapters, and deliver to all adapters.
     TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportLocationSystemInfoEvent(locationSystemInfo));
+}
+
+void LocApiBase::reportDcMessage(const GnssDcReportInfo& dcReport) {
+    // loop through adapters, and deliver to all adapters.
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportDcMessage(dcReport));
 }
 
 void LocApiBase::reportQwesCapabilities

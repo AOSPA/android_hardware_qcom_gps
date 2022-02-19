@@ -2798,6 +2798,9 @@ GnssAdapter::updateClientsEventMask()
                 updateNmeaMask(mNmeaMask | LOC_NMEA_MASK_DEBUG_V02);
             }
         }
+        if (it->second.gnssDcReportCb != nullptr) {
+            mask |= LOC_API_ADAPTER_BIT_DISASTER_CRISIS_REPORT;
+        }
     }
 
     /*
@@ -3056,7 +3059,7 @@ GnssAdapter::hasCallbacksToStartTracking(LocationAPI* client)
         if (it->second.trackingCb || it->second.gnssLocationInfoCb ||
                 it->second.engineLocationsInfoCb || it->second.gnssMeasurementsCb ||
                 it->second.gnssNHzMeasurementsCb || it->second.gnssDataCb ||
-                it->second.gnssSvCb || it->second.gnssNmeaCb) {
+                it->second.gnssSvCb || it->second.gnssNmeaCb || it->second.gnssDcReportCb) {
             allowed = true;
         } else {
             LOC_LOGi("missing right callback to start tracking")
@@ -4935,6 +4938,29 @@ GnssAdapter::reportLocationSystemInfo(const LocationSystemInfo & locationSystemI
             }
         }
     }
+}
+
+void
+GnssAdapter::reportDcMessage(const GnssDcReportInfo& dcReport) {
+    LOC_LOGv("received dc report message");
+        struct MsgDcReport : public LocMsg {
+        GnssAdapter& mAdapter;
+        GnssDcReportInfo mDcReport;
+        inline MsgDcReport(GnssAdapter& adapter,
+                           const GnssDcReportInfo& dcReport) :
+            LocMsg(),
+            mAdapter(adapter),
+            mDcReport(dcReport) {}
+        inline virtual void proc() const {
+            for (auto it = mAdapter.mClientData.begin(); it != mAdapter.mClientData.end(); ++it) {
+                if (it->second.gnssDcReportCb != nullptr) {
+                    it->second.gnssDcReportCb(mDcReport);
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgDcReport(*this, dcReport));
 }
 
 static void* niThreadProc(void *args)

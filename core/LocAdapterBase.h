@@ -276,6 +276,7 @@ public:
     virtual void reportEngDebugDataInfoEvent(GnssEngineDebugDataInfo& gnssEngineDebugDataInfo);
     virtual bool reportQwesCapabilities(
             const std::unordered_map<LocationQwesFeatureType, bool> &featureMap);
+    virtual void reportDcMessage(const GnssDcReportInfo& dcReport);
 };
 
 } // namespace loc_core
