@@ -120,6 +120,12 @@ ScopedAStatus GnssMeasurementInterface::close()  {
     lock.unlock();
     locAPIStopTracking();
 
+    // Clear measurement callback
+    LocationCallbacks locationCallbacks;
+    memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
+    locationCallbacks.size = sizeof(LocationCallbacks);
+    locAPISetCallbacks(locationCallbacks);
+
     return ScopedAStatus::ok();
 }
 
