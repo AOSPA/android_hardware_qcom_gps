@@ -26,6 +26,43 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+/*
+Changes from Qualcomm Innovation Center are provided under the following license:
+
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #define LOG_NDEBUG 0 //Define to enable LOGV
 #define LOG_TAG "LocSvc_LocApiBase"
 
@@ -205,24 +242,30 @@ bool LocApiBase::needReport(const UlpLocation& ulpLocation,
 {
     bool reported = false;
 
-    if (LOC_SESS_SUCCESS == status) {
-        // this is a final fix
-        LocPosTechMask mask =
-            LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID;
-        // it is a Satellite fix or a sensor fix
-        reported = (mask & techMask);
-    }
-    else if (LOC_SESS_INTERMEDIATE == status &&
-        LOC_SESS_INTERMEDIATE == ContextBase::mGps_conf.INTERMEDIATE_POS) {
-        // this is a intermediate fix and we accept intermediate
-
-        // it is NOT the case that
-        // there is inaccuracy; and
-        // we care about inaccuracy; and
-        // the inaccuracy exceeds our tolerance
-        reported = !((ulpLocation.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ACCURACY) &&
-            (ContextBase::mGps_conf.ACCURACY_THRES != 0) &&
-            (ulpLocation.gpsLocation.accuracy > ContextBase::mGps_conf.ACCURACY_THRES));
+    if (LOC_SESS_INTERMEDIATE == ContextBase::mGps_conf.INTERMEDIATE_POS) {
+        // if intermediate fix is allowed, we will report out intermediate or final fixes
+        // when one of below two conditions are met:
+        // 1: if accuracy level is do not care, report out all intermediate or final fixes
+        // 2: otherwise, the accuracy level will need to be valid and less than threshold
+        if (LOC_SESS_FAILURE != status) {
+            if ((ContextBase::mGps_conf.ACCURACY_THRES != 0) &&
+                    (((ulpLocation.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ACCURACY) == 0) ||
+                     (ulpLocation.gpsLocation.accuracy >= ContextBase::mGps_conf.ACCURACY_THRES))) {
+                reported = false;
+            } else {
+                reported = true;
+            }
+        }
+    } else {
+        // intermediate fix is not allowed, only can report out final fixes
+        if (LOC_SESS_SUCCESS == status) {
+            // this is a final fix
+            LocPosTechMask mask =
+                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID |
+                LOC_POS_TECH_MASK_PROPAGATED;
+            // it is a Satellite fix or a sensor fix
+            reported = (mask & techMask);
+        }
     }
 
     return reported;
@@ -330,7 +373,7 @@ void LocApiBase::reportPosition(UlpLocation& location,
              "altitude: %f\n  speed: %f\n  bearing: %f\n  accuracy: %f\n  "
              "timestamp: %" PRId64 "\n"
              "Session status: %d\n Technology mask: %u\n "
-             "SV used in fix (gps/glo/bds/gal/qzss) : \
+             "SV used in fix (gps/glo/bds/gal/qzss/navic) : \
              (0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
              location.gpsLocation.flags, location.position_source,
              location.gpsLocation.latitude, location.gpsLocation.longitude,
@@ -361,7 +404,7 @@ void LocApiBase::reportZppBestAvailableFix(LocGpsLocation &zppLoc,
         GpsLocationExtended &location_extended, LocPosTechMask tech_mask)
 {
     // loop through adapters, and deliver to the first handling adapter.
-    TO_1ST_HANDLING_LOCADAPTERS(mLocAdapters[i]->reportZppBestAvailableFix(zppLoc,
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportZppBestAvailableFix(zppLoc,
             location_extended, tech_mask));
 }
 
@@ -511,7 +554,7 @@ void LocApiBase::requestLocation()
 }
 
 void LocApiBase::requestATL(int connHandle, LocAGpsType agps_type,
-                            LocApnTypeMask apn_type_mask, LocSubId sub_id)
+                            LocApnTypeMask apn_type_mask, SubId sub_id)
 {
     // loop through adapters, and deliver to the first handling adapter.
     TO_1ST_HANDLING_LOCADAPTERS(

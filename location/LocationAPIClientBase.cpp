@@ -33,6 +33,8 @@
 #include <log_util.h>
 #include <inttypes.h>
 #include <loc_cfg.h>
+#include <loc_misc_utils.h>
+
 #include "LocationAPIClientBase.h"
 
 #define GEOFENCE_SESSION_ID 0xFFFFFFFF
@@ -60,7 +62,7 @@ LocationAPIControlClient::LocationAPIControlClient() :
             onCtrlCollectiveResponseCb(count, errors, ids);
         };
 
-    mLocationControlAPI = LocationControlAPI::createInstance(locationControlCallbacks);
+    mLocationControlAPI = LocationControlAPI::getInstance(locationControlCallbacks);
 }
 
 LocationAPIControlClient::~LocationAPIControlClient()
@@ -316,7 +318,7 @@ void LocationAPIClientBase::destroy()
         mRequestQueues[i].reset((uint32_t)0);
     }
 
-    LocationAPI* localHandle = nullptr;
+    ILocationAPI* localHandle = nullptr;
     if (nullptr != mLocationAPI) {
         localHandle = mLocationAPI;
         mLocationAPI = nullptr;

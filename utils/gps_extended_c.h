@@ -25,7 +25,39 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+/*
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
 
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 #ifndef GPS_EXTENDED_C_H
 #define GPS_EXTENDED_C_H
 
@@ -105,6 +137,8 @@ typedef uint32_t LocPosTechMask;
 #define LOC_POS_TECH_MASK_VIS ((LocPosTechMask)0x00000400)
 #define LOC_POS_TECH_MASK_INS ((LocPosTechMask)0x00000800)
 #define LOC_POS_TECH_MASK_PDR ((LocPosTechMask)0x00001000)
+#define LOC_POS_TECH_MASK_PROPAGATED ((LocPosTechMask)0x00002000)
+
 
 enum loc_registration_mask_status {
     LOC_REGISTRATION_MASK_ENABLED,
@@ -149,7 +183,8 @@ typedef enum {
     LOC_SUPPORTED_FEATURE_DSDA_CONFIGURATION,
     /**<  Support the Multiple Attribution Apps(UTH clients Lock control) feature   */
     LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS,
-    LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE, /**< Support the FLP, NLP Z-Source provider feature */
+    /**< Support the FLP, NLP Z-Source provider feature */
+    LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -169,6 +204,8 @@ typedef struct {
     unsigned int    len;
 } UlpNmea;
 
+/** SSID length */
+#define SSID_BUF_SIZE (32+1)
 
 /** AGPS type */
 typedef int8_t AGpsExtType;
@@ -179,9 +216,6 @@ typedef int8_t AGpsExtType;
 #define LOC_AGPS_TYPE_WWAN_ANY      3
 #define LOC_AGPS_TYPE_WIFI          4
 #define LOC_AGPS_TYPE_SUPL_ES       5
-
-/** SSID length */
-#define SSID_BUF_SIZE (32+1)
 
 typedef int16_t AGpsBearerType;
 #define AGPS_APN_BEARER_INVALID     0
@@ -211,19 +245,15 @@ typedef uint32_t LocApnTypeMask;
 /**<  Denotes APN type for emergency  */
 #define LOC_APN_TYPE_MASK_EMERGENCY ((LocApnTypeMask)0x00000200)
 
-typedef uint32_t AGpsTypeMask;
-#define AGPS_ATL_TYPE_SUPL       ((AGpsTypeMask)0x00000001)
-#define AGPS_ATL_TYPE_SUPL_ES   ((AGpsTypeMask)0x00000002)
-#define AGPS_ATL_TYPE_WWAN       ((AGpsTypeMask)0x00000004)
 
 typedef struct {
-    void* statusV4Cb;
+    agnssStatusIpV4Callback statusV4Cb;
     AGpsTypeMask atlType;
 } AgpsCbInfo;
 
 typedef struct {
-    void* visibilityControlCb;
-    void* isInEmergencySession;
+    nfwStatusCallback visibilityControlCb;
+    isInEmergencySessionCallback isInEmergencySession;
 } NfwCbInfo;
 
 /** GPS extended callback structure. */
@@ -429,9 +459,17 @@ typedef uint64_t GpsLocationExtendedFlags;
 #define GPS_LOCATION_EXTENDED_HAS_DR_SOLUTION_STATUS_MASK        0x800000000000
 /** GpsLocationExtended has altitudeAssumed. */
 #define GPS_LOCATION_EXTENDED_HAS_ALTITUDE_ASSUMED               0x1000000000000
-#define GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK                    0x2000000000000
+/** GpsLocationExtended has integrityRiskUsed. */
+#define GPS_LOCATION_EXTENDED_HAS_INTEGRITY_RISK_USED            0x2000000000000
+/** GpsLocationExtended has protectAlongTrack. */
+#define GPS_LOCATION_EXTENDED_HAS_PROTECT_ALONG_TRACK            0x4000000000000
+/** GpsLocationExtended has protectCrossTrack. */
+#define GPS_LOCATION_EXTENDED_HAS_PROTECT_CROSS_TRACK            0x8000000000000
+/** GpsLocationExtended has protectVertical. */
+#define GPS_LOCATION_EXTENDED_HAS_PROTECT_VERTICAL               0x10000000000000
+#define GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK                    0x20000000000000
 /** GpsLocationExtended has system tick unc. */
-#define GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC                0x4000000000000
+#define GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC                0x40000000000000
 
 typedef uint32_t LocNavSolutionMask;
 /* Bitmask to specify whether SBAS ionospheric correction is used  */
@@ -878,6 +916,27 @@ typedef struct {
      *  true:  Altitude is assumed; there may not be enough
      *         satellites to determine the precise altitude. */
     bool altitudeAssumed;
+
+    /** Integrity risk used for protection level parameters.
+     *  Unit of 2.5e-10. Valid range is [1 to (4e9-1)].
+     *  Other values means integrity risk is disabled and
+     *  GnssLocation::protectAlongTrack,
+     *  GnssLocation::protectCrossTrack and
+     *  GnssLocation::protectVertical will not be available.
+     */
+    uint32_t integrityRiskUsed;
+    /** Along-track protection level at specified integrity risk, in
+     *  unit of meter.
+     */
+    float    protectAlongTrack;
+   /** Cross-track protection level at specified integrity risk, in
+     *  unit of meter.
+     */
+    float    protectCrossTrack;
+    /** Vertical component protection level at specified integrity
+     *  risk, in unit of meter.
+     */
+    float    protectVertical;
     /** System Tick at GPS Time */
     uint64_t systemTick;
     /** Uncertainty for System Tick at GPS Time in milliseconds   */
@@ -2218,81 +2277,6 @@ typedef std::function<void(
     const GnssSvTypeConfig& config
 )> GnssSvTypeConfigCallback;
 
-/*
- * Represents the status of AGNSS augmented to support IPv4.
- */
-struct AGnssExtStatusIpV4 {
-    AGpsExtType         type;
-    LocApnTypeMask      apnTypeMask;
-    LocAGpsStatusValue  status;
-    /*
-     * 32-bit IPv4 address.
-     */
-    uint32_t            ipV4Addr;
-    LocSubId            subId;
-};
-
-/*
- * Represents the status of AGNSS augmented to support IPv6.
- */
-struct AGnssExtStatusIpV6 {
-    AGpsExtType         type;
-    LocApnTypeMask      apnTypeMask;
-    LocAGpsStatusValue  status;
-    /*
-     * 128-bit IPv6 address.
-     */
-    uint8_t             ipV6Addr[16];
-};
-
-/*
-* Represents the the Nfw Notification structure
-*/
-#define GNSS_MAX_NFW_APP_STRING_LEN 64
-#define GNSS_MAX_NFW_STRING_LEN  20
-
-typedef enum {
-    GNSS_NFW_CTRL_PLANE = 0,
-    GNSS_NFW_SUPL = 1,
-    GNSS_NFW_IMS = 10,
-    GNSS_NFW_SIM = 11,
-    GNSS_NFW_OTHER_PROTOCOL_STACK = 100
-} GnssNfwProtocolStack;
-
-typedef enum {
-    GNSS_NFW_CARRIER = 0,
-    GNSS_NFW_OEM = 10,
-    GNSS_NFW_MODEM_CHIPSET_VENDOR = 11,
-    GNSS_NFW_GNSS_CHIPSET_VENDOR = 12,
-    GNSS_NFW_OTHER_CHIPSET_VENDOR = 13,
-    GNSS_NFW_AUTOMOBILE_CLIENT = 20,
-    GNSS_NFW_OTHER_REQUESTOR = 100
-} GnssNfwRequestor;
-
-typedef enum {
-    GNSS_NFW_REJECTED = 0,
-    GNSS_NFW_ACCEPTED_NO_LOCATION_PROVIDED = 1,
-    GNSS_NFW_ACCEPTED_LOCATION_PROVIDED = 2,
-} GnssNfwResponseType;
-
-typedef struct {
-    char                    proxyAppPackageName[GNSS_MAX_NFW_APP_STRING_LEN];
-    GnssNfwProtocolStack    protocolStack;
-    char                    otherProtocolStackName[GNSS_MAX_NFW_STRING_LEN];
-    GnssNfwRequestor        requestor;
-    char                    requestorId[GNSS_MAX_NFW_STRING_LEN];
-    GnssNfwResponseType     responseType;
-    bool                    inEmergencyMode;
-    bool                    isCachedLocation;
-} GnssNfwNotification;
-
-typedef uint16_t GnssMeasurementCorrectionsCapabilitiesMask;
-typedef enum {
-    GNSS_MEAS_CORR_LOS_SATS            = 1 << 0,
-    GNSS_MEAS_CORR_EXCESS_PATH_LENGTH  = 1 << 1,
-    GNSS_MEAS_CORR_REFLECTING_PLANE    = 1 << 2,
-} GnssMeasurementCorrectionsCapabilities;
-
 /* Represents GNSS NMEA Report Rate Configuration */
 typedef enum {
     GNSS_NMEA_REPORT_RATE_UNKNOWN  = 0,
@@ -2300,74 +2284,16 @@ typedef enum {
     GNSS_NMEA_REPORT_RATE_NHZ  = 2
 } GnssNMEARptRate;
 
-/* ODCPI Request Info */
-enum OdcpiRequestType {
-    ODCPI_REQUEST_TYPE_START,
-    ODCPI_REQUEST_TYPE_STOP
-};
-struct OdcpiRequestInfo {
-    uint32_t size;
-    OdcpiRequestType type;
-    uint32_t tbfMillis;
-    bool isEmergencyMode;
-    bool isCivicAddressRequired;
-};
-
 struct EngineServiceInfo {
-    bool ppeIntEnabled; // flag to indicate whether internal ppe is enabled
+    bool dreIntEnabled;
+    bool ppeEnabled;
 };
-
-/* Callback to send ODCPI request to framework */
-typedef std::function<void(const OdcpiRequestInfo& request)> OdcpiRequestCallback;
-
-/* ODCPI callback priorities*/
-enum OdcpiPrioritytype {
-    ODCPI_HANDLER_PRIORITY_LOW,
-    ODCPI_HANDLER_PRIORITY_HIGH
-};
-
-/*
- * Callback with AGNSS(IpV4) status information.
- *
- * @param status Will be of type AGnssExtStatusIpV4.
- */
-typedef void (*AgnssStatusIpV4Cb)(AGnssExtStatusIpV4 status);
-
-/*
-* Callback with AGNSS(IpV6) status information.
-*
-* @param status Will be of type AGnssExtStatusIpV6.
-*/
-typedef void (*AgnssStatusIpV6Cb)(AGnssExtStatusIpV6 status);
-
-/*
-* Callback with NFW information.
-*/
-typedef void(*NfwStatusCb)(GnssNfwNotification notification);
-typedef bool(*IsInEmergencySession)(void);
 
 enum AntennaInfoStatus {
     ANTENNA_INFO_SUCCESS = 0,
     ANTENNA_INFO_ERROR_ALREADY_INIT = 1,
     ANTENNA_INFO_ERROR_GENERIC = 2
 };
-
-/*
-* Callback with Measurement corrections information.
-*/
-typedef void(*measCorrSetCapabilitiesCb)(GnssMeasurementCorrectionsCapabilitiesMask capabilities);
-
-/*
- * Callback with AGNSS(IpV6) status information.
- *
- * @param status Will be of type AGnssExtStatusIpV6.
- */
-typedef void (*AgnssStatusIpV6Cb)(AGnssExtStatusIpV6 status);
-
-/*
-* Callback with Antenna information.
-*/
-typedef void(*antennaInfoCb)(std::vector<GnssAntennaInformation> gnssAntennaInformations);
 
 typedef struct {
     uint32_t size;                        // set to sizeof
@@ -2404,10 +2330,6 @@ typedef void (*LocAgpsCloseResultCb)(bool isSuccess, AGpsExtType agpsType, void*
 // to start with LOC_CLIENT_NAME_PREFIX so that upon hal daemon restarts,
 // every client can get the notification that hal daemon has restarted.
 #define LOC_INTAPI_NAME_PREFIX         LOC_CLIENT_NAME_PREFIX "_intapi"
-
-typedef uint64_t NetworkHandle;
-#define NETWORK_HANDLE_UNKNOWN  ~0
-#define MAX_NETWORK_HANDLES 10
 
 #ifdef __cplusplus
 }

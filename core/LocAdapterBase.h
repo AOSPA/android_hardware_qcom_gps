@@ -191,7 +191,7 @@ public:
     virtual bool requestLocation();
     virtual bool requestATL(int connHandle, LocAGpsType agps_type,
                             LocApnTypeMask apn_type_mask,
-                            LocSubId sub_id=LOC_DEFAULT_SUB);
+                            SubId sub_id=DEFAULT_SUB);
     virtual bool releaseATL(int connHandle);
     virtual bool requestNiNotifyEvent(const GnssNiNotification &notify, const void* data,
                                       const LocInEmergency emergencyState);

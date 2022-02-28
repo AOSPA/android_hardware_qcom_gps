@@ -191,7 +191,7 @@ public:
     void requestTime();
     void requestLocation();
     void requestATL(int connHandle, LocAGpsType agps_type,
-                    LocApnTypeMask apn_type_mask, LocSubId sub_id=LOC_DEFAULT_SUB);
+                    LocApnTypeMask apn_type_mask, SubId sub_id=DEFAULT_SUB);
     void releaseATL(int connHandle);
     void requestNiNotify(GnssNiNotification &notify, const void* data,
                          const LocInEmergency emergencyState);
