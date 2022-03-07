@@ -6728,7 +6728,22 @@ bool GnssAdapter::measCorrSetCorrectionsCommand(const GnssMeasurementCorrections
 
         inline virtual void proc() const {
             LOC_LOGv("MsgSetCorrectionsMeasCorr::proc()");
-            mApi.setMeasurementCorrections(mGnssMeasCorr);
+            char map_data_test_mode[LOC_MAX_PARAM_STRING];
+            loc_param_s_type izat_map_data_table[] =
+            {
+                { "MAP_DATA_TEST_MODE", &map_data_test_mode, NULL, 's' },
+            };
+            UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izat_map_data_table);
+            if (strcmp(map_data_test_mode, "ENABLED") == 0) {
+                LOC_LOGd("MAP_DATA_TEST_MODE mode set to ENABLED");
+                mApi.setMeasurementCorrections(mGnssMeasCorr);
+            } else {
+                if (!mApi.getMapDataAvailable()) {
+                    mApi.setMeasurementCorrections(mGnssMeasCorr);
+                } else {
+                    LOC_LOGd("MapDataAvailable is true, use MapData for aiding");
+                }
+            }
         }
     };
 
