@@ -235,7 +235,6 @@ GnssAdapter::GnssAdapter() :
     initDefaultAgpsCommand();
     initCDFWServiceCommand();
     initEngHubProxyCommand();
-
     // at last step, let us inform adapater base that we are done
     // with initialization, e.g.: ready to process handleEngineUpEvent
     doneInit();
@@ -2823,15 +2822,59 @@ GnssAdapter::updateClientsEventMask()
 }
 
 void
+GnssAdapter::handleEngineLockStatusEvent(EngineLockState engineLockState) {
+
+    LOC_LOGD("%s]: Old Engine state %d, New Engine state : %d,",
+        __func__, mLocApi->getEngineLockState(), engineLockState);
+
+    struct MsgEngineLockStateEvent : public LocMsg {
+        GnssAdapter& mAdapter;
+        EngineLockState mEngineLockState;
+
+        inline MsgEngineLockStateEvent(GnssAdapter& adapter, EngineLockState engineLockState) :
+            LocMsg(),
+            mAdapter(adapter),
+            mEngineLockState(engineLockState) {}
+
+        virtual void proc() const {
+            mAdapter.handleEngineLockStatus(mEngineLockState);
+        }
+    };
+
+    sendMsg(new MsgEngineLockStateEvent(*this, engineLockState));
+}
+
+void
+GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
+
+    GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_NONE;
+    if (ENGINE_LOCK_STATE_ENABLED == engineLockState) {
+        for (auto msg: mPendingMsgs) {
+            sendMsg(msg);
+        }
+        mPendingMsgs.clear();
+
+        if ((POWER_STATE_SUSPEND != mSystemPowerState) &&
+            POWER_STATE_SHUTDOWN != mSystemPowerState) {
+            restartSessions(false);
+        }
+        gpsLock = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
+    }
+    mXtraObserver.updateLockStatus(gpsLock);
+}
+
+void
 GnssAdapter::handleEngineUpEvent()
 {
     LOC_LOGD("%s]: ", __func__);
 
     struct MsgHandleEngineUpEvent : public LocMsg {
         GnssAdapter& mAdapter;
-        inline MsgHandleEngineUpEvent(GnssAdapter& adapter) :
+        LocApiBase& mApi;
+        inline MsgHandleEngineUpEvent(GnssAdapter& adapter, LocApiBase& api) :
             LocMsg(),
-            mAdapter(adapter) {}
+            mAdapter(adapter),
+            mApi(api) {}
         virtual void proc() const {
             mAdapter.setEngineCapabilitiesKnown(true);
             mAdapter.broadcastCapabilities(mAdapter.getCapabilities());
@@ -2841,21 +2884,24 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSvTypeConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
             mAdapter.gnssSecondaryBandConfigUpdate();
-            // restart sessions only in power state resume
-            if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
-                 POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
-                mAdapter.restartSessions(true);
-            }
-            for (auto msg: mAdapter.mPendingMsgs) {
-                mAdapter.sendMsg(msg);
-            }
-            mAdapter.mPendingMsgs.clear();
+            // restart sessions only when Lock state is enabled and in power state resume
             mAdapter.initGnssPowerStatistics();
+            if (ENGINE_LOCK_STATE_ENABLED == mApi.getEngineLockState()) {
+                for (auto msg: mAdapter.mPendingMsgs) {
+                    mAdapter.sendMsg(msg);
+                }
+                mAdapter.mPendingMsgs.clear();
+
+                if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
+                    POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
+                    mAdapter.restartSessions(true);
+                }
+            }
         }
     };
 
     readConfigCommand();
-    sendMsg(new MsgHandleEngineUpEvent(*this));
+    sendMsg(new MsgHandleEngineUpEvent(*this, *mLocApi));
 }
 
 void
@@ -3223,9 +3269,11 @@ GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
                     mAdapter.saveTrackingSession(mClient, mSessionId, mOptions);
                     mApi.startDistanceBasedTracking(mSessionId, mOptions,
                             new LocApiResponse(*mAdapter.getContext(),
-                            [&mAdapter = mAdapter, mSessionId = mSessionId, mClient = mClient]
+                            [&mAdapter = mAdapter, mSessionId = mSessionId, mClient = mClient,
+                            &mApi = mApi]
                             (LocationError err) {
-                        if (LOCATION_ERROR_SUCCESS != err) {
+                        if (ENGINE_LOCK_STATE_ENABLED == mApi.getEngineLockState() &&
+                            LOCATION_ERROR_SUCCESS != err) {
                             mAdapter.eraseTrackingSession(mClient, mSessionId);
                         }
                         mAdapter.reportResponse(mClient, err, mSessionId);
@@ -3332,7 +3380,8 @@ GnssAdapter::startTimeBasedTracking(LocationAPI* client, uint32_t sessionId,
     if (!checkAndSetSPEToRunforNHz(tempOptions)) {
         mLocApi->startTimeBasedTracking(tempOptions, new LocApiResponse(*getContext(),
                           [this, client, sessionId] (LocationError err) {
-                if (LOCATION_ERROR_SUCCESS != err) {
+                if (ENGINE_LOCK_STATE_ENABLED == mLocApi->getEngineLockState() &&
+                    LOCATION_ERROR_SUCCESS != err) {
                     eraseTrackingSession(client, sessionId);
                 } else {
                     checkUpdateDgnssNtrip(false);
@@ -3367,7 +3416,8 @@ GnssAdapter::updateTracking(LocationAPI* client, uint32_t sessionId,
     if(!checkAndSetSPEToRunforNHz(tempOptions)) {
         mLocApi->startTimeBasedTracking(tempOptions, new LocApiResponse(*getContext(),
                           [this, client, sessionId, oldOptions] (LocationError err) {
-                if (LOCATION_ERROR_SUCCESS != err) {
+                if (ENGINE_LOCK_STATE_ENABLED == mLocApi->getEngineLockState() &&
+                    LOCATION_ERROR_SUCCESS != err) {
                     // restore the old LocationOptions
                     saveTrackingSession(client, sessionId, oldOptions);
                 }
@@ -3482,9 +3532,10 @@ GnssAdapter::updateTrackingOptionsCommand(LocationAPI* client, uint32_t id,
                         if (LOCATION_ERROR_SUCCESS == err) {
                             mApi.startDistanceBasedTracking(mSessionId, mOptions,
                                     new LocApiResponse(*mAdapter.getContext(),
-                                    [&mAdapter, mClient, mSessionId, mOptions]
+                                    [&mAdapter, mClient, mSessionId, mOptions, &mApi = mApi]
                                     (LocationError err) {
-                                if (LOCATION_ERROR_SUCCESS == err) {
+                                if (ENGINE_LOCK_STATE_DISABLED == mApi.getEngineLockState() ||
+                                    LOCATION_ERROR_SUCCESS == err) {
                                     mAdapter.saveTrackingSession(mClient, mSessionId, mOptions);
                                 }
                                 mAdapter.reportResponse(mClient, err, mSessionId);
@@ -3598,9 +3649,11 @@ GnssAdapter::stopTrackingCommand(LocationAPI* client, uint32_t id)
                 } else if (isDistanceBased) {
                     mApi.stopDistanceBasedTracking(mSessionId, new LocApiResponse(
                             *mAdapter.getContext(),
-                            [&mAdapter = mAdapter, mSessionId = mSessionId, mClient = mClient]
+                            [&mAdapter = mAdapter, mSessionId = mSessionId, mClient = mClient,
+                            &mApi = mApi]
                             (LocationError err) {
-                        if (LOCATION_ERROR_SUCCESS == err) {
+                        if (ENGINE_LOCK_STATE_DISABLED == mApi.getEngineLockState() ||
+                            LOCATION_ERROR_SUCCESS == err) {
                             mAdapter.eraseTrackingSession(mClient, mSessionId);
                         }
                         mAdapter.reportResponse(mClient, err, mSessionId);
