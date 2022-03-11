@@ -168,7 +168,6 @@ protected:
     LOC_API_ADAPTER_EVENT_MASK_T getEvtMask();
     LOC_API_ADAPTER_EVENT_MASK_T mMask;
     uint32_t mNmeaMask;
-    bool mMapDataAvailable;
 
     LocApiBase(LOC_API_ADAPTER_EVENT_MASK_T excludedMask,
                ContextBase* context = NULL);
@@ -395,10 +394,6 @@ public:
                                               LocApiResponse* adapterResponse=nullptr);
     virtual void getConstellationMultiBandConfig(uint32_t sessionId,
                                         LocApiResponse* adapterResponse=nullptr);
-    inline void setMapDataAvailable(bool isMapDataAvailable)
-            { mMapDataAvailable = isMapDataAvailable; }
-    inline bool getMapDataAvailable() { return mMapDataAvailable; }
-
     inline EngineLockState getEngineLockState() {
         return mEngineLockState;
     }

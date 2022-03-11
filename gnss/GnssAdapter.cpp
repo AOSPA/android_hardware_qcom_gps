@@ -90,6 +90,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define RAD2DEG    (180.0 / M_PI)
 #define DEG2RAD    (M_PI / 180.0)
 #define PROCESS_NAME_ENGINE_SERVICE "engine-service"
+#define PROCESS_NAME_SAP_MAP        "hmacdaemon"
 #ifdef FEATURE_AUTOMOTIVE
 #define MIN_TRACKING_INTERVAL (100) // 100 msec
 #else
@@ -203,7 +204,8 @@ GnssAdapter::GnssAdapter() :
     mBootReferenceEnergy(0),
     mPowerElapsedRealTimeCal(30000000),
     mPositionElapsedRealTimeCal(30000000),
-    mAddressRequestCb(nullptr)
+    mAddressRequestCb(nullptr),
+    mHmacConfig(HMAC_CONFIG_UNKNOWN)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -6793,24 +6795,44 @@ bool GnssAdapter::measCorrSetCorrectionsCommand(const GnssMeasurementCorrections
 
         inline virtual void proc() const {
             LOC_LOGv("MsgSetCorrectionsMeasCorr::proc()");
-            char map_data_test_mode[LOC_MAX_PARAM_STRING];
-            loc_param_s_type izat_map_data_table[] =
-            {
-                { "MAP_DATA_TEST_MODE", &map_data_test_mode, NULL, 's' },
-            };
-            UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izat_map_data_table);
-            if (strcmp(map_data_test_mode, "ENABLED") == 0) {
-                LOC_LOGd("MAP_DATA_TEST_MODE mode set to ENABLED");
+            if (HMAC_CONFIG_ENABLED != mAdapter.mHmacConfig) {
                 mApi.setMeasurementCorrections(mGnssMeasCorr);
             } else {
-                if (!mApi.getMapDataAvailable()) {
-                    mApi.setMeasurementCorrections(mGnssMeasCorr);
-                } else {
-                    LOC_LOGd("MapDataAvailable is true, use MapData for aiding");
-                }
+                LOC_LOGd("mapDataAvailable is true, use MapData for aiding");
             }
         }
     };
+
+    if (HMAC_CONFIG_UNKNOWN == mHmacConfig) {
+        unsigned int processListLength = 0;
+        loc_process_info_s_type* processInfoList = nullptr;
+        int rc = loc_read_process_conf(LOC_PATH_IZAT_CONF, &processListLength,
+                                       &processInfoList);
+        if (0 == rc) {
+            // go over the conf table to see whether any plugin daemon is enabled
+            mHmacConfig = HMAC_CONFIG_DISABLED;
+            for (unsigned int i = 0; i < processListLength; i++) {
+                if ((0 == strncmp(processInfoList[i].name[0], PROCESS_NAME_SAP_MAP,
+                            strlen (PROCESS_NAME_SAP_MAP))) &&
+                                    (ENABLED == processInfoList[i].proc_status)) {
+                    mHmacConfig = HMAC_CONFIG_ENABLED;
+                    break;
+                }
+            }
+            char mapDataTestMode[LOC_MAX_PARAM_STRING];
+            loc_param_s_type izatMapDataTable[] =
+            {
+                { "MAP_DATA_TEST_MODE", &mapDataTestMode, NULL, 's' },
+            };
+            UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izatMapDataTable);
+            if (strcmp(mapDataTestMode, "ENABLED") == 0) {
+                LOC_LOGd("MAP_DATA_TEST_MODE mode set to ENABLED");
+                mHmacConfig = HMAC_CONFIG_TEST_MODE;
+            }
+        } else {
+            LOC_LOGe("failed to parse conf file");
+        }
+    }
 
     if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_MEASUREMENTS_CORRECTION)) {
         sendMsg(new MsgSetCorrectionsMeasCorr(gnssMeasCorr, *this, *mLocApi));
