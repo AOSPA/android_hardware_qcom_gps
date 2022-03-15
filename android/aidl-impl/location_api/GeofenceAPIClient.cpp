@@ -104,6 +104,7 @@ void GeofenceAPIClient::geofenceAdd(uint32_t geofence_id, double latitude, doubl
     if (monitor_transitions & IGnssGeofenceCallback::EXITED)
         options.breachTypeMask |=  GEOFENCE_BREACH_EXIT_BIT;
     options.responsiveness = notification_responsiveness_ms;
+    options.confidence = GEOFENCE_CONFIDENCE_HIGH;
 
     GeofenceInfo data;
     data.size = sizeof(GeofenceInfo);

@@ -103,6 +103,7 @@ typedef struct {
     GeofenceBreachTypeMask breachMask;
     uint32_t responsiveness;
     uint32_t dwellTime;
+    GeofenceConfidence confidence;
     double latitude;
     double longitude;
     double radius;

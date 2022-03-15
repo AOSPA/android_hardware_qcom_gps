@@ -281,6 +281,12 @@ typedef enum {
     GEOFENCE_STATUS_AVAILABILE_YES,
 } GeofenceStatusAvailable;
 
+typedef enum {
+    GEOFENCE_CONFIDENCE_LOW = 1,
+    GEOFENCE_CONFIDENCE_MEDIUM,
+    GEOFENCE_CONFIDENCE_HIGH,
+} GeofenceConfidence;
+
 // Set of masks for Modem and QWES capabilities.
 typedef uint64_t LocationCapabilitiesMask;
 typedef enum {
@@ -1132,6 +1138,7 @@ typedef struct {
     GeofenceBreachTypeMask breachTypeMask;  // bitwise OR of GeofenceBreachTypeBits
     uint32_t responsiveness;                // in milliseconds
     uint32_t dwellTime;                     // in seconds
+    GeofenceConfidence confidence;          // confidence of breach event
 } GeofenceOption;
 
 typedef struct {
