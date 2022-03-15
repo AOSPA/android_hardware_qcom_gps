@@ -992,6 +992,9 @@ void LocApiBase::
     getConstellationMultiBandConfig(uint32_t sessionId, LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
+void LocApiBase::setTribandState(bool /*enabled*/)
+DEFAULT_IMPL()
+
 int64_t ElapsedRealtimeEstimator::getElapsedRealtimeEstimateNanos(int64_t curDataTimeNanos,
             bool isCurDataTimeTrustable, int64_t tbfNanos) {
     //The algorithm works follow below steps:

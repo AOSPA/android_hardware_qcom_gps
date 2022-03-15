@@ -722,6 +722,7 @@ public:
     void setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb);
     inline void setEsStatusCallback (std::function<void(bool)> esStatusCb) {
             mEsStatusCb = esStatusCb; }
+    void setTribandState();
 
     /*==== DGnss Usable Report Flag ====================================================*/
     inline void setDGnssUsableFLag(bool dGnssNeedReport) { mDGnssNeedReport = dGnssNeedReport;}

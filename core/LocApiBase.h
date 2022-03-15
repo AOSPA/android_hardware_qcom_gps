@@ -403,6 +403,7 @@ public:
     inline void setEngineLockState(EngineLockState engineLockState) {
         mEngineLockState = engineLockState;
     }
+    virtual void setTribandState(bool enabled);
 };
 
 class ElapsedRealtimeEstimator {
