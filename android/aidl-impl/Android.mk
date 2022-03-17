@@ -15,18 +15,40 @@ LOCAL_SRC_FILES := \
     GnssConfiguration.cpp \
     GnssPowerIndication.cpp \
     GnssMeasurementInterface.cpp \
-    location_api/GnssAPIClient.cpp
+    GnssBatching.cpp \
+    GnssGeofence.cpp \
+    AGnss.cpp \
+    AGnssRil.cpp \
+    GnssDebug.cpp \
+    GnssAntennaInfo.cpp \
+    MeasurementCorrectionsInterface.cpp \
+    GnssVisibilityControl.cpp \
+    location_api/GnssAPIClient.cpp \
+    location_api/BatchingAPIClient.cpp \
+    location_api/GeofenceAPIClient.cpp \
+    location_api/LocationUtil.cpp
 
 LOCAL_HEADER_LIBRARIES := \
     libgps.utils_headers \
     libloc_core_headers \
     libloc_pla_headers \
+    liblocbatterylistener_headers \
     liblocation_api_headers
+
+LOCAL_C_INCLUDES:= \
+    $(LOCAL_PATH)/location_api
+
+LOCAL_STATIC_LIBRARIES := liblocbatterylistener
+LOCAL_STATIC_LIBRARIES += libhealthhalutils
 
 LOCAL_SHARED_LIBRARIES := \
     libbase \
     libbinder_ndk \
-    android.hardware.gnss-V1-ndk \
+    android.hardware.gnss-V2-ndk \
+    android.hardware.health@1.0 \
+    android.hardware.health@2.0 \
+    android.hardware.health@2.1 \
+    libhidlbase \
     liblog \
     libcutils \
     libqti_vndfwk_detect_vendor \
@@ -74,7 +96,7 @@ LOCAL_SHARED_LIBRARIES += \
     android.hardware.gnss@1.1 \
     android.hardware.gnss@2.0 \
     android.hardware.gnss@2.1 \
-    android.hardware.gnss-V1-ndk \
+    android.hardware.gnss-V2-ndk \
     android.hardware.gnss-aidl-impl-qti
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
