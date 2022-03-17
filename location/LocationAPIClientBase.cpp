@@ -314,8 +314,18 @@ void LocationAPIClientBase::locAPISetCallbacks(LocationCallbacks& locationCallba
 
     locationCallbacks.capabilitiesCb =
         [this](LocationCapabilitiesMask capabilitiesMask) {
+            if (LocationAPI::isInfotainmentHalConfigured()) {
+                LocationCapabilitiesMask locIviSupportedMask =
+                    LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT |
+                    LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT |
+                    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT;
+
+                capabilitiesMask &= locIviSupportedMask;
+            }
+
             onCapabilitiesCb(capabilitiesMask);
-        };
+    };
+
     locationCallbacks.responseCb = [this](LocationError error, uint32_t id) {
         onResponseCb(error, id);
     };

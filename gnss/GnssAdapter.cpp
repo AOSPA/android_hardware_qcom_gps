@@ -209,6 +209,7 @@ GnssAdapter::GnssAdapter() :
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
+    mControlCallbacks.size = sizeof(LocationControlCallbacks);
 
     pthread_condattr_t condAttr;
     pthread_condattr_init(&condAttr);

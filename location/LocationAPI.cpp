@@ -133,6 +133,14 @@ static const T1* loadLocationInterface(const char* library, const char* name) {
     }
 }
 
+bool LocationAPI::isInfotainmentHalConfigured() {
+    if (!gReadInfotainmentHalConfigOnce) {
+        UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
+        gReadInfotainmentHalConfigOnce = true;
+    }
+    return gEnableInfotainmentHal;
+}
+
 static void loadLibGnss() {
 
     if (NULL == gData.gnssInterface && !gGnssLoadFailed) {
@@ -270,12 +278,7 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
         return NULL;
     }
 
-    if (!gReadInfotainmentHalConfigOnce) {
-        UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
-        gReadInfotainmentHalConfigOnce = true;
-    }
-
-    if (gEnableInfotainmentHal) {
+    if (isInfotainmentHalConfigured()) {
         void *handle = nullptr;
         getLocationClientApiImpl getter = (getLocationClientApiImpl)dlGetSymFromLib(handle,
                 "liblocation_client_api.so", "getLocationClientApiImpl");
@@ -741,11 +744,7 @@ LocationControlAPI::getInstance(LocationControlCallbacks& locationControlCallbac
     void *handle = nullptr;
 
     if (NULL == gData.controlAPI) {
-        if (!gReadInfotainmentHalConfigOnce) {
-            UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
-            gReadInfotainmentHalConfigOnce = true;
-        }
-        if (gEnableInfotainmentHal) {
+        if (LocationAPI::isInfotainmentHalConfigured()) {
             getLocationIntegrationApiImpl getter =
                 (getLocationIntegrationApiImpl)dlGetSymFromLib(handle,
                 "liblocation_integration_api.so", "getLocationIntegrationApiImpl");

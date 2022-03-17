@@ -79,6 +79,8 @@ public:
        of instances have been reached */
     static ILocationAPI* createInstance(LocationCallbacks&);
 
+    static bool isInfotainmentHalConfigured();
+
     /* destroy/cleans up the instance, which should be called when LocationControlAPI object is
        no longer needed. LocationControlAPI* returned from createInstance will no longer valid
        after destroy is called.
