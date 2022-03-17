@@ -371,37 +371,37 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     auto gnssCbIface(mGnssCbIface);
     mMutex.unlock();
 
-    uint32_t antennaInfoVectorSize = 0;
     uint32_t data = 0;
-    loc_param_s_type ant_info_vector_table[] =
-    {
-        { "ANTENNA_INFO_VECTOR_SIZE", &antennaInfoVectorSize, NULL, 'n' }
-    };
-    UTIL_READ_CONF(LOC_PATH_ANT_CORR, ant_info_vector_table);
-
-    if (0 != antennaInfoVectorSize) {
-        data |= IGnssCallback::CAPABILITY_ANTENNA_INFO;
-    }
-
     if ((capabilitiesMask & LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT) ||
             (capabilitiesMask & LOCATION_CAPABILITIES_TIME_BASED_BATCHING_BIT) ||
             (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_TRACKING_BIT) ||
-            (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_BATCHING_BIT))
+            (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_BATCHING_BIT)) {
         data |= IGnssCallback::CAPABILITY_SCHEDULING;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_GEOFENCE_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GEOFENCE_BIT) {
         data |= IGnssCallback::CAPABILITY_GEOFENCING;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
         data |= IGnssCallback::CAPABILITY_MEASUREMENTS;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSB_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSB_BIT) {
         data |= IGnssCallback::CAPABILITY_MSB;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSA_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSA_BIT) {
         data |= IGnssCallback::CAPABILITY_MSA;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT) {
         data |= IGnssCallback::CAPABILITY_LOW_POWER_MODE;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT) {
         data |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
-    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT)
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
         data |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS_FOR_DRIVING;
+    }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_ANTENNA_INFO) {
+        data |= IGnssCallback::CAPABILITY_ANTENNA_INFO;
+    }
     data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
 
     IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015 };

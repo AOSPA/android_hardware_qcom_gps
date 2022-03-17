@@ -750,6 +750,15 @@ void LocationAPI::getDebugReport(GnssDebugReport& report) {
     }
 }
 
+uint32_t LocationAPI::getAntennaInfo(AntennaInfoCallback* cb) {
+    if (gData.gnssInterface != NULL) {
+        return gData.gnssInterface->getAntennaInfo(cb);
+    } else {
+        LOC_LOGe("No gnss interface available for Location API");
+        return ANTENNA_INFO_ERROR_GENERIC;
+    }
+}
+
 ILocationControlAPI*
 LocationControlAPI::getInstance(LocationControlCallbacks& locationControlCallbacks)
 {
@@ -1113,8 +1122,6 @@ uint32_t LocationControlAPI::updateCallbacks(LocationControlCallbacks& callbacks
     } else if (callbacks.agpsStatusIpV4Cb) {
         AgpsCbInfo cbInfo {callbacks.agpsStatusIpV4Cb, AGPS_ATL_TYPE_SUPL | AGPS_ATL_TYPE_SUPL_ES};
         gData.gnssInterface->agpsInit(cbInfo);
-    } else if (callbacks.antennaInfoCb) {
-        retVal = gData.gnssInterface->antennaInfoInit(callbacks.antennaInfoCb);
     } else if (callbacks.measCorrSetCapabilitiesCb) {
         retVal = gData.gnssInterface->measCorrInit(callbacks.measCorrSetCapabilitiesCb);
     } else if ((callbacks.nfwStatusCb) || (callbacks.isInEmergencyStatusCb)) {
@@ -1262,32 +1269,6 @@ void LocationControlAPI::measCorrClose() {
 
     pthread_mutex_unlock(&gDataMutex);
 
-}
-
-void LocationControlAPI::getGnssAntennaeInfo() {
-    pthread_mutex_lock(&gDataMutex);
-
-    if (gData.gnssInterface != NULL) {
-        gData.gnssInterface->getGnssAntennaeInfo();
-    }
-    else {
-        LOC_LOGe("No gnss interface available for Location Control API");
-    }
-
-    pthread_mutex_unlock(&gDataMutex);
-}
-
-void LocationControlAPI::antennaInfoClose() {
-    pthread_mutex_lock(&gDataMutex);
-
-    if (gData.gnssInterface != NULL) {
-        gData.gnssInterface->antennaInfoClose();
-    }
-    else {
-        LOC_LOGe("No gnss interface available for Location Control API");
-    }
-
-    pthread_mutex_unlock(&gDataMutex);
 }
 
 void LocationControlAPI::enableNfwLocationAccess(std::vector<std::string>& enabledNfws) {

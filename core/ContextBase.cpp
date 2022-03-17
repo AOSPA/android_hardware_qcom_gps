@@ -152,6 +152,8 @@ const loc_param_s_type ContextBase::mSap_conf_table[] =
   {"SENSOR_ALGORITHM_CONFIG_MASK",   &mSap_conf.SENSOR_ALGORITHM_CONFIG_MASK,   NULL, 'n'}
 };
 
+uint32_t ContextBase::mAntennaInfoVectorSize = 0;
+
 void ContextBase::readConfig()
 {
     static bool confReadDone = false;
@@ -239,6 +241,12 @@ void ContextBase::readConfig()
 
         UTIL_READ_CONF(LOC_PATH_GPS_CONF, mGps_conf_table);
         UTIL_READ_CONF(LOC_PATH_SAP_CONF, mSap_conf_table);
+
+        loc_param_s_type ant_info_vector_table[] =
+        {
+            { "ANTENNA_INFO_VECTOR_SIZE", &mAntennaInfoVectorSize, NULL, 'n' }
+        };
+        UTIL_READ_CONF(LOC_PATH_ANT_CORR, ant_info_vector_table);
 
         if (strncmp(mGps_conf.NMEA_REPORT_RATE, "1HZ", sizeof(mGps_conf.NMEA_REPORT_RATE)) == 0) {
             /* NMEA reporting is configured at 1Hz*/

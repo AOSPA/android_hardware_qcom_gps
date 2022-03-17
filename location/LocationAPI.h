@@ -239,6 +239,11 @@ public:
         report: GnssDebugReport structure
     */
     virtual void getDebugReport(GnssDebugReport& report) override;
+
+    /** @brief
+        Set callback and receive antenna info
+    */
+    virtual uint32_t getAntennaInfo(AntennaInfoCallback* cb) override;
 };
 
 class LocationControlAPI : public ILocationControlAPI
@@ -690,16 +695,6 @@ public:
         Close measurement corrections interface
     */
     virtual void measCorrClose() override;
-
-    /** @brief
-         Fetch antenna info from HAL
-     */
-    virtual void getGnssAntennaeInfo() override;
-
-    /** @brief
-        Close antenna info interface
-    */
-    virtual void antennaInfoClose() override;
 
     /** @brief
         Enables/disables permissions to non-framework application use of GNSS

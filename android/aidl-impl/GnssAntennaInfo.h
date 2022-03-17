@@ -37,6 +37,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ANDROID_HARDWARE_GNSS_AIDL_GNSSANTENNAINFO_H
 #include <aidl/android/hardware/gnss/IGnssAntennaInfoCallback.h>
 #include <aidl/android/hardware/gnss/BnGnssAntennaInfo.h>
+#include <LocationDataTypes.h>
 
 namespace android {
 namespace hardware {
@@ -50,18 +51,27 @@ using ::ndk::ScopedAStatus;
 class GnssAntennaInfo : public BnGnssAntennaInfo {
 public:
     GnssAntennaInfo(Gnss* gnss);
-    virtual ~GnssAntennaInfo();
 
     virtual ScopedAStatus setCallback(const shared_ptr<IGnssAntennaInfoCallback>& callback)
             override;
     virtual ScopedAStatus close() override;
-    void gnssAntennaInfoCb(std::vector<GnssAntennaInformation> gnssAntennaInformations);
+    void gnssAntennaInfoCb(std::vector<GnssAntennaInformation>& gnssAntennaInformations);
 private:
+    struct AntennaInfoAidlCallback : public AntennaInfoCallback {
+        GnssAntennaInfo& mGAI;
+        inline AntennaInfoAidlCallback(GnssAntennaInfo& gai) :
+             AntennaInfoCallback(), mGAI(gai) {}
+        inline virtual void operator()(
+                std::vector<GnssAntennaInformation>& antennaInfo) override {
+            mGAI.gnssAntennaInfoCb(antennaInfo);
+        }
+    };
+
     shared_ptr<IGnssAntennaInfoCallback> mGnssAntennaInfoCbIface = nullptr;
     AIBinder_DeathRecipient *mDeathRecipient = nullptr;
     Gnss* mGnss = nullptr;
-    bool mCallBackIsSet = false;
     std::mutex mMutex;
+    AntennaInfoAidlCallback mAntennaInfoCb;
 };
 }
 }  // namespace aidl

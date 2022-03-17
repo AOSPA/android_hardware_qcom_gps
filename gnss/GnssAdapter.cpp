@@ -194,7 +194,6 @@ GnssAdapter::GnssAdapter() :
     mPowerStateCb(nullptr),
     mSupportNfwControl(true),
     mIsMeasCorrInterfaceOpen(false),
-    mIsAntennaInfoInterfaceOpened(false),
     mLastDeleteAidingDataTime(0),
     mDgnssState(0),
     mSendNmeaConsent(false),
@@ -3028,6 +3027,9 @@ GnssAdapter::getCapabilities()
     }
     if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
         mask |= LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT;
+    }
+    if (ContextBase::isAntennaInfoAvailable()) {
+        mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
     }
     //Get QWES feature status mask
     mask |= ContextBase::getQwesFeatureStatus();
@@ -6910,49 +6912,28 @@ bool GnssAdapter::measCorrSetCorrectionsCommand(const GnssMeasurementCorrections
     }
 }
 
-uint32_t GnssAdapter::antennaInfoInitCommand(const antennaInfoCallback antennaInfoCb) {
-    LOC_LOGi("GnssAdapter::antennaInfoInitCommand");
-
-    /* Message to initialize Antenna Information */
-    struct MsgInitAi : public LocMsg {
-        const antennaInfoCallback mAntennaInfoCb;
-        GnssAdapter& mAdapter;
-
-        inline MsgInitAi(const antennaInfoCallback antennaInfoCb, GnssAdapter& adapter) :
-            LocMsg(), mAntennaInfoCb(antennaInfoCb), mAdapter(adapter) {
-            LOC_LOGv("MsgInitAi");
-        }
-
-        inline virtual void proc() const {
-            mAdapter.mControlCallbacks.antennaInfoCb = mAntennaInfoCb;
-        }
-    };
-    if (mIsAntennaInfoInterfaceOpened) {
-        return ANTENNA_INFO_ERROR_ALREADY_INIT;
-    } else {
-        mIsAntennaInfoInterfaceOpened = true;
-        sendMsg(new MsgInitAi(antennaInfoCb, *this));
-        return ANTENNA_INFO_SUCCESS;
-    }
-}
-
-void GnssAdapter::getGnssAntennaeInfoCommand()
-{
-    /* Message to initialize Antenna Information */
+uint32_t GnssAdapter::getAntennaeInfoCommand(AntennaInfoCallback* antennaInfoCallback) {
+    /* Message to get Antenna Information */
     struct MsgReportAi : public LocMsg {
         GnssAdapter& mAdapter;
+        AntennaInfoCallback* mAntennaInfoCb;
 
-        inline MsgReportAi(GnssAdapter& adapter) :
-            LocMsg(), mAdapter(adapter) {
+        inline MsgReportAi(GnssAdapter& adapter, AntennaInfoCallback* cb) :
+            LocMsg(), mAdapter(adapter), mAntennaInfoCb(cb) {
             LOC_LOGv("MsgReportAi");
         }
 
         inline virtual void proc() const {
-            mAdapter.reportGnssAntennaInformation();
+            mAdapter.reportGnssAntennaInformation(mAntennaInfoCb);
         }
     };
 
-    sendMsg(new MsgReportAi(*this));
+    if (nullptr == antennaInfoCallback) {
+        LOC_LOGe("NULL antennaInfoCallback");
+        return ANTENNA_INFO_ERROR_GENERIC;
+    }
+    sendMsg(new MsgReportAi(*this, antennaInfoCallback));
+    return ANTENNA_INFO_SUCCESS;
 }
 
 void
@@ -7435,7 +7416,7 @@ void GnssAdapter::initGnssPowerStatistics() {
 }
 
 void
-GnssAdapter::reportGnssAntennaInformation()
+GnssAdapter::reportGnssAntennaInformation(AntennaInfoCallback* cb)
 {
 #define MAX_TEXT_WIDTH      50
 #define MAX_COLUMN_WIDTH    20
@@ -7557,8 +7538,8 @@ GnssAdapter::reportGnssAntennaInformation()
         }
         gnssAntennaInformations.push_back(std::move(gnssAntennaInfo));
     }
-    if (antennaInfoVectorSize > 0) {
-        mControlCallbacks.antennaInfoCb(gnssAntennaInformations);
+    if (antennaInfoVectorSize > 0 && cb) {
+        (*cb)(gnssAntennaInformations);
     }
 }
 

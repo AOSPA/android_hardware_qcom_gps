@@ -60,7 +60,7 @@ void GnssAntennaInfo::GnssAntennaInfoDeathRecipient::serviceDied(uint64_t cookie
         return;
     }
 
-    spGnssAntennaInfo->mGnss->getLocationControlApi()->antennaInfoClose();
+    spGnssAntennaInfo->close();
 }
 
 static void convertGnssAntennaInfo(std::vector<GnssAntennaInformation>& in,
@@ -130,7 +130,8 @@ static void convertGnssAntennaInfo(std::vector<GnssAntennaInformation>& in,
     }
 }
 
-GnssAntennaInfo::GnssAntennaInfo(Gnss* gnss) : mGnss(gnss) {
+GnssAntennaInfo::GnssAntennaInfo(Gnss* gnss) :
+        mGnss(gnss), mAntennaInfoCb(*this) {
     mGnssAntennaInfoDeathRecipient = new GnssAntennaInfoDeathRecipient();
     spGnssAntennaInfo = this;
 }
@@ -142,42 +143,15 @@ GnssAntennaInfo::~GnssAntennaInfo() {
 // Methods from ::android::hardware::gnss::V2_1::IGnssAntennaInfo follow.
 Return<GnssAntennaInfo::GnssAntennaInfoStatus>
         GnssAntennaInfo::setCallback(const sp<IGnssAntennaInfoCallback>& callback)  {
-    uint32_t retValue = ANTENNA_INFO_SUCCESS;
     GnssAntennaInfo::GnssAntennaInfoStatus retStat = GnssAntennaInfoStatus::SUCCESS;
 
-    if (mGnss == nullptr || mGnss->getLocationControlApi() == nullptr) {
-        LOC_LOGE("Null GNSS interface or Control interface");
+    if (mGnss == nullptr || mGnss->getApi() == nullptr) {
+        LOC_LOGE("Null GNSS interface or GnssAPIClient");
         return GnssAntennaInfoStatus::ERROR_GENERIC;
     }
-
     mGnssAntennaInfoCbIface = callback;
-
-    if (!mCallBackIsSet) {
-        mCallBackIsSet = true;
-
-        LocationControlCallbacks locCtrlCbs;
-        memset(&locCtrlCbs, 0, sizeof(locCtrlCbs));
-        locCtrlCbs.size = sizeof(LocationControlCallbacks);
-
-        locCtrlCbs.antennaInfoCb = [this](
-                std::vector<GnssAntennaInformation> gnssAntennaInformations) {
-                gnssAntennaInfoCb(gnssAntennaInformations);
-        };
-
-        retValue = mGnss->getLocationControlApi()->updateCallbacks(locCtrlCbs);
-        switch (retValue) {
-            case ANTENNA_INFO_SUCCESS: retStat = GnssAntennaInfoStatus::SUCCESS;
-                break;
-            case ANTENNA_INFO_ERROR_ALREADY_INIT:
-                    retStat = GnssAntennaInfoStatus::ERROR_ALREADY_INIT;
-                break;
-            case ANTENNA_INFO_ERROR_GENERIC:
-            default: retStat = GnssAntennaInfoStatus::ERROR_GENERIC;
-        }
-    }
-
-    mGnss->getLocationControlApi()->getGnssAntennaeInfo();
-    return retStat;
+    return (GnssAntennaInfo::GnssAntennaInfoStatus)(
+            mGnss->getApi()->locAPIGetAntennaInfo(&mAntennaInfoCb));
 }
 
 Return<void> GnssAntennaInfo::close(void)  {
@@ -186,13 +160,13 @@ Return<void> GnssAntennaInfo::close(void)  {
         return Void();
     }
 
-    mGnss->getLocationControlApi()->antennaInfoClose();
+    mGnssAntennaInfoCbIface = nullptr;
 
     return Void();
 }
 
 void GnssAntennaInfo::gnssAntennaInfoCb
-        (std::vector<GnssAntennaInformation> gnssAntennaInformations) {
+        (std::vector<GnssAntennaInformation>& gnssAntennaInformations) {
 
     if (mGnssAntennaInfoCbIface != nullptr) {
         hidl_vec<IGnssAntennaInfoCallback::GnssAntennaInfo> antennaInfos;

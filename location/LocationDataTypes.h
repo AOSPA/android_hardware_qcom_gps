@@ -363,7 +363,9 @@ typedef enum {
     // This mask indicates DGNSS license bundle is enabled.
     LOCATION_CAPABILITIES_QWES_DGNSS                        = (1<<27),
     // This mask indicates engine debug data enabled.
-    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28)
+    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28),
+    // This mask indicates Antenna info is enabled.
+    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -2501,13 +2503,14 @@ typedef std::function<void(
     GnssMeasurementCorrectionsCapabilitiesMask capabilities
 )> measCorrSetCapabilitiesCallback;
 
-
 /*
 * Callback with Antenna information.
 */
-typedef std::function<void(
-    std::vector<GnssAntennaInformation> gnssAntennaInformations
-)> antennaInfoCallback;
+struct AntennaInfoCallback {
+    AntennaInfoCallback() = default;
+    virtual ~AntennaInfoCallback() = default;
+    virtual void operator()(std::vector<GnssAntennaInformation>& gnssAntennaInformations) = 0;
+};
 
 /*
 * Callback with NFW information.
@@ -2526,7 +2529,6 @@ typedef std::function<bool(
 typedef std::function<void(
     const GnssEnergyConsumedInfo& gnssEneryConsumed
 )> gnssEnergyConsumedCallback;
-
 
 typedef struct {
     uint32_t size; // set to sizeof(LocationCallbacks)
@@ -2557,7 +2559,6 @@ typedef struct {
     gnssConfigCallback gnssConfigCb;                 // optional
     odcpiRequestCallback odcpiReqCb;                 //optional
     measCorrSetCapabilitiesCallback measCorrSetCapabilitiesCb; // optional
-    antennaInfoCallback antennaInfoCb;               //optional
     agnssStatusIpV4Callback   agpsStatusIpV4Cb;      //optional
     nfwStatusCallback nfwStatusCb;                   // optional
     isInEmergencySessionCallback isInEmergencyStatusCb; // optional

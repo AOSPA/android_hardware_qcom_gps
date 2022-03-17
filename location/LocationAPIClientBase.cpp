@@ -318,7 +318,8 @@ void LocationAPIClientBase::locAPISetCallbacks(LocationCallbacks& locationCallba
                 LocationCapabilitiesMask locIviSupportedMask =
                     LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT |
                     LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT |
-                    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT;
+                    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT |
+                    LOCATION_CAPABILITIES_ANTENNA_INFO;
 
                 capabilitiesMask &= locIviSupportedMask;
             }
@@ -883,6 +884,16 @@ void LocationAPIClientBase::locAPIGetDebugReport(GnssDebugReport &report) {
         mLocationAPI->getDebugReport(report);
     }
     pthread_mutex_unlock(&mMutex);
+}
+
+uint32_t LocationAPIClientBase::locAPIGetAntennaInfo(AntennaInfoCallback* cb) {
+    uint32_t ret = 0;
+    pthread_mutex_lock(&mMutex);
+    if (mLocationAPI) {
+        ret =  mLocationAPI->getAntennaInfo(cb);
+    }
+    pthread_mutex_unlock(&mMutex);
+    return ret;
 }
 
 void LocationAPIClientBase::beforeGeofenceBreachCb(
