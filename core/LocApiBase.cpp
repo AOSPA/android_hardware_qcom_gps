@@ -660,10 +660,13 @@ void LocApiBase::reportLatencyInfo(GnssLatencyInfo& gnssLatencyInfo)
     TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportLatencyInfoEvent(gnssLatencyInfo));
 }
 
-void LocApiBase::reportEngineLockStatus(EngineLockState engineLockState)
-{
+void LocApiBase::reportEngineLockStatus(EngineLockState engineLockState) {
     // loop through adapters, and deliver to the All handling adapter.
     TO_ALL_LOCADAPTERS(mLocAdapters[i]->handleEngineLockStatusEvent(engineLockState));
+}
+
+void LocApiBase::reportEngDebugDataInfo(GnssEngineDebugDataInfo& gnssEngineDebugDataInfo) {
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportEngDebugDataInfoEvent(gnssEngineDebugDataInfo));
 }
 
 enum loc_api_adapter_err LocApiBase::

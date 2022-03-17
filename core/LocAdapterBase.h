@@ -27,7 +27,7 @@
  *
  */
 
-  /*
+/*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
 Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -273,6 +273,7 @@ public:
 
     virtual void reportLatencyInfoEvent(const GnssLatencyInfo& gnssLatencyInfo);
     virtual void handleEngineLockStatusEvent(EngineLockState engineLockState);
+    virtual void reportEngDebugDataInfoEvent(GnssEngineDebugDataInfo& gnssEngineDebugDataInfo);
     virtual bool reportQwesCapabilities(
             const std::unordered_map<LocationQwesFeatureType, bool> &featureMap);
 };

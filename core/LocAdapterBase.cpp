@@ -27,7 +27,7 @@
  *
  */
 
-  /*
+/*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
 Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -479,5 +479,8 @@ DEFAULT_IMPL()
 bool LocAdapterBase::
     reportQwesCapabilities(const std::unordered_map<LocationQwesFeatureType, bool> &featureMap)
 DEFAULT_IMPL(false)
+
+void LocAdapterBase::reportEngDebugDataInfoEvent(GnssEngineDebugDataInfo& gnssEngineDebugDataInfo)
+DEFAULT_IMPL()
 
 } // namespace loc_core
