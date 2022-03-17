@@ -118,6 +118,7 @@ typedef enum {
     LOCATION_HAS_CONFORMITY_INDEX_BIT  = (1<<10), // location has valid conformity index
     LOCATION_HAS_QUALITY_TYPE_BIT      = (1<<11), // location has valid quality type
     LOCATION_HAS_TECH_MASK_BIT         = (1<<12), // location has valid tech mask
+    LOCATION_HAS_TIME_UNC_BIT          = (1<<13), // location has timeUncMs
 } LocationFlagsBits;
 
 typedef uint16_t LocationTechnologyMask;
@@ -242,22 +243,21 @@ typedef enum {
     GNSS_LOCATION_INFO_EAST_VEL_UNC_BIT                 = (1<<19), // East Velocity Uncertainty
     GNSS_LOCATION_INFO_UP_VEL_UNC_BIT                   = (1<<20), // Up Velocity Uncertainty
     GNSS_LOCATION_INFO_LEAP_SECONDS_BIT                 = (1<<21), // leap seconds
-    GNSS_LOCATION_INFO_TIME_UNC_BIT                     = (1<<22), // time uncertainty
-    GNSS_LOCATION_INFO_NUM_SV_USED_IN_POSITION_BIT      = (1<<23), // number of SV used in position
-    GNSS_LOCATION_INFO_CALIBRATION_CONFIDENCE_BIT       = (1<<24), // sensor cal confidence
-    GNSS_LOCATION_INFO_CALIBRATION_STATUS_BIT           = (1<<25), // sensor cal status
-    GNSS_LOCATION_INFO_OUTPUT_ENG_TYPE_BIT              = (1<<26), // output engine type
-    GNSS_LOCATION_INFO_OUTPUT_ENG_MASK_BIT              = (1<<27), // output engine mask
-    GNSS_LOCATION_INFO_CONFORMITY_INDEX_BIT             = (1<<28), // conformity index
-    GNSS_LOCATION_INFO_LLA_VRP_BASED_BIT                = (1<<29), // VRP-based lat/long/alt
-    GNSS_LOCATION_INFO_ENU_VELOCITY_VRP_BASED_BIT       = (1<<30), // VRP-based east/north/up vel
-    GNSS_LOCATION_INFO_DR_SOLUTION_STATUS_MASK_BIT      = (1ULL<<31), // Valid DR solution status
-    GNSS_LOCATION_INFO_ALTITUDE_ASSUMED_BIT             = (1ULL<<32), // Valid altitude assumed
-    GNSS_LOCATION_INFO_SESSION_STATUS_BIT               = (1ULL<<33), // session status
-    GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT    = (1ULL<<34), // integrity risk used
-    GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<35), // along-track protection level
-    GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<36), // Cross-track protection level
-    GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<37), // vertical protection level
+    GNSS_LOCATION_INFO_NUM_SV_USED_IN_POSITION_BIT      = (1<<22), // number of SV used in position
+    GNSS_LOCATION_INFO_CALIBRATION_CONFIDENCE_BIT       = (1<<23), // sensor cal confidence
+    GNSS_LOCATION_INFO_CALIBRATION_STATUS_BIT           = (1<<24), // sensor cal status
+    GNSS_LOCATION_INFO_OUTPUT_ENG_TYPE_BIT              = (1<<25), // output engine type
+    GNSS_LOCATION_INFO_OUTPUT_ENG_MASK_BIT              = (1<<26), // output engine mask
+    GNSS_LOCATION_INFO_CONFORMITY_INDEX_BIT             = (1<<27), // conformity index
+    GNSS_LOCATION_INFO_LLA_VRP_BASED_BIT                = (1<<28), // VRP-based lat/long/alt
+    GNSS_LOCATION_INFO_ENU_VELOCITY_VRP_BASED_BIT       = (1<<29), // VRP-based east/north/up vel
+    GNSS_LOCATION_INFO_DR_SOLUTION_STATUS_MASK_BIT      = (1ULL<<30), // Valid DR solution status
+    GNSS_LOCATION_INFO_ALTITUDE_ASSUMED_BIT             = (1ULL<<31), // Valid altitude assumed
+    GNSS_LOCATION_INFO_SESSION_STATUS_BIT               = (1ULL<<32), // session status
+    GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT    = (1ULL<<33), // integrity risk used
+    GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<34), // along-track protection level
+    GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<35), // Cross-track protection level
+    GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<36), // vertical protection level
 } GnssLocationInfoFlagBits;
 
 typedef enum {
@@ -1031,6 +1031,9 @@ typedef struct {
     uint64_t elapsedRealTime;    // in ns
     uint64_t elapsedRealTimeUnc; // in ns
     LocationQualityType qualityType; // position quality
+    float timeUncMs;             // Time uncertainty in milliseconds
+                                 // SPE report: confidence level is 99%
+                                 // Other engine report: confidence not unspecified
 } Location;
 
 typedef enum {
@@ -1369,9 +1372,6 @@ typedef struct {
     uint8_t numOfMeasReceived; // Number of measurements received for use in fix.
     GnssMeasUsageInfo measUsageInfo[GNSS_SV_MAX]; // GNSS Measurement Usage info
     uint8_t leapSeconds;                          // leap second
-    float timeUncMs;                              // Time uncertainty in milliseconds
-                                                  // SPE report: confidence level is 99%
-                                                  // Other engine report: confidence not unspecified
     uint8_t calibrationConfidence;                // Sensor calibration confidence percent,
                                                   // in range of [0, 100]
     DrCalibrationStatusMask calibrationStatus;    // Sensor calibration status
