@@ -25,6 +25,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 /*
 Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
 
@@ -58,6 +59,7 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
 #ifndef GPS_EXTENDED_C_H
 #define GPS_EXTENDED_C_H
 
@@ -2330,6 +2332,17 @@ typedef void (*LocAgpsCloseResultCb)(bool isSuccess, AGpsExtType agpsType, void*
 // to start with LOC_CLIENT_NAME_PREFIX so that upon hal daemon restarts,
 // every client can get the notification that hal daemon has restarted.
 #define LOC_INTAPI_NAME_PREFIX         LOC_CLIENT_NAME_PREFIX "_intapi"
+
+typedef uint64_t NetworkHandle;
+#define NETWORK_HANDLE_UNKNOWN  ~0
+#define MAX_NETWORK_HANDLES 10
+
+typedef enum {
+  ENGINE_LOCK_STATE_INVALID = 0,
+  ENGINE_LOCK_STATE_ENABLED = 1,  /**<  Location engine is enabled.  */
+  ENGINE_LOCK_STATE_DISABLED = 2, /**<  location engine is disabled. */
+  ENGINE_LOCK_STATE_MAX,
+}EngineLockState;
 
 #ifdef __cplusplus
 }
