@@ -378,7 +378,6 @@ public:
     virtual void handleEngineUpEvent();
     /* ======== UTILITIES ================================================================== */
     void restartSessions(bool modemSSR = false);
-    void checkAndRestartTimeBasedSession();
     void checkAndRestartSPESession();
     void suspendSessions();
 
@@ -407,12 +406,18 @@ public:
     bool setLocPositionMode(const LocPosMode& mode);
     LocPosMode& getLocPositionMode() { return mLocPositionMode; }
 
+    inline void reStartTimeBasedTracking() {
+        if (!mTimeBasedTrackingSessions.empty()) {
+            startTimeBasedTrackingMultiplex(nullptr, 0,
+                    mTimeBasedTrackingSessions.begin()->second);
+        }
+    }
     bool startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessionId,
                                          const TrackingOptions& trackingOptions);
     void startTimeBasedTracking(LocationAPI* client, uint32_t sessionId,
             const TrackingOptions& trackingOptions);
     bool stopTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t id);
-    void stopTracking(LocationAPI* client, uint32_t id);
+    void stopTracking(LocationAPI* client = nullptr, uint32_t id = 0);
     bool updateTrackingMultiplex(LocationAPI* client, uint32_t id,
             const TrackingOptions& trackingOptions);
     void updateTracking(LocationAPI* client, uint32_t sessionId,
