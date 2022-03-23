@@ -2920,13 +2920,6 @@ GnssAdapter::restartSessions(bool modemSSR)
     // SPE will be restarted now, so set this variable to false.
     mSPEAlreadyRunningAtHighestInterval = false;
 
-    if (false == mTimeBasedTrackingSessions.empty()) {
-        // inform engine hub that GNSS session is about to start
-        mEngHubProxy->gnssSetFixMode(mLocPositionMode);
-        mEngHubProxy->gnssStartFix();
-        checkUpdateDgnssNtrip(false);
-    }
-
     checkAndRestartSPESession();
 }
 
@@ -2937,7 +2930,7 @@ void GnssAdapter::checkAndRestartSPESession()
     // SPE will be restarted now, so set this variable to false.
     mSPEAlreadyRunningAtHighestInterval = false;
 
-    checkAndRestartTimeBasedSession();
+    reStartTimeBasedTracking();
 
     for (auto it = mDistanceBasedTrackingSessions.begin();
         it != mDistanceBasedTrackingSessions.end(); ++it) {
@@ -2954,49 +2947,7 @@ GnssAdapter::suspendSessions()
     LOC_LOGi(":enter");
 
     if (!mTimeBasedTrackingSessions.empty()) {
-        // inform engine hub that GNSS session has stopped
-        mEngHubProxy->gnssStopFix();
-        mLocApi->stopFix(nullptr);
-        if (isDgnssNmeaRequired()) {
-            mDgnssState &= ~DGNSS_STATE_NO_NMEA_PENDING;
-        }
-        stopDgnssNtrip();
-        mPositionElapsedRealTimeCal.reset();
-        mSPEAlreadyRunningAtHighestInterval = false;
-    }
-}
-
-void GnssAdapter::checkAndRestartTimeBasedSession()
-{
-    LOC_LOGD("%s]: ", __func__);
-
-    if (!mTimeBasedTrackingSessions.empty()) {
-        // get the LocationOptions that has the smallest interval, which should be the active one
-        TrackingOptions smallestIntervalOptions; // size is zero until set for the first time
-        TrackingOptions highestPowerTrackingOptions;
-        memset(&smallestIntervalOptions, 0, sizeof(smallestIntervalOptions));
-        memset(&highestPowerTrackingOptions, 0, sizeof(highestPowerTrackingOptions));
-        for (auto it = mTimeBasedTrackingSessions.begin();
-                it != mTimeBasedTrackingSessions.end(); ++it) {
-            // size of zero means we havent set it yet
-            if (0 == smallestIntervalOptions.size ||
-                it->second.minInterval < smallestIntervalOptions.minInterval) {
-                 smallestIntervalOptions = it->second;
-            }
-            GnssPowerMode powerMode = it->second.powerMode;
-            // Size of zero means we havent set it yet
-            if (0 == highestPowerTrackingOptions.size ||
-                (GNSS_POWER_MODE_INVALID != powerMode &&
-                        powerMode < highestPowerTrackingOptions.powerMode)) {
-                 highestPowerTrackingOptions = it->second;
-            }
-        }
-
-        highestPowerTrackingOptions.setLocationOptions(smallestIntervalOptions);
-        // want to run SPE session at a fixed min interval in some automotive scenarios
-        if(!checkAndSetSPEToRunforNHz(highestPowerTrackingOptions)) {
-            mLocApi->startTimeBasedTracking(highestPowerTrackingOptions, nullptr);
-        }
+        stopTracking();
     }
 }
 
@@ -3137,33 +3088,37 @@ void
 GnssAdapter::saveTrackingSession(LocationAPI* client, uint32_t sessionId,
                                 const TrackingOptions& options)
 {
-    LocationSessionKey key(client, sessionId);
-    if ((options.minDistance > 0) &&
+    if (nullptr != client) {
+        LocationSessionKey key(client, sessionId);
+        if ((options.minDistance > 0) &&
             ContextBase::isMessageSupported(LOC_API_ADAPTER_MESSAGE_DISTANCE_BASE_TRACKING)) {
-        mDistanceBasedTrackingSessions[key] = options;
-    } else {
-        mTimeBasedTrackingSessions[key] = options;
+            mDistanceBasedTrackingSessions[key] = options;
+        } else {
+            mTimeBasedTrackingSessions[key] = options;
+        }
+        reportPowerStateIfChanged();
+        // notify SystemStatus the engine tracking status
+        getSystemStatus()->setTracking(isInSession());
     }
-    reportPowerStateIfChanged();
-    // notify SystemStatus the engine tracking status
-    getSystemStatus()->setTracking(isInSession());
 }
 
 void
 GnssAdapter::eraseTrackingSession(LocationAPI* client, uint32_t sessionId)
 {
-    LocationSessionKey key(client, sessionId);
-    auto it = mTimeBasedTrackingSessions.find(key);
-    if (it != mTimeBasedTrackingSessions.end()) {
-        mTimeBasedTrackingSessions.erase(it);
-    } else {
-        auto itr = mDistanceBasedTrackingSessions.find(key);
-        if (itr != mDistanceBasedTrackingSessions.end()) {
-            mDistanceBasedTrackingSessions.erase(itr);
+    if (nullptr != client) {
+        LocationSessionKey key(client, sessionId);
+        auto it = mTimeBasedTrackingSessions.find(key);
+        if (it != mTimeBasedTrackingSessions.end()) {
+            mTimeBasedTrackingSessions.erase(it);
+        } else {
+            auto itr = mDistanceBasedTrackingSessions.find(key);
+            if (itr != mDistanceBasedTrackingSessions.end()) {
+                mDistanceBasedTrackingSessions.erase(itr);
+            }
         }
+        reportPowerStateIfChanged();
+        getSystemStatus()->setTracking(isInSession());
     }
-    reportPowerStateIfChanged();
-    getSystemStatus()->setTracking(isInSession());
 }
 
 bool GnssAdapter::setLocPositionMode(const LocPosMode& mode) {
@@ -3180,11 +3135,13 @@ GnssAdapter::reportResponse(LocationAPI* client, LocationError err, uint32_t ses
 {
     LOC_LOGD("%s]: client %p id %u err %u", __func__, client, sessionId, err);
 
-    auto it = mClientData.find(client);
-    if (it != mClientData.end() && it->second.responseCb != nullptr) {
-        it->second.responseCb(err, sessionId);
-    } else {
-        LOC_LOGW("%s]: client %p id %u not found in data", __func__, client, sessionId);
+    if (nullptr != client) {
+        auto it = mClientData.find(client);
+        if (it != mClientData.end() && it->second.responseCb != nullptr) {
+            it->second.responseCb(err, sessionId);
+        } else {
+            LOC_LOGW("%s]: client %p id %u not found in data", __func__, client, sessionId);
+        }
     }
 }
 
@@ -3322,7 +3279,6 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
         // find the smallest interval and powerMode
         TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
         GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
-        memset(&multiplexedOptions, 0, sizeof(multiplexedOptions));
         for (auto it = mTimeBasedTrackingSessions.begin(); it != mTimeBasedTrackingSessions.end(); ++it) {
             // if not set or there is a new smallest interval, then set the new interval
             if (0 == multiplexedOptions.size ||
@@ -3336,7 +3292,10 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
                 multiplexedPowerMode = it->second.powerMode;
             }
         }
-        bool updateOptions = false;
+        // if client is nullptr, that means that we do not have an active session
+        // running in the modem, e.g. when we are trying to resume from suspension.
+        // in that case, we need updateOptions to be true.
+        bool updateOptions = (nullptr == client);
         // if session we are starting has smaller interval then next smallest
         if (options.minInterval < multiplexedOptions.minInterval) {
             multiplexedOptions.minInterval = options.minInterval;
@@ -3727,8 +3686,11 @@ GnssAdapter::stopTracking(LocationAPI* client, uint32_t id)
     // inform engine hub that GNSS session has stopped
     mEngHubProxy->gnssStopFix();
 
-    mLocApi->stopFix(new LocApiResponse(*getContext(),
-                     [this, client, id] (LocationError err) {
+    // client is nullptr when we want to stop any tracking session,
+    // e.g. when suspend.
+    mLocApi->stopFix((nullptr == client) ? nullptr :
+            new LocApiResponse(*getContext(),
+                               [this, client, id] (LocationError err) {
         reportResponse(client, err, id);
     }));
 
@@ -4214,7 +4176,7 @@ bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
              * Send when gpsTimeOfWeekMs is closely aligned with integer boundary
              */
             if ((0 == mPrevNmeaRptTimeNsec) ||
-                (0 != gpsTimeOfWeekMs) && (NMEA_MIN_THRESHOLD_MSEC >= (gpsTimeOfWeekMs % 1000))) {
+                ((0 != gpsTimeOfWeekMs) && (NMEA_MIN_THRESHOLD_MSEC >= (gpsTimeOfWeekMs % 1000)))) {
                 retVal = true;
             } else {
                 uint64_t timeDiffMsec = ((currentTimeNsec - mPrevNmeaRptTimeNsec) / 1000000);
