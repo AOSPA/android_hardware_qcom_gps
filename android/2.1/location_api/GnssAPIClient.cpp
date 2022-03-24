@@ -27,6 +27,42 @@
  *
  */
 
+ /*
+Changes from Qualcomm Innovation Center are provided under the following license:
+
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #define LOG_NDEBUG 0
 #define LOG_TAG "LocSvc_GnssAPIClient"
 #define SINGLE_SHOT_MIN_TRACKING_INTERVAL_MSEC (590 * 60 * 60 * 1000) // 590 hours
@@ -55,6 +91,13 @@ static void convertGnssSvStatus(GnssSvNotification& in,
         hidl_vec<V2_0::IGnssCallback::GnssSvInfo>& out);
 static void convertGnssSvStatus(GnssSvNotification& in,
         hidl_vec<V2_1::IGnssCallback::GnssSvInfo>& out);
+
+// if ANDROID_REPORT_SPE_ONLY is not set in the izat.conf,
+// the default behavior is "report SPE PVT to Android GNSS API"
+static uint32_t sReportSpeOnly = 1;
+static loc_param_s_type izatConfParamTable[] = {
+    {"ANDROID_REPORT_SPE_ONLY", &sReportSpeOnly, nullptr, 'n'},
+};
 
 GnssAPIClient::GnssAPIClient(const sp<V1_0::IGnssCallback>& gpsCb,
         const sp<V1_0::IGnssNiCallback>& niCb) :
@@ -131,13 +174,6 @@ void GnssAPIClient::setCallbacks()
     locationCallbacks.size = sizeof(LocationCallbacks);
 
     static bool readConfig = false;
-    // if ANDROID_REPORT_SPE_ONLY is not set in the izat.conf,
-    // the default behavior is "report SPE PVT to Android GNSS API"
-    static uint32_t reportSpeOnly = 1;
-    static loc_param_s_type izatConfParamTable[] = {
-        {"ANDROID_REPORT_SPE_ONLY",      &reportSpeOnly,       nullptr, 'n'},
-    };
-
     if (false == readConfig) {
         UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izatConfParamTable);
         readConfig = true;
@@ -155,7 +191,7 @@ void GnssAPIClient::setCallbacks()
      * matter what the techonolgy is used;
      * When config is set to 0, register with trackingCb, this is the call back
      * which will report aggregated PVT to Android GNSS API*/
-    if (0 == reportSpeOnly) {
+    if (0 == sReportSpeOnly) {
         locationCallbacks.trackingCb = nullptr;
         locationCallbacks.trackingCb = [this](Location location) {
             onTrackingCb(location);
@@ -299,6 +335,11 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
     if (GNSS_POWER_MODE_INVALID != powerMode) {
         mTrackingOptions.powerMode = powerMode;
         mTrackingOptions.tbm = timeBetweenMeasurement;
+    }
+
+    mTrackingOptions.locReqEngTypeMask = LOC_REQ_ENGINE_SPE_BIT;
+    if (0 == sReportSpeOnly) {
+        mTrackingOptions.locReqEngTypeMask = LOC_REQ_ENGINE_FUSED_BIT;
     }
     locAPIUpdateTrackingOptions(mTrackingOptions);
     return retVal;

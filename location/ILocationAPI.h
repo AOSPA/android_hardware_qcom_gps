@@ -233,6 +233,14 @@ public:
     virtual void updateLocationSystemInfoListener(
             locationSystemInfoCallback locationSystemInfoCb,
             responseCallback responseCb) {}
+
+    /** @brief
+        Get Debug Report
+
+        @param
+        report: GnssDebugReport structure
+    */
+    virtual void getDebugReport(GnssDebugReport& report) {}
 };
 
 class ILocationControlAPI
@@ -494,7 +502,8 @@ public:
                 LOCATION_ERROR_SUCCESS if successful
                 LOCATION_ERROR_INVALID_PARAMETER if any parameters are invalid
     */
-    virtual uint32_t configDeadReckoningEngineParams(const DeadReckoningEngineConfig& dreConfig)=0;
+    virtual uint32_t configDeadReckoningEngineParams(
+            const DeadReckoningEngineConfig& dreConfig)=0;
 
     /** @brief
         This API is used to instruct the specified engine to be in
@@ -675,14 +684,6 @@ public:
         Close antenna info interface
     */
     virtual void antennaInfoClose() {}
-
-    /** @brief
-        Get Debug Report from HAL
-
-        @param
-        report: GnssDebugReport structure
-    */
-    virtual void getDebugReport(GnssDebugReport& report) {}
 
     /** @brief
         Enables/disables permissions to non-framework application use of GNSS

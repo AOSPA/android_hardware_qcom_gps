@@ -286,7 +286,6 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
             locationClientApiImpl->updateCallbacks(locationCallbacks);
             LOC_LOGi("Succesfully loaded LocationClientApi implementation.");
         }
-
         return locationClientApiImpl;
     }
 
@@ -722,6 +721,16 @@ void LocationAPI::stopNetworkLocation(trackingCallback* callback) {
         (*setter)(callback);
     } else {
         LOC_LOGe("dlGetSymFromLib failed for liblocationservice_glue.so");
+    }
+}
+
+void LocationAPI::getDebugReport(GnssDebugReport& report) {
+    if (gData.gnssInterface != NULL) {
+        pthread_mutex_lock(&gDataMutex);
+        gData.gnssInterface->getDebugReport(report);
+        pthread_mutex_unlock(&gDataMutex);
+    } else {
+        LOC_LOGe("No gnss interface available for Location API");
     }
 }
 
@@ -1267,21 +1276,6 @@ void LocationControlAPI::antennaInfoClose() {
     }
 
     pthread_mutex_unlock(&gDataMutex);
-
-    }
-
-void LocationControlAPI::getDebugReport(GnssDebugReport& report) {
-    pthread_mutex_lock(&gDataMutex);
-
-    if (gData.gnssInterface != NULL) {
-        gData.gnssInterface->getDebugReport(report);
-    }
-    else {
-        LOC_LOGe("No gnss interface available for Location Control API");
-    }
-
-    pthread_mutex_unlock(&gDataMutex);
-
 }
 
 void LocationControlAPI::enableNfwLocationAccess(std::vector<std::string>& enabledNfws) {
