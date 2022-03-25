@@ -252,22 +252,23 @@ void convertGnssEphemerisType(GnssEphemerisType& in, IGnssDebug::SatelliteEpheme
     }
 }
 
-void convertGnssEphemerisSource(GnssEphemerisSource& in, IGnssDebug::SatelliteEphemerisSource& out)
+void convertGnssEphemerisSource(GnssEphemerisSource& in,
+        SatellitePvt::SatelliteEphemerisSource& out)
 {
     switch (in) {
         case GNSS_EPH_SOURCE_DEMODULATED:
-            out = IGnssDebug::SatelliteEphemerisSource::DEMODULATED;
+            out = SatellitePvt::SatelliteEphemerisSource::DEMODULATED;
             break;
         case GNSS_EPH_SOURCE_SUPL_PROVIDED:
-            out = IGnssDebug::SatelliteEphemerisSource::SUPL_PROVIDED;
+            out = SatellitePvt::SatelliteEphemerisSource::SERVER_NORMAL;
             break;
         case GNSS_EPH_SOURCE_OTHER_SERVER_PROVIDED:
-            out = IGnssDebug::SatelliteEphemerisSource::OTHER_SERVER_PROVIDED;
+            out = SatellitePvt::SatelliteEphemerisSource::SERVER_LONG_TERM;
             break;
         case GNSS_EPH_SOURCE_LOCAL:
         case GNSS_EPH_SOURCE_UNKNOWN:
         default:
-            out = IGnssDebug::SatelliteEphemerisSource::OTHER;
+            out = SatellitePvt::SatelliteEphemerisSource::OTHER;
             break;
     }
 }

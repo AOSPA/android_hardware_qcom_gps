@@ -118,13 +118,14 @@ struct Gnss : public BnGnss {
     ScopedAStatus injectLocation(const GnssLocation& location) override;
     ScopedAStatus injectBestLocation(const GnssLocation& gnssLocation) override;
     ScopedAStatus deleteAidingData(IGnss::GnssAidingData aidingDataFlags) override;
-    ScopedAStatus setPositionMode(IGnss::GnssPositionMode mode,
-            IGnss::GnssPositionRecurrence recurrence, int32_t minIntervalMs,
-            int32_t preferredAccuracyMeters, int32_t preferredTimeMs,
-            bool lowPowerMode) override;
+    ScopedAStatus setPositionMode(const IGnss::PositionModeOptions& options) override;
     ScopedAStatus getExtensionGnssAntennaInfo(shared_ptr<IGnssAntennaInfo>* _aidl_return) override;
     ScopedAStatus getExtensionMeasurementCorrections(
             shared_ptr<IMeasurementCorrectionsInterface>* _aidl_return) override;
+    ScopedAStatus startSvStatus() override;
+    ScopedAStatus stopSvStatus() override;
+    ScopedAStatus startNmea() override;
+    ScopedAStatus stopNmea() override;
 
     // These methods are not part of the IGnss base class.
     GnssAPIClient* getApi();

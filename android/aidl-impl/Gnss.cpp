@@ -303,6 +303,22 @@ ScopedAStatus Gnss::stop()  {
     }
     return ScopedAStatus::ok();
  }
+ScopedAStatus Gnss::startSvStatus() {
+    start();
+    return ScopedAStatus::ok();
+}
+ScopedAStatus Gnss::stopSvStatus() {
+    stop();
+    return ScopedAStatus::ok();
+}
+ScopedAStatus Gnss::startNmea() {
+    ENTRY_LOG_CALLFLOW();
+    return ScopedAStatus::ok();
+}
+ScopedAStatus Gnss::stopNmea() {
+    ENTRY_LOG_CALLFLOW();
+    return ScopedAStatus::ok();
+}
 ScopedAStatus Gnss::injectTime(int64_t timeMs, int64_t timeReferenceMs,
             int32_t uncertaintyMs) {
     return ScopedAStatus::ok();
@@ -360,15 +376,12 @@ void Gnss::odcpiRequestCb(const OdcpiRequestInfo& request) {
         LOC_LOGe("ODCPI request not supported.");
     }
 }
-ScopedAStatus Gnss::setPositionMode(IGnss::GnssPositionMode mode,
-            IGnss::GnssPositionRecurrence recurrence, int32_t minIntervalMs,
-            int32_t preferredAccuracyMeters, int32_t preferredTimeMs,
-            bool lowPowerMode) {
+ScopedAStatus Gnss::setPositionMode(const IGnss::PositionModeOptions& options) {
     ENTRY_LOG_CALLFLOW();
     GnssAPIClient* api = getApi();
     if (api) {
-        api->gnssSetPositionMode(mode, recurrence, minIntervalMs, preferredAccuracyMeters,
-                preferredTimeMs);
+        api->gnssSetPositionMode(options.mode, options.recurrence, options.minIntervalMs,
+                options.preferredAccuracyMeters, options.preferredTimeMs);
     }
     return ScopedAStatus::ok();
 }

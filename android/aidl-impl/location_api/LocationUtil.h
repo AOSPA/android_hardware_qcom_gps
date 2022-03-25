@@ -40,6 +40,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <aidl/android/hardware/gnss/measurement_corrections/SingleSatCorrection.h>
 #include <aidl/android/hardware/gnss/measurement_corrections/MeasurementCorrections.h>
 #include <aidl/android/hardware/gnss/GnssLocation.h>
+#include <aidl/android/hardware/gnss/SatellitePvt.h>
 #include <aidl/android/hardware/gnss/GnssConstellationType.h>
 
 namespace android {
@@ -52,6 +53,7 @@ using ::aidl::android::hardware::gnss::measurement_corrections::MeasurementCorre
 using ::aidl::android::hardware::gnss::IGnssDebug;
 using ::aidl::android::hardware::gnss::GnssLocation;
 using ::aidl::android::hardware::gnss::GnssConstellationType;
+using ::aidl::android::hardware::gnss::SatellitePvt;
 
 void convertGnssLocation(const GnssLocation& in, Location& out);
 void convertGnssLocation(Location& in, GnssLocation& out);
@@ -59,7 +61,8 @@ void convertGnssConstellationType(GnssSvType& in, GnssConstellationType& out);
 void convertGnssSvid(GnssSv& in, int& out);
 void convertGnssSvid(GnssMeasurementsData& in, int16_t& out);
 void convertGnssEphemerisType(GnssEphemerisType& in, IGnssDebug::SatelliteEphemerisType& out);
-void convertGnssEphemerisSource(GnssEphemerisSource& in, IGnssDebug::SatelliteEphemerisSource& out);
+void convertGnssEphemerisSource(GnssEphemerisSource& in,
+        SatellitePvt::SatelliteEphemerisSource& out);
 void convertGnssEphemerisHealth(GnssEphemerisHealth& in, IGnssDebug::SatelliteEphemerisHealth& out);
 void convertSingleSatCorrections(const SingleSatCorrection& in, GnssSingleSatCorrection& out);
 void convertMeasurementCorrections(const MeasurementCorrections& in,

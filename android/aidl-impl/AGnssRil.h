@@ -57,7 +57,7 @@ public:
   ScopedAStatus setRefLocation(const IAGnssRil::AGnssRefLocation& agnssReflocation) override {
       return ScopedAStatus::ok();
   }
-  ScopedAStatus setSetId(IAGnssRil::SetIDType type, const std::string& setid) override {
+  ScopedAStatus setSetId(IAGnssRil::SetIdType type, const std::string& setid) override {
       return ScopedAStatus::ok();
   }
   ScopedAStatus updateNetworkState(const IAGnssRil::NetworkAttributes& attributes) override;

@@ -275,44 +275,44 @@ void GnssAPIClient::gnssDeleteAidingData(IGnss::GnssAidingData aidingDataFlags)
         GNSS_AIDING_DATA_SV_TYPE_NAVIC_BIT;
     data.posEngineMask = STANDARD_POSITIONING_ENGINE;
 
-    if (aidingDataFlags == IGnss::GnssAidingData::DELETE_ALL)
+    if (aidingDataFlags == IGnss::GnssAidingData::ALL)
         data.deleteAll = true;
     else {
         switch (aidingDataFlags) {
-        case IGnss::GnssAidingData::DELETE_EPHEMERIS:
+        case IGnss::GnssAidingData::EPHEMERIS:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_EPHEMERIS_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_ALMANAC:
+        case IGnss::GnssAidingData::ALMANAC:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_ALMANAC_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_POSITION:
+        case IGnss::GnssAidingData::POSITION:
             data.common.mask |= GNSS_AIDING_DATA_COMMON_POSITION_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_TIME:
+        case IGnss::GnssAidingData::TIME:
             data.common.mask |= GNSS_AIDING_DATA_COMMON_TIME_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_IONO:
+        case IGnss::GnssAidingData::IONO:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_IONOSPHERE_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_UTC:
+        case IGnss::GnssAidingData::UTC:
             data.common.mask |= GNSS_AIDING_DATA_COMMON_UTC_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_HEALTH:
+        case IGnss::GnssAidingData::HEALTH:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_HEALTH_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_SVDIR:
+        case IGnss::GnssAidingData::SVDIR:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_DIRECTION_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_SVSTEER:
+        case IGnss::GnssAidingData::SVSTEER:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_STEER_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_SADATA:
+        case IGnss::GnssAidingData::SADATA:
             data.sv.svMask |= GNSS_AIDING_DATA_SV_SA_DATA_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_RTI:
+        case IGnss::GnssAidingData::RTI:
             data.common.mask |= GNSS_AIDING_DATA_COMMON_RTI_BIT;
             break;
-        case IGnss::GnssAidingData::DELETE_CELLDB_INFO:
+        case IGnss::GnssAidingData::CELLDB_INFO:
             data.common.mask |= GNSS_AIDING_DATA_COMMON_CELLDB_BIT;
             break;
 
