@@ -1042,28 +1042,37 @@ GnssAdapter::setConfig()
 
     updateClientsEventMask();
 
-    // set nmea mask type
-    uint32_t mask = 0;
-    if (NMEA_PROVIDER_MP == ContextBase::mGps_conf.NMEA_PROVIDER) {
-        mask |= LOC_NMEA_ALL_GENERAL_SUPPORTED_MASK;
-        if (ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED) {
-            mask |= LOC_NMEA_MASK_TAGBLOCK_V02;
+    if (!ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+        // set nmea mask type
+        uint32_t mask = 0;
+        if (NMEA_PROVIDER_MP == ContextBase::mGps_conf.NMEA_PROVIDER) {
+            mask |= LOC_NMEA_ALL_GENERAL_SUPPORTED_MASK;
+            if (ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED) {
+                mask |= LOC_NMEA_MASK_TAGBLOCK_V02;
+            }
         }
-    }
-    if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02)) {
-        mask |= LOC_NMEA_MASK_DEBUG_V02;
-    }
-    if (mNmeaMask != mask) {
-        mNmeaMask = mask;
-        if (mNmeaMask) {
-            for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-                if ((it->second.gnssNmeaCb != nullptr)) {
-                    updateEvtMask(LOC_API_ADAPTER_BIT_NMEA_1HZ_REPORT,
-                                  LOC_REGISTRATION_MASK_ENABLED);
-                    break;
+
+        if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02)) {
+            mask |= LOC_NMEA_MASK_DEBUG_V02;
+        }
+
+        if (mNmeaMask != mask) {
+            mNmeaMask = mask;
+            if (mNmeaMask) {
+                for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
+                    if ((it->second.gnssNmeaCb != nullptr)) {
+                        updateEvtMask(LOC_API_ADAPTER_BIT_NMEA_1HZ_REPORT,
+                                LOC_REGISTRATION_MASK_ENABLED);
+                        break;
+                    }
                 }
             }
         }
+    } else {
+        // Modem does not provide noraml NMEA if ENGINE_DEBUG_DATA feature is available
+        // ensuring AP to nmea generation in this case
+        ContextBase::mGps_conf.NMEA_PROVIDER =  NMEA_PROVIDER_AP;
+        updateEvtMask(LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT, LOC_REGISTRATION_MASK_ENABLED);
     }
 
     std::string oldMoServerUrl = getMoServerUrl();
@@ -1130,20 +1139,23 @@ GnssAdapter::setConfig()
 
         // set nmea mask type
         uint32_t mask = 0;
-        if (NMEA_PROVIDER_MP == gpsConf.NMEA_PROVIDER) {
-            mask |= LOC_NMEA_ALL_GENERAL_SUPPORTED_MASK;
-            if (gpsConf.NMEA_TAG_BLOCK_GROUPING_ENABLED) {
-                mask |= LOC_NMEA_MASK_TAGBLOCK_V02;
+        if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+            mask |= LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT;
+        } else {
+            if (NMEA_PROVIDER_MP == gpsConf.NMEA_PROVIDER) {
+                mask |= LOC_NMEA_ALL_GENERAL_SUPPORTED_MASK;
+                if (gpsConf.NMEA_TAG_BLOCK_GROUPING_ENABLED) {
+                    mask |= LOC_NMEA_MASK_TAGBLOCK_V02;
+                }
+            }
+            if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02)) {
+                mask |= LOC_NMEA_MASK_DEBUG_V02;
+            }
+
+            if (mask != 0) {
+                mLocApi->setNMEATypesSync(mask);
             }
         }
-        if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02)) {
-            mask |= LOC_NMEA_MASK_DEBUG_V02;
-        }
-
-        if (mask != 0) {
-            mLocApi->setNMEATypesSync(mask);
-        }
-
         // load tunc configuration from config file on first boot-up,
         // e.g.: adapter.mLocConfigInfo.tuncConfigInfo.isValid is false
         if (mLocConfigInfo.tuncConfigInfo.isValid == false) {
@@ -2754,8 +2766,12 @@ GnssAdapter::updateClientsEventMask()
         if (it->second.gnssSvCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_SATELLITE_REPORT;
         }
-        if ((it->second.gnssNmeaCb != nullptr) && (mNmeaMask)) {
-            mask |= LOC_API_ADAPTER_BIT_NMEA_1HZ_REPORT;
+        if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+            mask |= LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT;
+        } else {
+            if ((it->second.gnssNmeaCb != nullptr) && (mNmeaMask)) {
+                mask |= LOC_API_ADAPTER_BIT_NMEA_1HZ_REPORT;
+            }
         }
         if (it->second.gnssMeasurementsCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_GNSS_MEASUREMENT;
@@ -2773,8 +2789,12 @@ GnssAdapter::updateClientsEventMask()
         }
         if (it->second.gnssDataCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_PARSED_POSITION_REPORT;
-            mask |= LOC_API_ADAPTER_BIT_NMEA_1HZ_REPORT;
-            updateNmeaMask(mNmeaMask | LOC_NMEA_MASK_DEBUG_V02);
+            if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+                mask |= LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT;
+            } else {
+                mask |= LOC_API_ADAPTER_BIT_NMEA_1HZ_REPORT;
+                updateNmeaMask(mNmeaMask | LOC_NMEA_MASK_DEBUG_V02);
+            }
         }
     }
 
@@ -2987,6 +3007,9 @@ GnssAdapter::getCapabilities()
     }
     if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02)) {
         mask |= LOCATION_CAPABILITIES_AGPM_BIT;
+    }
+    if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+        mask |= LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT;
     }
     //Get QWES feature status mask
     mask |= ContextBase::getQwesFeatureStatus();
@@ -4369,6 +4392,30 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
             checkUpdateDgnssNtrip(isLocationValid);
         }
     }
+}
+
+void GnssAdapter::reportEngDebugDataInfo(const GnssEngineDebugDataInfo& gnssEngineDebugDataInfo) {
+    if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+        LOC_LOGd("Recived Engine debug data info");
+        SystemStatus* s = getSystemStatus();
+        if (nullptr != s) {
+            s->setEngineDebugDataInfo(gnssEngineDebugDataInfo);
+        }
+    }
+}
+
+void GnssAdapter::reportEngDebugDataInfoEvent(GnssEngineDebugDataInfo& gnssEngineDebugDataInfo) {
+    struct MsgReportEngDebugDataInfo : public LocMsg {
+        GnssAdapter& mAdapter;
+        const GnssEngineDebugDataInfo mGnssEngineDebugDataInfo;
+        inline MsgReportEngDebugDataInfo(GnssAdapter& adapter, GnssEngineDebugDataInfo&
+            gnssEngineDebugDataInfo) : mGnssEngineDebugDataInfo(gnssEngineDebugDataInfo),
+                mAdapter(adapter) {}
+        inline virtual void proc() const {
+            mAdapter.reportEngDebugDataInfo(mGnssEngineDebugDataInfo);
+        }
+    };
+    sendMsg(new MsgReportEngDebugDataInfo(*this, gnssEngineDebugDataInfo));
 }
 
 void
@@ -6134,28 +6181,28 @@ GnssAdapter::getAgcInformation(GnssMeasurementsNotification& measurements, int m
                 case GNSS_SV_TYPE_GPS:
                 case GNSS_SV_TYPE_QZSS:
                     measurements.measurements[i].agcLevelDb =
-                            -(double)reports.mRfAndParams.back().mJammerGps;
+                            -((double)reports.mRfAndParams.back().mJammerGps / 100.0);
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
 
                 case GNSS_SV_TYPE_GALILEO:
                     measurements.measurements[i].agcLevelDb =
-                            -(double)reports.mRfAndParams.back().mJammerGal;
+                            -((double)reports.mRfAndParams.back().mJammerGal / 100.0);
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
 
                 case GNSS_SV_TYPE_GLONASS:
                     measurements.measurements[i].agcLevelDb =
-                            -(double)reports.mRfAndParams.back().mJammerGlo;
+                            -((double)reports.mRfAndParams.back().mJammerGlo / 100.0);
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
 
                 case GNSS_SV_TYPE_BEIDOU:
                     measurements.measurements[i].agcLevelDb =
-                            -(double)reports.mRfAndParams.back().mJammerBds;
+                            -((double)reports.mRfAndParams.back().mJammerBds / 100.0);
                     measurements.measurements[i].flags |=
                             GNSS_MEASUREMENTS_DATA_AUTOMATIC_GAIN_CONTROL_BIT;
                     break;
@@ -6194,45 +6241,45 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] =
-                        -(double)reports.mRfAndParams.back().mJammerGps;
+                        -((double)reports.mRfAndParams.back().mJammerGps / 100.0);
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] =
-                        (double)reports.mRfAndParams.back().mJammerGps;
+                        ((double)reports.mRfAndParams.back().mJammerGps / 100.0);
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_QZSS_L1CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_QZSS_L1CA] =
-                        -(double)reports.mRfAndParams.back().mJammerGps;
+                        -((double)reports.mRfAndParams.back().mJammerGps / 100.0);
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_QZSS_L1CA] =
-                        (double)reports.mRfAndParams.back().mJammerGps;
+                        ((double)reports.mRfAndParams.back().mJammerGps / 100.0);
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_SBAS_L1_CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_SBAS_L1_CA] =
-                        -(double)reports.mRfAndParams.back().mJammerGps;
+                        -((double)reports.mRfAndParams.back().mJammerGps / 100.0);
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_SBAS_L1_CA] =
-                        (double)reports.mRfAndParams.back().mJammerGps;
+                        ((double)reports.mRfAndParams.back().mJammerGps / 100.0);
             }
             if (GNSS_INVALID_JAMMER_IND != reports.mRfAndParams.back().mJammerGlo) {
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1] =
-                        -(double)reports.mRfAndParams.back().mJammerGlo;
+                        -((double)reports.mRfAndParams.back().mJammerGlo / 100.0);
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1] =
-                        (double)reports.mRfAndParams.back().mJammerGlo;
+                        ((double)reports.mRfAndParams.back().mJammerGlo / 100.0);
             }
             if (GNSS_INVALID_JAMMER_IND != reports.mRfAndParams.back().mJammerBds) {
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I] =
-                        -(double)reports.mRfAndParams.back().mJammerBds;
+                        -((double)reports.mRfAndParams.back().mJammerBds / 100.0);
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I] =
-                        (double)reports.mRfAndParams.back().mJammerBds;
+                        ((double)reports.mRfAndParams.back().mJammerBds / 100.0);
             }
             if (GNSS_INVALID_JAMMER_IND != reports.mRfAndParams.back().mJammerGal) {
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
                 data.agc[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C] =
-                        -(double)reports.mRfAndParams.back().mJammerGal;
+                        -((double)reports.mRfAndParams.back().mJammerGal / 100.0);
                 data.jammerInd[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C] =
-                        (double)reports.mRfAndParams.back().mJammerGal;
+                        ((double)reports.mRfAndParams.back().mJammerGal / 100.0);
             }
         }
     }
