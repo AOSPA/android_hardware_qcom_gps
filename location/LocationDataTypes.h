@@ -1909,14 +1909,33 @@ struct LeapSecondSystemInfo {
 };
 
 typedef uint32_t LocationSystemInfoMask;
-typedef enum {
+enum LocationSystemInfoDataBits {
     // contains current leap second or leap second change info
     LOCATION_SYS_INFO_LEAP_SECOND = (1ULL << 0),
-} LocationSystemInfoDataBits;
+};
 
 struct LocationSystemInfo {
     LocationSystemInfoMask systemInfoMask;
     LeapSecondSystemInfo   leapSecondSysInfo;
+};
+
+// Disaster crisis report type from GNSS engine
+enum GnssDcReportType {
+    GNSS_DC_REPORT_TYPE_UNDEFINED = 0,
+    // Disaster Prevention information provided by Japan Meteolorogical Agency
+    QZSS_JMA_DISASTER_PREVENTION_INFO = 43,
+    // Disaster Prevention information provided by other organizations
+    QZSS_NON_JMA_DISASTER_PREVENTION_INFO = 44,
+};
+
+// Disaster crisis report from GNSS engine
+struct GnssDcReportInfo {
+    // dc report type, as defined in standard
+    GnssDcReportType     dcReportType;
+    // number of valid bits that client should make use in dcReportData
+    uint32_t             numValidBits;
+    // dc report data, packed into uint8_t
+    std::vector<uint8_t> dcReportData;
 };
 
 // Specify the set of terrestrial technologies
@@ -2419,6 +2438,13 @@ typedef std::function<void(
     LocationSystemInfo locationSystemInfo
 )> locationSystemInfoCallback;
 
+/* LocationSystemInfoCb is for receiving rare occuring location
+   system information update. optional, can be NULL.
+*/
+typedef std::function<void(
+   const GnssDcReportInfo& dcReportInfo
+)> gnssDcReportCallback;
+
 typedef std::function<void(
 )> locationApiDestroyCompleteCallback;
 
@@ -2491,7 +2517,8 @@ typedef struct {
     gnssMeasurementsCallback gnssNHzMeasurementsCb;  // optional
     batchingStatusCallback batchingStatusCb;         // optional
     locationSystemInfoCallback locationSystemInfoCb; // optional
-    engineLocationsInfoCallback engineLocationsInfoCb;     // optional
+    engineLocationsInfoCallback engineLocationsInfoCb; // optional
+    gnssDcReportCallback gnssDcReportCb;               // optional
 } LocationCallbacks;
 
 typedef struct {

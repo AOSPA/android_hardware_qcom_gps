@@ -193,7 +193,8 @@ static bool needsGnssTrackingInfo(LocationCallbacks& locationCallbacks)
             locationCallbacks.gnssNmeaCb != nullptr ||
             locationCallbacks.gnssDataCb != nullptr ||
             locationCallbacks.gnssMeasurementsCb != nullptr ||
-            locationCallbacks.gnssNHzMeasurementsCb != nullptr);
+            locationCallbacks.gnssNHzMeasurementsCb != nullptr ||
+            locationCallbacks.gnssDcReportCb != nullptr);
 }
 
 static bool isGnssClient(LocationCallbacks& locationCallbacks)
@@ -207,7 +208,8 @@ static bool isGnssClient(LocationCallbacks& locationCallbacks)
             locationCallbacks.gnssDataCb != nullptr ||
             locationCallbacks.gnssMeasurementsCb != nullptr ||
             locationCallbacks.gnssNHzMeasurementsCb != nullptr ||
-            locationCallbacks.locationSystemInfoCb != nullptr);
+            locationCallbacks.locationSystemInfoCb != nullptr ||
+            locationCallbacks.gnssDcReportCb != nullptr);
 }
 
 static bool isBatchingClient(LocationCallbacks& locationCallbacks)

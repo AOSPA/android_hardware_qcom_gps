@@ -227,6 +227,7 @@ public:
     void reportXtraServer(const char* url1, const char* url2,
                           const char* url3, const int maxlength);
     void reportLocationSystemInfo(const LocationSystemInfo& locationSystemInfo);
+    void reportDcMessage(const GnssDcReportInfo& dcReport);
     void requestXtraData();
     void requestTime();
     void requestLocation();
