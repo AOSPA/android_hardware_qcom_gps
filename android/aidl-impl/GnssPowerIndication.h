@@ -67,6 +67,7 @@ namespace implementation {
 using ::aidl::android::hardware::gnss::BnGnssPowerIndication;
 using ::aidl::android::hardware::gnss::IGnssPowerIndicationCallback;
 using ::aidl::android::hardware::gnss::GnssPowerStats;
+using ::aidl::android::hardware::gnss::ElapsedRealtime;
 using ::std::shared_ptr;
 using ::ndk::ScopedAStatus;
 

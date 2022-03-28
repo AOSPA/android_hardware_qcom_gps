@@ -159,13 +159,20 @@ void GnssPowerIndication::piGnssPowerIndicationCb(GnssPowerStatistics gnssPowerS
 
 void GnssPowerIndication::gnssPowerIndicationCb(GnssPowerStatistics gnssPowerStatistics) {
 
-    GnssPowerStats gnssPowerStats = {};
-
-    gnssPowerStats.elapsedRealtime.flags |= gnssPowerStats.elapsedRealtime.HAS_TIMESTAMP_NS;
-    gnssPowerStats.elapsedRealtime.timestampNs = gnssPowerStatistics.elapsedRealTime;
-    gnssPowerStats.elapsedRealtime.flags |= gnssPowerStats.elapsedRealtime.HAS_TIME_UNCERTAINTY_NS;
-    gnssPowerStats.elapsedRealtime.timeUncertaintyNs = gnssPowerStatistics.elapsedRealTimeUnc;
-    gnssPowerStats.totalEnergyMilliJoule = gnssPowerStatistics.totalEnergyMilliJoule;
+    ElapsedRealtime elapsedRealtime = {
+            .flags = ElapsedRealtime::HAS_TIMESTAMP_NS | ElapsedRealtime::HAS_TIME_UNCERTAINTY_NS,
+            .timestampNs = (int64_t)gnssPowerStatistics.elapsedRealTime,
+            .timeUncertaintyNs = (double)gnssPowerStatistics.elapsedRealTimeUnc,
+    };
+    GnssPowerStats gnssPowerStats = {
+            .elapsedRealtime = elapsedRealtime,
+            .totalEnergyMilliJoule = gnssPowerStatistics.totalEnergyMilliJoule,
+            .singlebandTrackingModeEnergyMilliJoule = 0.0,
+            .multibandTrackingModeEnergyMilliJoule = 0.0,
+            .singlebandAcquisitionModeEnergyMilliJoule = 0.0,
+            .multibandAcquisitionModeEnergyMilliJoule = 0.0,
+            .otherModesEnergyMilliJoule = {0},
+    };
 
     LOC_LOGd("gnssPowerStats.elapsedRealtime.flags: 0x%08X"
              " gnssPowerStats.elapsedRealtime.timestampNs: %" PRId64", "
