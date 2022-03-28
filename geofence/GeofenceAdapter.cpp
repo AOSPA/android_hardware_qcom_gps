@@ -242,7 +242,8 @@ GeofenceAdapter::restartGeofences()
         GeofenceOption options = {sizeof(GeofenceOption),
                                    object.breachMask,
                                    object.responsiveness,
-                                   object.dwellTime};
+                                   object.dwellTime,
+                                   object.confidence};
         GeofenceInfo info = {sizeof(GeofenceInfo),
                              object.latitude,
                              object.longitude,
@@ -742,6 +743,7 @@ GeofenceAdapter::saveGeofenceItem(LocationAPI* client, uint32_t clientId, uint32
                              options.breachTypeMask,
                              options.responsiveness,
                              options.dwellTime,
+                             options.confidence,
                              info.latitude,
                              info.longitude,
                              info.radius,
@@ -808,6 +810,7 @@ GeofenceAdapter::modifyGeofenceItem(uint32_t hwId, const GeofenceOption& options
         it->second.breachMask = options.breachTypeMask;
         it->second.responsiveness = options.responsiveness;
         it->second.dwellTime = options.dwellTime;
+        it->second.confidence = options.confidence;
         dump();
     } else {
         LOC_LOGE("%s]: geofence item to modify not found. hwId %u", __func__, hwId);
