@@ -603,10 +603,13 @@ public:
     virtual uint32_t updateCallbacks(LocationControlCallbacks& callbacks) override;
 
     /** @brief
-        Inject on-demand coarse position
+        This API is used to inject location into modem.
 
         @param
-        location: Location structure
+        location: location that contains PVT info. <br/>
+
+        @return
+        none
     */
     virtual void odcpiInject(const ::Location& location) override;
 
@@ -752,7 +755,6 @@ public:
     */
     virtual uint32_t configEngineIntegrityRisk(
             PositioningEngineMask engType, uint32_t integrityRisk) override;
-
 };
 
 #endif /* LOCATIONAPI_H */
