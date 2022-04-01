@@ -716,6 +716,12 @@ typedef uint16_t GnssSvPolyStatusMaskValidity;
 #define GNSS_SV_POLY_DELETE_VALID_V02 ((GnssSvPolyStatusMaskValidity)0x04)
 #define GNSS_SV_POLY_SRC_GAL_FNAV_OR_INAV_VALID_V02 ((GnssSvPolyStatusMaskValidity)0x08)
 
+typedef uint16_t GnssLocEphemerisSource;
+#define GNSS_LOC_EPHEMERIS_SOURCE_OTA_V02 ((GnssLocEphemerisSource)0x01)
+#define GNSS_LOC_EPHEMERIS_SOURCE_XTRA_V02 ((GnssLocEphemerisSource)0x02)
+#define GNSS_LOC_EPHEMERIS_SOURCE_NETWORK_INJECTED_V02 ((GnssLocEphemerisSource)0x03)
+#define GNSS_LOC_EPHEMERIS_SOURCE_EFS_V02 ((GnssLocEphemerisSource)0x04)
+
 typedef struct {
     /** Specifies GNSS signal type
         Mandatory Field*/
@@ -1222,6 +1228,10 @@ enum ulp_gnss_sv_measurement_valid_flags{
 #define ULP_GNSS_SV_POLY_BIT_NAVIC_TGD_L5           (0x040000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_TGD_B1C            (0x080000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_ISC_B1C            (0x100000000)
+#define ULP_GNSS_SV_POLY_BIT_TOC                    (0x800000000)
+#define ULP_GNSS_SV_POLY_BIT_IODC                   (0x1000000000)
+#define ULP_GNSS_SV_POLY_BIT_TOE                    (0x2000000000)
+#define ULP_GNSS_SV_POLY_BIT_EPHEMERIS_SOURCE       (0x4000000000)
 
 typedef enum
 {
@@ -1758,6 +1768,16 @@ typedef struct {
     float navicTgdL5;
     float bdsTgdB1c;
     float bdsIscB1c;
+    uint32_t     toc;       /*  Clock data reference time of week [seconds] */
+    uint16_t     iodc;      /*  Issue of data, clock [unitless] */
+    uint32_t     toe;       /*  Reference time of ephemeris [seconds] */
+    GnssLocEphemerisSource gnssLocEphemerisSource;
+    /**<   Source of ephemeris if polynomials are based on ephemeris. Valid Values:
+    - GNSS_LOC_EPHEMERIS_SOURCE_OTA_V02 (1) --  Ephemeris decoded over-the-air
+    - GNSS_LOC_EPHEMERIS_SOURCE_XTRA_V02 (2) --  Ephemeris from the XTRA file
+    - GNSS_LOC_EPHEMERIS_SOURCE_NETWORK_INJECTED_V02 (3) --  Network-injected ephemeris
+    - GNSS_LOC_EPHEMERIS_SOURCE_EFS_V02 (4) --  Source is EFS
+    */
 } GnssSvPolynomial;
 
 typedef enum {

@@ -76,6 +76,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GNSS_NI_MESSAGE_ID_MAX (2048)
 #define GNSS_SV_MAX            (128)
 #define GNSS_MEASUREMENTS_MAX  (128)
+#define GNSS_BANDS_MAX          (32)
 #define GNSS_UTC_TIME_OFFSET   (3657)
 
 #define GNSS_BUGREPORT_GPS_MIN    (1)
@@ -1511,13 +1512,26 @@ typedef struct {
     double satClkDriftMps;
 } GnssSatelliteClockInfo;
 
+typedef enum {
+    GNSS_EPHEMERIS_SOURCE_EXT_INVALID = 0,
+    GNSS_EPHEMERIS_SOURCE_EXT_DEMODULATED,
+    GNSS_EPHEMERIS_SOURCE_EXT_SERVER_NORMAL,
+    GNSS_EPHEMERIS_SOURCE_EXT_SERVER_LONG_TERM,
+    GNSS_EPHEMERIS_SOURCE_EXT_OTHER,
+} GnssEphemerisSourceExt;
+
 typedef struct {
     GnssSatellitePvtFlagsMask flags;
     GnssSatellitePositionEcef satPosEcef;
     GnssSatelliteVelocityEcef satVelEcef;
     GnssSatelliteClockInfo satClockInfo;
-    double ionoDelayMeters;
-    double tropoDelayMeters;
+    double  ionoDelayMeters;
+    double  tropoDelayMeters;
+    int64_t TOC;
+    int     IODC;
+    int64_t TOE;
+    int     IODE;
+    GnssEphemerisSourceExt ephemerisSource;
 } GnssSatellitePvt;
 
 typedef struct {
@@ -1645,11 +1659,19 @@ typedef struct {
 } GnssDataNotification;
 
 typedef struct {
+    double      agcLevelDb;
+    GnssSvType  svType;
+    double      carrierFrequencyHz;
+} GnssMeasurementsAgc;
+
+typedef struct {
     uint32_t size;         // set to sizeof(GnssMeasurementsNotification)
     bool isNhz;            // NHz indicator
     uint32_t count;        // number of items in GnssMeasurements array
     GnssMeasurementsData measurements[GNSS_MEASUREMENTS_MAX];
     GnssMeasurementsClock clock; // clock
+    uint32_t agcCount;     // number of items in GnssMeasurementsAgc array
+    GnssMeasurementsAgc gnssAgc[GNSS_BANDS_MAX];
 } GnssMeasurementsNotification;
 
 typedef uint32_t GnssSvId;
