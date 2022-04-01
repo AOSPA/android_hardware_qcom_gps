@@ -77,7 +77,6 @@ namespace loc_core {
 
 #define SLL_LOC_API_LIB_NAME "libsynergy_loc_api.so"
 #define LOC_APIV2_0_LIB_NAME "libloc_api_v02.so"
-#define IS_SS5_HW_ENABLED  1
 
 loc_gps_cfg_s_type ContextBase::mGps_conf {};
 loc_sap_cfg_s_type ContextBase::mSap_conf {};
@@ -248,8 +247,8 @@ void ContextBase::readConfig()
             sNmeaReportRate = GNSS_NMEA_REPORT_RATE_NHZ;
         }
         LOC_LOGI("%s] GNSS Deployment: %s", __FUNCTION__,
-                ((mGps_conf.GNSS_DEPLOYMENT == 1) ? "SS5" :
-                ((mGps_conf.GNSS_DEPLOYMENT == 2) ? "QFUSION" : "QGNSS")));
+                ((mGps_conf.GNSS_DEPLOYMENT == QCSR_SS5_ENABLED) ? "SS5" :
+                ((mGps_conf.GNSS_DEPLOYMENT == PDS_API_ENABLED) ? "QFUSION" : "QGNSS")));
 
         switch (getTargetGnssType(loc_get_target())) {
           case GNSS_GSS:
@@ -315,7 +314,7 @@ LocApiBase* ContextBase::createLocApi(LOC_API_ADAPTER_EVENT_MASK_T exMask)
         if (NULL == (locApi = mLBSProxy->getLocApi(exMask, this))) {
             void *handle = NULL;
 
-            if (IS_SS5_HW_ENABLED == mGps_conf.GNSS_DEPLOYMENT) {
+            if (QCSR_SS5_ENABLED == mGps_conf.GNSS_DEPLOYMENT) {
                 libname = SLL_LOC_API_LIB_NAME;
             }
 
