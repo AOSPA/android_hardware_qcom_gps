@@ -928,7 +928,8 @@ public:
     bool eventDataItemNotify(IDataItemCore* dataitem);
     bool setNmeaString(const char *data, uint32_t len);
     void setEngineDebugDataInfo(const GnssEngineDebugDataInfo& gnssEngineDebugDataInfo);
-    bool getReport(SystemStatusReports& reports, bool isLatestonly = false) const;
+    bool getReport(SystemStatusReports& reports, bool isLatestonly = false,
+            bool inSessionOnly = true) const;
     bool setDefaultGnssEngineStates(void);
     bool eventConnectionStatus(bool connected, int8_t type,
                                bool roaming, NetworkHandle networkHandle, string& apn);

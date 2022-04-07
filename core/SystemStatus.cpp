@@ -1823,9 +1823,10 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
 
 @return     true when successfully done
 ******************************************************************************/
-bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly) const {
+bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly,
+        bool inSessionOnly) const {
     pthread_mutex_lock(&mMutexSystemStatus);
-    if (!mTracking) {
+    if (inSessionOnly && !mTracking) {
         pthread_mutex_unlock(&mMutexSystemStatus);
         return true;
     }
