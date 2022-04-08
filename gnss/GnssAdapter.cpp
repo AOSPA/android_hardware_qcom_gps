@@ -5416,7 +5416,7 @@ void GnssAdapter::injectOdcpi(const Location& location)
         mAddressRequestCb(location);
     }
 
-    mLocApi->injectPosition(location, true);
+    mLocApi->injectPosition(location, mOdcpiTimer.isActive());
 }
 
 void GnssAdapter::setAddressRequestCbCommand(
