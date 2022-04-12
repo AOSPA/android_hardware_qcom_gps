@@ -558,13 +558,13 @@ void GnssMeasurementInterface::convertGnssSatellitePvt(
     out.satellitePvt.tropoDelayMeters = in.satellitePvt.tropoDelayMeters;
 
     // timeOfClockSeconds
-    out.satellitePvt.TOC = in.satellitePvt.TOC;
+    out.satellitePvt.timeOfClockSeconds = in.satellitePvt.TOC;
     // issueOfDataClock
-    out.satellitePvt.IODC = in.satellitePvt.IODC;
+    out.satellitePvt.issueOfDataClock = in.satellitePvt.IODC;
     // timeOfEphemerisSeconds
-    out.satellitePvt.TOE = in.satellitePvt.TOE;
+    out.satellitePvt.timeOfEphemerisSeconds = in.satellitePvt.TOE;
     // issueOfDataEphemeris
-    out.satellitePvt.IODE = in.satellitePvt.IODE;
+    out.satellitePvt.issueOfDataEphemeris = in.satellitePvt.IODE;
     // ephemerisSource
     switch (in.satellitePvt.ephemerisSource) {
     case GNSS_EPHEMERIS_SOURCE_EXT_DEMODULATED:
@@ -717,10 +717,10 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  " satellitePvt.satClockInfo.satClkDriftMps: %.2f,"
                  " satellitePvt.ionoDelayMeters: %.2f,"
                  " satellitePvt.tropoDelayMeters: %.2f"
-                 " satellitePvt.TOC: %d"
-                 " satellitePvt.IODC: %d"
-                 " satellitePvt.TOE: %%d"
-                 " satellitePvt.IODE: %d"
+                 " satellitePvt.timeOfClockSeconds: %d"
+                 " satellitePvt.issueOfDataClock: %d"
+                 " satellitePvt.timeOfEphemerisSeconds: %%d"
+                 " satellitePvt.issueOfDataEphemeris: %d"
                  " satellitePvt.ephemerisSource: %d",
                  data.measurements[i].satellitePvt.flags,
                  data.measurements[i].satellitePvt.satPosEcef.posXMeters,
@@ -736,10 +736,10 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  data.measurements[i].satellitePvt.satClockInfo.satClkDriftMps,
                  data.measurements[i].satellitePvt.ionoDelayMeters,
                  data.measurements[i].satellitePvt.tropoDelayMeters,
-                 data.measurements[i].satellitePvt.TOC,
-                 data.measurements[i].satellitePvt.IODC,
-                 data.measurements[i].satellitePvt.TOE,
-                 data.measurements[i].satellitePvt.IODE,
+                 data.measurements[i].satellitePvt.timeOfClockSeconds,
+                 data.measurements[i].satellitePvt.issueOfDataClock,
+                 data.measurements[i].satellitePvt.timeOfEphemerisSeconds,
+                 data.measurements[i].satellitePvt.issueOfDataEphemeris,
                  data.measurements[i].satellitePvt.ephemerisSource
             );
     }
