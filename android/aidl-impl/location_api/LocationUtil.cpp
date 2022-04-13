@@ -297,16 +297,12 @@ void convertSingleSatCorrections(const SingleSatCorrection& in, GnssSingleSatCor
         out.flags |= GNSS_MEAS_CORR_HAS_SAT_IS_LOS_PROBABILITY_BIT;
     }
     if (in.singleSatCorrectionFlags &
-            (SingleSatCorrection::SINGLE_SAT_CORRECTION_HAS_EXCESS_PATH_LENGTH)) {
+            (SingleSatCorrection::SINGLE_SAT_CORRECTION_HAS_COMBINED_EXCESS_PATH_LENGTH)) {
         out.flags |= GNSS_MEAS_CORR_HAS_EXCESS_PATH_LENGTH_BIT;
     }
     if (in.singleSatCorrectionFlags &
-            (SingleSatCorrection::SINGLE_SAT_CORRECTION_HAS_EXCESS_PATH_LENGTH_UNC)) {
+            (SingleSatCorrection::SINGLE_SAT_CORRECTION_HAS_COMBINED_EXCESS_PATH_LENGTH_UNC)) {
         out.flags |= GNSS_MEAS_CORR_HAS_EXCESS_PATH_LENGTH_UNC_BIT;
-    }
-    if (in.singleSatCorrectionFlags &
-            (SingleSatCorrection::SINGLE_SAT_CORRECTION_HAS_REFLECTING_PLANE)) {
-        out.flags |= GNSS_MEAS_CORR_HAS_REFLECTING_PLANE_BIT;
     }
     switch (in.constellation) {
     case (GnssConstellationType::GPS):
@@ -327,6 +323,9 @@ void convertSingleSatCorrections(const SingleSatCorrection& in, GnssSingleSatCor
     case (GnssConstellationType::GALILEO):
         out.svType = GNSS_SV_TYPE_GALILEO;
         break;
+    case (GnssConstellationType::IRNSS):
+        out.svType = GNSS_SV_TYPE_NAVIC;
+        break;
     case (GnssConstellationType::UNKNOWN):
     default:
         out.svType = GNSS_SV_TYPE_UNKNOWN;
@@ -335,13 +334,8 @@ void convertSingleSatCorrections(const SingleSatCorrection& in, GnssSingleSatCor
     out.svId = in.svid;
     out.carrierFrequencyHz = in.carrierFrequencyHz;
     out.probSatIsLos = in.probSatIsLos;
-    out.excessPathLengthMeters = in.excessPathLengthMeters;
-    out.excessPathLengthUncertaintyMeters = in.excessPathLengthUncertaintyMeters;
-
-    out.reflectingPlane.latitudeDegrees = in.reflectingPlane.latitudeDegrees;
-    out.reflectingPlane.longitudeDegrees = in.reflectingPlane.longitudeDegrees;
-    out.reflectingPlane.altitudeMeters = in.reflectingPlane.altitudeMeters;
-    out.reflectingPlane.azimuthDegrees = in.reflectingPlane.azimuthDegrees;
+    out.excessPathLengthMeters = in.combinedExcessPathLengthMeters;
+    out.excessPathLengthUncertaintyMeters = in.combinedExcessPathLengthUncertaintyMeters;
 }
 
 void convertMeasurementCorrections(const MeasurementCorrections& in,
