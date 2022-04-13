@@ -92,10 +92,6 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_SHARED_LIBRARIES += \
     libhidlbase \
-    android.hardware.gnss@1.0 \
-    android.hardware.gnss@1.1 \
-    android.hardware.gnss@2.0 \
-    android.hardware.gnss@2.1 \
     android.hardware.gnss-V2-ndk \
     android.hardware.gnss-aidl-impl-qti
 

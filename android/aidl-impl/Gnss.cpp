@@ -304,11 +304,9 @@ ScopedAStatus Gnss::stop()  {
     return ScopedAStatus::ok();
  }
 ScopedAStatus Gnss::startSvStatus() {
-    start();
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::stopSvStatus() {
-    stop();
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::startNmea() {
