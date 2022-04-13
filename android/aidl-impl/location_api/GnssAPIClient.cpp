@@ -106,11 +106,18 @@ GnssAPIClient::GnssAPIClient(const shared_ptr<IGnssCallback>& gpsCb) :
     LocationAPIClientBase(),
     mControlClient(new LocationAPIControlClient()),
     mTracking(false),
+    mReportSpeOnly(false),
     mLocationCapabilitiesMask(0),
     mLocationCapabilitiesCached(false),
+    mSvStatusEnabled(false),
+    mNmeaEnabled(false),
     mGnssCbIface(gpsCb) {
     LOC_LOGd("]: (%p)", &gpsCb);
     initLocationOptions();
+    loc_param_s_type izatConfParamTable[] = {
+        {"ANDROID_REPORT_SPE_ONLY",      &mReportSpeOnly,       nullptr, 'n'},
+    };
+    UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izatConfParamTable);
 }
 
 GnssAPIClient::~GnssAPIClient() {
@@ -126,19 +133,6 @@ void GnssAPIClient::setCallbacks() {
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
     locationCallbacks.size = sizeof(LocationCallbacks);
 
-    static bool readConfig = false;
-    // if ANDROID_REPORT_SPE_ONLY is not set in the izat.conf,
-    // the default behavior is "report SPE PVT to Android GNSS API"
-    static uint32_t reportSpeOnly = 1;
-    static loc_param_s_type izatConfParamTable[] = {
-        {"ANDROID_REPORT_SPE_ONLY",      &reportSpeOnly,       nullptr, 'n'},
-    };
-
-    if (false == readConfig) {
-        UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izatConfParamTable);
-        readConfig = true;
-    }
-
     /*-------------------|-------------    PVT received --------------------|
      | Technology used   | By trackingCb     | By engineLocationInfoCallback|
      |-------------------|-------------------|------------------------------|
@@ -151,7 +145,7 @@ void GnssAPIClient::setCallbacks() {
      * matter what the techonolgy is used;
      * When config is set to 0, register with trackingCb, this is the call back
      * which will report aggregated PVT to Android GNSS API*/
-    if (0 == reportSpeOnly) {
+    if (0 == mReportSpeOnly) {
         locationCallbacks.trackingCb = nullptr;
         locationCallbacks.trackingCb = [this](Location location) {
             onTrackingCb(location);
@@ -170,14 +164,18 @@ void GnssAPIClient::setCallbacks() {
     locationCallbacks.gnssLocationInfoCb = nullptr;
 
     locationCallbacks.gnssSvCb = nullptr;
-    locationCallbacks.gnssSvCb = [this](GnssSvNotification gnssSvNotification) {
-        onGnssSvCb(gnssSvNotification);
-    };
+    if (mSvStatusEnabled) {
+        locationCallbacks.gnssSvCb = [this](GnssSvNotification gnssSvNotification) {
+            onGnssSvCb(gnssSvNotification);
+        };
+    }
 
     locationCallbacks.gnssNmeaCb = nullptr;
-    locationCallbacks.gnssNmeaCb = [this](GnssNmeaNotification gnssNmeaNotification) {
-        onGnssNmeaCb(gnssNmeaNotification);
-    };
+    if (mNmeaEnabled) {
+        locationCallbacks.gnssNmeaCb = [this](GnssNmeaNotification gnssNmeaNotification) {
+            onGnssNmeaCb(gnssNmeaNotification);
+        };
+    }
 
     locationCallbacks.gnssMeasurementsCb = nullptr;
 
@@ -222,6 +220,18 @@ bool GnssAPIClient::gnssStop() {
     return true;
 }
 
+void GnssAPIClient::configSvStatus(bool enable) {
+    if (enable != mSvStatusEnabled) {
+        mSvStatusEnabled = enable;
+        setCallbacks();
+    }
+}
+void GnssAPIClient::configNmea(bool enable) {
+    if (enable != mNmeaEnabled) {
+        mNmeaEnabled = enable;
+        setCallbacks();
+    }
+}
 bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
         IGnss::GnssPositionRecurrence recurrence, uint32_t minIntervalMs,
         uint32_t preferredAccuracyMeters, uint32_t preferredTimeMs,
@@ -361,68 +371,68 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     auto gnssCbIface(mGnssCbIface);
     mMutex.unlock();
 
-        uint32_t antennaInfoVectorSize = 0;
-        uint32_t data = 0;
-        loc_param_s_type ant_info_vector_table[] =
-        {
-            { "ANTENNA_INFO_VECTOR_SIZE", &antennaInfoVectorSize, NULL, 'n' }
-        };
-        UTIL_READ_CONF(LOC_PATH_ANT_CORR, ant_info_vector_table);
+    uint32_t antennaInfoVectorSize = 0;
+    uint32_t data = 0;
+    loc_param_s_type ant_info_vector_table[] =
+    {
+        { "ANTENNA_INFO_VECTOR_SIZE", &antennaInfoVectorSize, NULL, 'n' }
+    };
+    UTIL_READ_CONF(LOC_PATH_ANT_CORR, ant_info_vector_table);
 
-        if (0 != antennaInfoVectorSize) {
-            data |= IGnssCallback::CAPABILITY_ANTENNA_INFO;
-        }
+    if (0 != antennaInfoVectorSize) {
+        data |= IGnssCallback::CAPABILITY_ANTENNA_INFO;
+    }
 
-        if ((capabilitiesMask & LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT) ||
-                (capabilitiesMask & LOCATION_CAPABILITIES_TIME_BASED_BATCHING_BIT) ||
-                (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_TRACKING_BIT) ||
-                (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_BATCHING_BIT))
-            data |= IGnssCallback::CAPABILITY_SCHEDULING;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_GEOFENCE_BIT)
-            data |= IGnssCallback::CAPABILITY_GEOFENCING;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT)
-            data |= IGnssCallback::CAPABILITY_MEASUREMENTS;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSB_BIT)
-            data |= IGnssCallback::CAPABILITY_MSB;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSA_BIT)
-            data |= IGnssCallback::CAPABILITY_MSA;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT)
-            data |= IGnssCallback::CAPABILITY_LOW_POWER_MODE;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT)
-            data |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
-        if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT)
-            data |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS_FOR_DRIVING;
-        data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
+    if ((capabilitiesMask & LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT) ||
+            (capabilitiesMask & LOCATION_CAPABILITIES_TIME_BASED_BATCHING_BIT) ||
+            (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_TRACKING_BIT) ||
+            (capabilitiesMask & LOCATION_CAPABILITIES_DISTANCE_BASED_BATCHING_BIT))
+        data |= IGnssCallback::CAPABILITY_SCHEDULING;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GEOFENCE_BIT)
+        data |= IGnssCallback::CAPABILITY_GEOFENCING;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT)
+        data |= IGnssCallback::CAPABILITY_MEASUREMENTS;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSB_BIT)
+        data |= IGnssCallback::CAPABILITY_MSB;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MSA_BIT)
+        data |= IGnssCallback::CAPABILITY_MSA;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT)
+        data |= IGnssCallback::CAPABILITY_LOW_POWER_MODE;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT)
+        data |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT)
+        data |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS_FOR_DRIVING;
+    data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
 
-        IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015 };
+    IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015 };
 
-        if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
-            gnssInfo.yearOfHw++; // 2016
-            if (capabilitiesMask & LOCATION_CAPABILITIES_DEBUG_NMEA_BIT) {
-                gnssInfo.yearOfHw++; // 2017
-                if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT ||
-                    capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT) {
-                    gnssInfo.yearOfHw++; // 2018
-                    if (capabilitiesMask & LOCATION_CAPABILITIES_PRIVACY_BIT) {
-                        gnssInfo.yearOfHw++; // 2019
-                        if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
-                            gnssInfo.yearOfHw++; // 2020
-                        }
+    if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
+        gnssInfo.yearOfHw++; // 2016
+        if (capabilitiesMask & LOCATION_CAPABILITIES_DEBUG_NMEA_BIT) {
+            gnssInfo.yearOfHw++; // 2017
+            if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT ||
+                capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT) {
+                gnssInfo.yearOfHw++; // 2018
+                if (capabilitiesMask & LOCATION_CAPABILITIES_PRIVACY_BIT) {
+                    gnssInfo.yearOfHw++; // 2019
+                    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
+                        gnssInfo.yearOfHw++; // 2020
                     }
                 }
             }
         }
-        LOC_LOGV("%s:%d] set_system_info_cb (%d)", __FUNCTION__, __LINE__, gnssInfo.yearOfHw);
+    }
+    LOC_LOGV("%s:%d] set_system_info_cb (%d)", __FUNCTION__, __LINE__, gnssInfo.yearOfHw);
 
     if (gnssCbIface != nullptr) {
         auto r = gnssCbIface->gnssSetCapabilitiesCb(data);
         if (!r.isOk()) {
             LOC_LOGe("Error from AIDL gnssSetCapabilitiesCb");
         }
-            r = gnssCbIface->gnssSetSystemInfoCb(gnssInfo);
-            if (!r.isOk()) {
-                LOC_LOGe("] Error from gnssSetSystemInfoCb");
-            }
+        r = gnssCbIface->gnssSetSystemInfoCb(gnssInfo);
+        if (!r.isOk()) {
+            LOC_LOGe("] Error from gnssSetSystemInfoCb");
+        }
     }
 }
 

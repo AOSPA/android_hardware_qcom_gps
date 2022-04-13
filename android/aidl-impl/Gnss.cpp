@@ -304,17 +304,35 @@ ScopedAStatus Gnss::stop()  {
     return ScopedAStatus::ok();
  }
 ScopedAStatus Gnss::startSvStatus() {
+    ENTRY_LOG_CALLFLOW();
+    GnssAPIClient* api = getApi();
+    if (api) {
+        api->configSvStatus(true);
+    }
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::stopSvStatus() {
+    ENTRY_LOG_CALLFLOW();
+    GnssAPIClient* api = getApi();
+    if (api) {
+        api->configSvStatus(false);
+    }
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::startNmea() {
     ENTRY_LOG_CALLFLOW();
+    GnssAPIClient* api = getApi();
+    if (api) {
+        api->configNmea(true);
+    }
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::stopNmea() {
     ENTRY_LOG_CALLFLOW();
+    GnssAPIClient* api = getApi();
+    if (api) {
+        api->configNmea(false);
+    }
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::injectTime(int64_t timeMs, int64_t timeReferenceMs,

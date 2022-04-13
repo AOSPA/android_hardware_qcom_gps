@@ -90,6 +90,8 @@ public:
     void gnssUpdateCallbacks(const shared_ptr<IGnssCallback>& gpsCb);
     bool gnssStart();
     bool gnssStop();
+    void configSvStatus(bool enable);
+    void configNmea(bool enable);
 
     void requestCapabilities();
     bool gnssSetPositionMode(IGnss::GnssPositionMode mode,
@@ -99,7 +101,6 @@ public:
             uint32_t preferredTimeMs,
             GnssPowerMode powerMode = GNSS_POWER_MODE_INVALID,
             uint32_t timeBetweenMeasurement = 0);
-
 
     // these apis using LocationAPIControlClient
     void gnssConfigurationUpdate(const GnssConfig& gnssConfig);
@@ -125,10 +126,13 @@ private:
 
     std::mutex mMutex;
     bool mTracking;
+    bool mReportSpeOnly;
     TrackingOptions mTrackingOptions;
     LocationAPIControlClient* mControlClient;
     LocationCapabilitiesMask mLocationCapabilitiesMask;
     bool mLocationCapabilitiesCached;
+    bool mSvStatusEnabled;
+    bool mNmeaEnabled;
     shared_ptr<IGnssCallback> mGnssCbIface;
 };
 
