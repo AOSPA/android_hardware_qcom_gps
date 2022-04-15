@@ -5147,30 +5147,28 @@ GnssAdapter::reportGnssMeasurementsEvent(const GnssMeasurements& gnssMeasurement
 {
     LOC_LOGD("%s]: msInWeek=%d", __func__, msInWeek);
 
-    if (0 != gnssMeasurements.gnssMeasNotification.count) {
-        struct MsgReportGnssMeasurementData : public LocMsg {
-            GnssAdapter& mAdapter;
-            GnssMeasurements mGnssMeasurements;
-            inline MsgReportGnssMeasurementData(GnssAdapter& adapter,
-                                                const GnssMeasurements& gnssMeasurements,
-                                                int msInWeek) :
-                    LocMsg(),
-                    mAdapter(adapter),
-                    mGnssMeasurements(gnssMeasurements) {
-                if (-1 != msInWeek) {
-                    mAdapter.getAgcInformation(mGnssMeasurements.gnssMeasNotification, msInWeek);
-                }
+    struct MsgReportGnssMeasurementData : public LocMsg {
+        GnssAdapter& mAdapter;
+        GnssMeasurements mGnssMeasurements;
+        inline MsgReportGnssMeasurementData(GnssAdapter& adapter,
+                                            const GnssMeasurements& gnssMeasurements,
+                                            int msInWeek) :
+                LocMsg(),
+                mAdapter(adapter),
+                mGnssMeasurements(gnssMeasurements) {
+            if (-1 != msInWeek && 0 != gnssMeasurements.gnssMeasNotification.count) {
+                mAdapter.getAgcInformation(mGnssMeasurements.gnssMeasNotification, msInWeek);
             }
+        }
 
-            inline virtual void proc() const {
-                mAdapter.mPositionElapsedRealTimeCal.saveGpsTimeAndQtimerPairInMeasReport(
-                        mGnssMeasurements.gnssSvMeasurementSet);
-                mAdapter.reportGnssMeasurementData(mGnssMeasurements.gnssMeasNotification);
-            }
-        };
+        inline virtual void proc() const {
+            mAdapter.mPositionElapsedRealTimeCal.saveGpsTimeAndQtimerPairInMeasReport(
+                    mGnssMeasurements.gnssSvMeasurementSet);
+            mAdapter.reportGnssMeasurementData(mGnssMeasurements.gnssMeasNotification);
+        }
+    };
 
-        sendMsg(new MsgReportGnssMeasurementData(*this, gnssMeasurements, msInWeek));
-    }
+    sendMsg(new MsgReportGnssMeasurementData(*this, gnssMeasurements, msInWeek));
 
     // some position engine requires the QMI order of PVT report and SV measurement
     // report to be preserved. So, send out both SV measurement report and PVT report
