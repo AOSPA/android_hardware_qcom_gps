@@ -588,10 +588,13 @@ public:
     */
     virtual void powerStateEvent(PowerStateType powerState) {};
     /** @brief
-        Inject on-demand coarse position
+        This API is used to inject location into modem.
 
         @param
-        location: Location structure
+        location: location that contains PVT info. <br/>
+
+        @return
+        none
     */
     virtual void odcpiInject(const ::Location& location) {}
 

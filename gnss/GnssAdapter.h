@@ -26,6 +26,43 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+/*
+Changes from Qualcomm Innovation Center are provided under the following license:
+
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #ifndef GNSS_ADAPTER_H
 #define GNSS_ADAPTER_H
 
@@ -288,6 +325,13 @@ class GnssAdapter : public LocAdapterBase {
     GnssReportLoggerUtil mLogger;
     EngineServiceInfo mEngServiceInfo;
     ElapsedRealtimeEstimator mPositionElapsedRealTimeCal;
+    typedef enum {
+        HMAC_CONFIG_UNKNOWN = 0,
+        HMAC_CONFIG_DISABLED,
+        HMAC_CONFIG_ENABLED,
+        HMAC_CONFIG_TEST_MODE,
+    } HmacConfigType;
+    HmacConfigType mHmacConfig;
 
     /* === NativeAgpsHandler ======================================================== */
     NativeAgpsHandler mNativeAgpsHandler;
@@ -341,7 +385,6 @@ public:
     virtual void handleEngineUpEvent();
     /* ======== UTILITIES ================================================================== */
     void restartSessions(bool modemSSR = false);
-    void checkAndRestartTimeBasedSession();
     void checkAndRestartSPESession();
     void suspendSessions();
 
@@ -370,12 +413,18 @@ public:
     bool setLocPositionMode(const LocPosMode& mode);
     LocPosMode& getLocPositionMode() { return mLocPositionMode; }
 
+    inline void reStartTimeBasedTracking() {
+        if (!mTimeBasedTrackingSessions.empty()) {
+            startTimeBasedTrackingMultiplex(nullptr, 0,
+                    mTimeBasedTrackingSessions.begin()->second);
+        }
+    }
     bool startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessionId,
                                          const TrackingOptions& trackingOptions);
     void startTimeBasedTracking(LocationAPI* client, uint32_t sessionId,
             const TrackingOptions& trackingOptions);
     bool stopTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t id);
-    void stopTracking(LocationAPI* client, uint32_t id);
+    void stopTracking(LocationAPI* client = nullptr, uint32_t id = 0);
     bool updateTrackingMultiplex(LocationAPI* client, uint32_t id,
             const TrackingOptions& trackingOptions);
     void updateTracking(LocationAPI* client, uint32_t sessionId,
@@ -509,6 +558,8 @@ public:
     void odcpiTimerExpireEvent();
 
     /* ==== REPORTS ======================================================================== */
+    virtual void handleEngineLockStatusEvent(EngineLockState engineLockState);
+    void handleEngineLockStatus(EngineLockState engineLockState);
     /* ======== EVENTS ====(Called from QMI/EngineHub Thread)===================================== */
     virtual void reportPositionEvent(const UlpLocation& ulpLocation,
                                      const GpsLocationExtended& locationExtended,
@@ -533,6 +584,7 @@ public:
     virtual void reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig);
     virtual bool reportGnssEngEnergyConsumedEvent(uint64_t energyConsumedSinceFirstBoot);
     virtual void reportLocationSystemInfoEvent(const LocationSystemInfo& locationSystemInfo);
+    virtual void reportDcMessage(const GnssDcReportInfo& dcReport);
 
     virtual bool requestATL(int connHandle, LocAGpsType agps_type,
                             LocApnTypeMask apn_type_mask,
@@ -545,6 +597,8 @@ public:
             GnssAdditionalSystemInfo& additionalSystemInfo);
     virtual void reportNfwNotificationEvent(GnssNfwNotification& notification);
     virtual void reportLatencyInfoEvent(const GnssLatencyInfo& gnssLatencyInfo);
+    virtual void reportEngDebugDataInfoEvent(GnssEngineDebugDataInfo&
+            gnssEngineDebugDataInfo) override;
     virtual bool reportQwesCapabilities
     (
         const std::unordered_map<LocationQwesFeatureType, bool> &featureMap
@@ -610,14 +664,13 @@ public:
         mPowerIndicationCb = powerIndicationCallback;
     }
     void initGnssPowerStatistics();
-
     /*======== GNSSDEBUG ================================================================*/
     bool getDebugReport(GnssDebugReport& report);
     /* get AGC information from system status and fill it */
     void getAgcInformation(GnssMeasurementsNotification& measurements, int msInWeek);
     /* get Data information from system status and fill it */
     void getDataInformation(GnssDataNotification& data, int msInWeek);
-
+    void reportEngDebugDataInfo(const GnssEngineDebugDataInfo& gnssEngineDebugDataInfo);
     /*==== SYSTEM STATUS ================================================================*/
     inline SystemStatus* getSystemStatus(void) { return mSystemStatus; }
     std::string& getServerUrl(void) { return mServerUrl; }

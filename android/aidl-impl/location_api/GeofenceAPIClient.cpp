@@ -1,31 +1,36 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- *       copyright notice, this list of conditions and the following
- *       disclaimer in the documentation and/or other materials provided
- *       with the distribution.
- *     * Neither the name of The Linux Foundation, nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
+/*
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 #define LOG_NDEBUG 0
 #define LOG_TAG "LocSvc_GeofenceApiClient"
@@ -39,13 +44,12 @@
 namespace android {
 namespace hardware {
 namespace gnss {
-namespace V2_1 {
+namespace aidl {
 namespace implementation {
 
-using ::android::hardware::gnss::V1_0::IGnssGeofenceCallback;
-using ::android::hardware::gnss::V1_0::GnssLocation;
+using ::aidl::android::hardware::gnss::GnssLocation;
 
-GeofenceAPIClient::GeofenceAPIClient(const sp<IGnssGeofenceCallback>& callback) :
+GeofenceAPIClient::GeofenceAPIClient(const shared_ptr<IGnssGeofenceCallback>& callback) :
     LocationAPIClientBase(),
     mGnssGeofencingCbIface(callback)
 {
@@ -78,7 +82,7 @@ GeofenceAPIClient::GeofenceAPIClient(const sp<IGnssGeofenceCallback>& callback) 
     locAPISetCallbacks(locationCallbacks);
 }
 
-void GeofenceAPIClient::upcateCallback(const sp<IGnssGeofenceCallback>& callback) {
+void GeofenceAPIClient::upcateCallback(const shared_ptr<IGnssGeofenceCallback>& callback) {
     mMutex.lock();
     mGnssGeofencingCbIface = callback;
     mMutex.unlock();
@@ -95,9 +99,9 @@ void GeofenceAPIClient::geofenceAdd(uint32_t geofence_id, double latitude, doubl
     GeofenceOption options;
     memset(&options, 0, sizeof(GeofenceOption));
     options.size = sizeof(GeofenceOption);
-    if (monitor_transitions & IGnssGeofenceCallback::GeofenceTransition::ENTERED)
+    if (monitor_transitions & IGnssGeofenceCallback::ENTERED)
         options.breachTypeMask |= GEOFENCE_BREACH_ENTER_BIT;
-    if (monitor_transitions & IGnssGeofenceCallback::GeofenceTransition::EXITED)
+    if (monitor_transitions & IGnssGeofenceCallback::EXITED)
         options.breachTypeMask |=  GEOFENCE_BREACH_EXIT_BIT;
     options.responsiveness = notification_responsiveness_ms;
     options.confidence = GEOFENCE_CONFIDENCE_HIGH;
@@ -124,9 +128,9 @@ void GeofenceAPIClient::geofenceResume(uint32_t geofence_id, int32_t monitor_tra
 {
     LOC_LOGD("%s]: (%d %d)", __FUNCTION__, geofence_id, monitor_transitions);
     GeofenceBreachTypeMask mask = 0;
-    if (monitor_transitions & IGnssGeofenceCallback::GeofenceTransition::ENTERED)
+    if (monitor_transitions & IGnssGeofenceCallback::ENTERED)
         mask |= GEOFENCE_BREACH_ENTER_BIT;
-    if (monitor_transitions & IGnssGeofenceCallback::GeofenceTransition::EXITED)
+    if (monitor_transitions & IGnssGeofenceCallback::EXITED)
         mask |=  GEOFENCE_BREACH_EXIT_BIT;
     locAPIResumeGeofences(1, &geofence_id, &mask);
 }
@@ -155,11 +159,11 @@ void GeofenceAPIClient::onGeofenceBreachCb(GeofenceBreachNotification geofenceBr
             GnssLocation gnssLocation;
             convertGnssLocation(geofenceBreachNotification.location, gnssLocation);
 
-            IGnssGeofenceCallback::GeofenceTransition transition;
+            int transition;
             if (geofenceBreachNotification.type == GEOFENCE_BREACH_ENTER)
-                transition = IGnssGeofenceCallback::GeofenceTransition::ENTERED;
+                transition = IGnssGeofenceCallback::ENTERED;
             else if (geofenceBreachNotification.type == GEOFENCE_BREACH_EXIT)
-                transition = IGnssGeofenceCallback::GeofenceTransition::EXITED;
+                transition = IGnssGeofenceCallback::EXITED;
             else {
                 // continue with other breach if transition is
                 // nether GPS_GEOFENCE_ENTERED nor GPS_GEOFENCE_EXITED
@@ -168,10 +172,9 @@ void GeofenceAPIClient::onGeofenceBreachCb(GeofenceBreachNotification geofenceBr
 
             auto r = cbIface->gnssGeofenceTransitionCb(
                     geofenceBreachNotification.ids[i], gnssLocation, transition,
-                    static_cast<V1_0::GnssUtcTime>(geofenceBreachNotification.timestamp));
+                    static_cast<long>(geofenceBreachNotification.timestamp));
             if (!r.isOk()) {
-                LOC_LOGE("%s] Error from gnssGeofenceTransitionCb description=%s",
-                    __func__, r.description().c_str());
+                LOC_LOGE("%s] Error from gnssGeofenceTransitionCb");
             }
         }
     }
@@ -184,17 +187,15 @@ void GeofenceAPIClient::onGeofenceStatusCb(GeofenceStatusNotification geofenceSt
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();
     if (cbIface != nullptr) {
-        IGnssGeofenceCallback::GeofenceAvailability status =
-            IGnssGeofenceCallback::GeofenceAvailability::UNAVAILABLE;
+        int status = IGnssGeofenceCallback::UNAVAILABLE;
         if (geofenceStatusNotification.available == GEOFENCE_STATUS_AVAILABILE_YES) {
-            status = IGnssGeofenceCallback::GeofenceAvailability::AVAILABLE;
+            status = IGnssGeofenceCallback::AVAILABLE;
         }
         GnssLocation gnssLocation;
         memset(&gnssLocation, 0, sizeof(GnssLocation));
         auto r = cbIface->gnssGeofenceStatusCb(status, gnssLocation);
         if (!r.isOk()) {
-            LOC_LOGE("%s] Error from gnssGeofenceStatusCb description=%s",
-                __func__, r.description().c_str());
+            LOC_LOGE("Error from gnssGeofenceStatusCb");
         }
     }
 }
@@ -207,16 +208,14 @@ void GeofenceAPIClient::onAddGeofencesCb(size_t count, LocationError* errors, ui
     mMutex.unlock();
     if (cbIface != nullptr) {
         for (size_t i = 0; i < count; i++) {
-            IGnssGeofenceCallback::GeofenceStatus status =
-                IGnssGeofenceCallback::GeofenceStatus::ERROR_GENERIC;
+            int status = IGnssGeofenceCallback::ERROR_GENERIC;
             if (errors[i] == LOCATION_ERROR_SUCCESS)
-                status = IGnssGeofenceCallback::GeofenceStatus::OPERATION_SUCCESS;
+                status = IGnssGeofenceCallback::OPERATION_SUCCESS;
             else if (errors[i] == LOCATION_ERROR_ID_EXISTS)
-                status = IGnssGeofenceCallback::GeofenceStatus::ERROR_ID_EXISTS;
+                status = IGnssGeofenceCallback::ERROR_ID_EXISTS;
             auto r = cbIface->gnssGeofenceAddCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE("%s] Error from gnssGeofenceAddCb description=%s",
-                    __func__, r.description().c_str());
+                LOC_LOGE("Error from gnssGeofenceAddCb");
             }
         }
     }
@@ -230,16 +229,14 @@ void GeofenceAPIClient::onRemoveGeofencesCb(size_t count, LocationError* errors,
     mMutex.unlock();
     if (cbIface != nullptr) {
         for (size_t i = 0; i < count; i++) {
-            IGnssGeofenceCallback::GeofenceStatus status =
-                IGnssGeofenceCallback::GeofenceStatus::ERROR_GENERIC;
+            int status = IGnssGeofenceCallback::ERROR_GENERIC;
             if (errors[i] == LOCATION_ERROR_SUCCESS)
-                status = IGnssGeofenceCallback::GeofenceStatus::OPERATION_SUCCESS;
+                status = IGnssGeofenceCallback::OPERATION_SUCCESS;
             else if (errors[i] == LOCATION_ERROR_ID_UNKNOWN)
-                status = IGnssGeofenceCallback::GeofenceStatus::ERROR_ID_UNKNOWN;
+                status = IGnssGeofenceCallback::ERROR_ID_UNKNOWN;
             auto r = cbIface->gnssGeofenceRemoveCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE("%s] Error from gnssGeofenceRemoveCb description=%s",
-                    __func__, r.description().c_str());
+                LOC_LOGE(" Error from gnssGeofenceRemoveCb");
             }
         }
     }
@@ -253,16 +250,14 @@ void GeofenceAPIClient::onPauseGeofencesCb(size_t count, LocationError* errors, 
     mMutex.unlock();
     if (cbIface != nullptr) {
         for (size_t i = 0; i < count; i++) {
-            IGnssGeofenceCallback::GeofenceStatus status =
-                IGnssGeofenceCallback::GeofenceStatus::ERROR_GENERIC;
+            int status = IGnssGeofenceCallback::ERROR_GENERIC;
             if (errors[i] == LOCATION_ERROR_SUCCESS)
-                status = IGnssGeofenceCallback::GeofenceStatus::OPERATION_SUCCESS;
+                status = IGnssGeofenceCallback::OPERATION_SUCCESS;
             else if (errors[i] == LOCATION_ERROR_ID_UNKNOWN)
-                status = IGnssGeofenceCallback::GeofenceStatus::ERROR_ID_UNKNOWN;
+                status = IGnssGeofenceCallback::ERROR_ID_UNKNOWN;
             auto r = cbIface->gnssGeofencePauseCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE("%s] Error from gnssGeofencePauseCb description=%s",
-                    __func__, r.description().c_str());
+                LOC_LOGE(" Error from gnssGeofencePauseCb");
             }
         }
     }
@@ -276,23 +271,21 @@ void GeofenceAPIClient::onResumeGeofencesCb(size_t count, LocationError* errors,
     mMutex.unlock();
     if (cbIface != nullptr) {
         for (size_t i = 0; i < count; i++) {
-            IGnssGeofenceCallback::GeofenceStatus status =
-                IGnssGeofenceCallback::GeofenceStatus::ERROR_GENERIC;
+            int status = IGnssGeofenceCallback::ERROR_GENERIC;
             if (errors[i] == LOCATION_ERROR_SUCCESS)
-                status = IGnssGeofenceCallback::GeofenceStatus::OPERATION_SUCCESS;
+                status = IGnssGeofenceCallback::OPERATION_SUCCESS;
             else if (errors[i] == LOCATION_ERROR_ID_UNKNOWN)
-                status = IGnssGeofenceCallback::GeofenceStatus::ERROR_ID_UNKNOWN;
+                status = IGnssGeofenceCallback::ERROR_ID_UNKNOWN;
             auto r = cbIface->gnssGeofenceResumeCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE("%s] Error from gnssGeofenceResumeCb description=%s",
-                    __func__, r.description().c_str());
+                LOC_LOGE(" Error from gnssGeofenceResumeCb");
             }
         }
     }
 }
 
 }  // namespace implementation
-}  // namespace V2_1
+}  // namespace aidl
 }  // namespace gnss
 }  // namespace hardware
 }  // namespace android

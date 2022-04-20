@@ -25,6 +25,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 /*
 Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
 
@@ -58,6 +59,7 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
 #ifndef GPS_EXTENDED_C_H
 #define GPS_EXTENDED_C_H
 
@@ -184,7 +186,9 @@ typedef enum {
     /**<  Support the Multiple Attribution Apps(UTH clients Lock control) feature   */
     LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS,
     /**< Support the FLP, NLP Z-Source provider feature */
-    LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE
+    LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE,
+    /**<  Support the feature to report engine debug data  */
+    LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -712,6 +716,12 @@ typedef uint16_t GnssSvPolyStatusMaskValidity;
 #define GNSS_SV_POLY_DELETE_VALID_V02 ((GnssSvPolyStatusMaskValidity)0x04)
 #define GNSS_SV_POLY_SRC_GAL_FNAV_OR_INAV_VALID_V02 ((GnssSvPolyStatusMaskValidity)0x08)
 
+typedef uint16_t GnssLocEphemerisSource;
+#define GNSS_LOC_EPHEMERIS_SOURCE_OTA_V02 ((GnssLocEphemerisSource)0x01)
+#define GNSS_LOC_EPHEMERIS_SOURCE_XTRA_V02 ((GnssLocEphemerisSource)0x02)
+#define GNSS_LOC_EPHEMERIS_SOURCE_NETWORK_INJECTED_V02 ((GnssLocEphemerisSource)0x03)
+#define GNSS_LOC_EPHEMERIS_SOURCE_EFS_V02 ((GnssLocEphemerisSource)0x04)
+
 typedef struct {
     /** Specifies GNSS signal type
         Mandatory Field*/
@@ -1078,7 +1088,9 @@ enum loc_api_adapter_event_index {
     LOC_API_ADAPTER_LOC_SYSTEM_INFO,                   // Location system info event
     LOC_API_ADAPTER_GNSS_NHZ_MEASUREMENT_REPORT,       // GNSS SV nHz measurement report
     LOC_API_ADAPTER_EVENT_REPORT_INFO,                 // Event report info
-    LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT,       // Latency information report
+    LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT,        // Latency information report
+    LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT,          // Engine Debug data report
+    LOC_API_ADAPTER_REPORT_DISASTER_CRISIS,            // Disaster crisis message report
     LOC_API_ADAPTER_EVENT_MAX
 };
 
@@ -1122,6 +1134,9 @@ enum loc_api_adapter_event_index {
 #define LOC_API_ADAPTER_BIT_GNSS_NHZ_MEASUREMENT             (1ULL<<LOC_API_ADAPTER_GNSS_NHZ_MEASUREMENT_REPORT)
 #define LOC_API_ADAPTER_BIT_EVENT_REPORT_INFO                (1ULL<<LOC_API_ADAPTER_EVENT_REPORT_INFO)
 #define LOC_API_ADAPTER_BIT_LATENCY_INFORMATION              (1ULL<<LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT)
+#define LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT         (1ULL<<LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT)
+#define LOC_API_ADAPTER_BIT_DISASTER_CRISIS_REPORT \
+        (1ULL<<LOC_API_ADAPTER_REPORT_DISASTER_CRISIS)
 
 typedef uint64_t LOC_API_ADAPTER_EVENT_MASK_T;
 
@@ -1213,6 +1228,10 @@ enum ulp_gnss_sv_measurement_valid_flags{
 #define ULP_GNSS_SV_POLY_BIT_NAVIC_TGD_L5           (0x040000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_TGD_B1C            (0x080000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_ISC_B1C            (0x100000000)
+#define ULP_GNSS_SV_POLY_BIT_TOC                    (0x800000000)
+#define ULP_GNSS_SV_POLY_BIT_IODC                   (0x1000000000)
+#define ULP_GNSS_SV_POLY_BIT_TOE                    (0x2000000000)
+#define ULP_GNSS_SV_POLY_BIT_EPHEMERIS_SOURCE       (0x4000000000)
 
 typedef enum
 {
@@ -1749,6 +1768,16 @@ typedef struct {
     float navicTgdL5;
     float bdsTgdB1c;
     float bdsIscB1c;
+    uint32_t     toc;       /*  Clock data reference time of week [seconds] */
+    uint16_t     iodc;      /*  Issue of data, clock [unitless] */
+    uint32_t     toe;       /*  Reference time of ephemeris [seconds] */
+    GnssLocEphemerisSource gnssLocEphemerisSource;
+    /**<   Source of ephemeris if polynomials are based on ephemeris. Valid Values:
+    - GNSS_LOC_EPHEMERIS_SOURCE_OTA_V02 (1) --  Ephemeris decoded over-the-air
+    - GNSS_LOC_EPHEMERIS_SOURCE_XTRA_V02 (2) --  Ephemeris from the XTRA file
+    - GNSS_LOC_EPHEMERIS_SOURCE_NETWORK_INJECTED_V02 (3) --  Network-injected ephemeris
+    - GNSS_LOC_EPHEMERIS_SOURCE_EFS_V02 (4) --  Source is EFS
+    */
 } GnssSvPolynomial;
 
 typedef enum {
@@ -2330,6 +2359,17 @@ typedef void (*LocAgpsCloseResultCb)(bool isSuccess, AGpsExtType agpsType, void*
 // to start with LOC_CLIENT_NAME_PREFIX so that upon hal daemon restarts,
 // every client can get the notification that hal daemon has restarted.
 #define LOC_INTAPI_NAME_PREFIX         LOC_CLIENT_NAME_PREFIX "_intapi"
+
+typedef uint64_t NetworkHandle;
+#define NETWORK_HANDLE_UNKNOWN  ~0
+#define MAX_NETWORK_HANDLES 10
+
+typedef enum {
+  ENGINE_LOCK_STATE_INVALID = 0,
+  ENGINE_LOCK_STATE_ENABLED = 1,  /**<  Location engine is enabled.  */
+  ENGINE_LOCK_STATE_DISABLED = 2, /**<  location engine is disabled. */
+  ENGINE_LOCK_STATE_MAX,
+}EngineLockState;
 
 #ifdef __cplusplus
 }
