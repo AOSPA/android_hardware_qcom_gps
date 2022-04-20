@@ -180,15 +180,17 @@ SystemStatusPQWM1::SystemStatusPQWM1(const GnssEngineDebugDataInfo& info) {
     mClockFreqBias = info.clkFreqBias;
     mClockFreqBiasUnc = info.clkFreqUnc;
     mXoState = info.xoState;
-    mJammerGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].jammerInd;
-    mJammerGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].jammerInd;
-    mJammerBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].jammerInd;
-    mJammerGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].jammerInd;
     mRecErrorRecovery = info.rcvrErrRecovery;
-    mAgcGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].agc;
-    mAgcGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].agc;
-    mAgcBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].agc;
-    mAgcGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].agc;
+    if (info.jammerData.size() > 0) {
+        mJammerGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].jammerInd;
+        mJammerGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].jammerInd;
+        mJammerBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].jammerInd;
+        mJammerGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].jammerInd;
+        mAgcGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].agc;
+        mAgcGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].agc;
+        mAgcBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].agc;
+        mAgcGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].agc;
+    }
     mLeapSeconds = info.leapSecondInfo.leapSec;
     mLeapSecUnc = info.leapSecondInfo.leapSecUnc;
     mTimeUncNs = info.clkTimeUnc * 1000000LL;
