@@ -114,11 +114,11 @@ static pthread_mutex_t gDataMutex = PTHREAD_MUTEX_INITIALIZER;
 static bool gGnssLoadFailed = false;
 static bool gBatchingLoadFailed = false;
 static bool gGeofenceLoadFailed = false;
-static uint32_t gEnableInfotainmentHal = 0;
-static bool gReadInfotainmentHalConfigOnce = false;
+static uint32_t gEnableMDMGnssHal = 0;
+static bool gReadGnssDeploymentConfigOnce = false;
 
 const loc_param_s_type gps_conf_params[] = {
-    {"ENABLE_INFOTAINMENT_HAL", &gEnableInfotainmentHal, nullptr, 'n'}
+    {"GNSS_DEPLOYMENT", &gEnableMDMGnssHal, nullptr, 'n'}
 };
 
 template <typename T1, typename T2>
@@ -133,11 +133,11 @@ static const T1* loadLocationInterface(const char* library, const char* name) {
 }
 
 bool LocationAPI::isInfotainmentHalConfigured() {
-    if (!gReadInfotainmentHalConfigOnce) {
+    if (!gReadGnssDeploymentConfigOnce) {
         UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
-        gReadInfotainmentHalConfigOnce = true;
+        gReadGnssDeploymentConfigOnce = true;
     }
-    return gEnableInfotainmentHal;
+    return (gEnableMDMGnssHal == QTI_MDM_GNSS_ENABLED);
 }
 
 static void loadLibGnss() {
