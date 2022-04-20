@@ -2644,6 +2644,16 @@ GnssAdapter::setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb)
 }
 
 void
+GnssAdapter::setTribandState() {
+    bool enabled = false;
+    if (isInSession() && mEngServiceInfo.ppeIntEnabled) {
+        enabled = true;
+    }
+    LOC_LOGd("enabled:%d", enabled);
+    mLocApi->setTribandState(enabled);
+}
+
+void
 GnssAdapter::updateSystemPowerState(PowerStateType systemPowerState) {
     if (POWER_STATE_UNKNOWN != systemPowerState) {
         mSystemPowerState = systemPowerState;
@@ -3280,6 +3290,7 @@ GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
                     bool reportToClientWithNoWait =
                             mAdapter.startTimeBasedTrackingMultiplex(mClient, mSessionId, mOptions);
                     mAdapter.saveTrackingSession(mClient, mSessionId, mOptions);
+                    mAdapter.setTribandState();
 
                     if (reportToClientWithNoWait) {
                         mAdapter.reportResponse(mClient, LOCATION_ERROR_SUCCESS, mSessionId);
@@ -3635,6 +3646,7 @@ GnssAdapter::stopTrackingCommand(LocationAPI* client, uint32_t id)
                     bool reportToClientWithNoWait =
                         mAdapter.stopTimeBasedTrackingMultiplex(mClient, mSessionId);
                     mAdapter.eraseTrackingSession(mClient, mSessionId);
+                    mAdapter.setTribandState();
 
                     if (reportToClientWithNoWait) {
                         mAdapter.reportResponse(mClient, LOCATION_ERROR_SUCCESS, mSessionId);
@@ -4596,6 +4608,12 @@ GnssAdapter::reportSv(GnssSvNotification& svNotify)
                             break;
                         case GNSS_SIGNAL_BEIDOU_B2AQ:
                             svUsedIdMask = mGnssMbSvIdUsedInPosition.bds_b2aq_sv_used_ids_mask;
+                            break;
+                        case GNSS_SIGNAL_BEIDOU_B2BI:
+                            svUsedIdMask = mGnssMbSvIdUsedInPosition.bds_b2bi_sv_used_ids_mask;
+                            break;
+                        case GNSS_SIGNAL_BEIDOU_B2BQ:
+                            svUsedIdMask = mGnssMbSvIdUsedInPosition.bds_b2bq_sv_used_ids_mask;
                             break;
                         }
                     } else {
@@ -6267,7 +6285,18 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
                 data.gnssDataMask[sig] = 0;
                 data.jammerInd[sig] = 0.0;
                 data.agc[sig] = 0.0;
+               if (GNSS_INVALID_JAMMER_IND !=
+                       reports.mRfAndParams.back().mJammerData[sig].jammerInd) {
+                   data.jammerInd[sig] =
+                           (double)reports.mRfAndParams.back().mJammerData[sig].jammerInd;
+                   data.gnssDataMask[sig] |= GNSS_LOC_DATA_JAMMER_IND_BIT;
+               }
+               if (GNSS_INVALID_JAMMER_IND != reports.mRfAndParams.back().mJammerData[sig].agc) {
+                   data.agc[sig] = (double)reports.mRfAndParams.back().mJammerData[sig].agc;
+                   data.gnssDataMask[sig] |= GNSS_LOC_DATA_AGC_BIT;
+               }
             }
+
             if (GNSS_INVALID_JAMMER_IND != reports.mRfAndParams.back().mJammerGps) {
                 data.gnssDataMask[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA] |=
                         GNSS_LOC_DATA_AGC_BIT | GNSS_LOC_DATA_JAMMER_IND_BIT;
@@ -7286,8 +7315,11 @@ GnssAdapter::initEngHubProxy() {
                     // check if this is DRE-INT engine
                     if (strncmp(processInfoList[i].args[1], "DRE-INT", sizeof("DRE-INT")) == 0) {
                         mEngServiceInfo.dreIntEnabled = true;
-                    } else if (strncmp(processInfoList[i].args[1], "PPE", sizeof("PPE")) == 0 ||
-                               strncmp(processInfoList[i].args[1], "PPE-INT", sizeof("PPE-INT")) == 0 ) {
+                    } else if (strncmp(processInfoList[i].args[1], "PPE", sizeof("PPE")) == 0) {
+                        mEngServiceInfo.ppeEnabled = true;
+                    } else if (strncmp(processInfoList[i].args[1], "PPE-INT", sizeof("PPE-INT"))
+                               == 0) {
+                        mEngServiceInfo.ppeIntEnabled = true;
                         mEngServiceInfo.ppeEnabled = true;
                     }
                 }
