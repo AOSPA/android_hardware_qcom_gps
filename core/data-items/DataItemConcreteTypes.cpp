@@ -27,6 +27,42 @@
  *
  */
 
+/*
+Changes from Qualcomm Innovation Center are provided under the following license:
+
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include "DataItemConcreteTypes.h"
 #include <inttypes.h>
 #include <log_util.h>
@@ -122,6 +158,9 @@
 #define BATTERYLEVEL_FIELD_BATTERY_PCT "BATTERY_PCT"
 
 #define IN_EMERGENCY_CALL_FIELD_NAME "IS_EMERGENCY"
+#define PRECISE_LOCATION_ENABLED_FIELD_NAME "PRECISE_LOCATION_ENABLED"
+#define TRACKING_STARTED_FIELD_NAME "TRACKING_STARTED"
+#define NTRIP_STARTED_FIELD_NAME "NTRIP_STARTED"
 
 namespace loc_core
 {
@@ -922,4 +961,86 @@ int32_t InEmergencyCallDataItem::copyFrom(IDataItemCore* src) {
     EXIT_LOG("%d", result);
     return result;
 }
+
+void PreciseLocationEnabledDataItem::stringify(string& valueStr) {
+    int32_t result = 0;
+    ENTRY_LOG();
+    do {
+        STRINGIFY_ERROR_CHECK_AND_DOWN_CAST(
+                PreciseLocationEnabledDataItem, PRECISE_LOCATION_ENABLED_DATA_ITEM_ID);
+        valueStr.clear ();
+        valueStr += PRECISE_LOCATION_ENABLED_FIELD_NAME;
+        valueStr += ": ";
+        valueStr += (d->mPreciseLocationEnabled) ? ("true") : ("false");
+    } while (0);
+    EXIT_LOG_WITH_ERROR("%d", result);
+}
+
+int32_t PreciseLocationEnabledDataItem::copyFrom(IDataItemCore* src) {
+    int32_t result = -1;
+    ENTRY_LOG();
+    do {
+        COPIER_ERROR_CHECK_AND_DOWN_CAST(
+                PreciseLocationEnabledDataItem, PRECISE_LOCATION_ENABLED_DATA_ITEM_ID);
+        s->mPreciseLocationEnabled = d->mPreciseLocationEnabled;
+        result = 0;
+    } while (0);
+    EXIT_LOG("%d", result);
+    return result;
+}
+
+void TrackingStartedDataItem::stringify(string& valueStr) {
+    int32_t result = 0;
+    ENTRY_LOG();
+    do {
+        STRINGIFY_ERROR_CHECK_AND_DOWN_CAST(
+                TrackingStartedDataItem, TRACKING_STARTED_DATA_ITEM_ID);
+        valueStr.clear ();
+        valueStr += TRACKING_STARTED_FIELD_NAME;
+        valueStr += ": ";
+        valueStr += (d->mTrackingStarted) ? ("true") : ("false");
+    } while (0);
+    EXIT_LOG_WITH_ERROR("%d", result);
+}
+
+int32_t TrackingStartedDataItem::copyFrom(IDataItemCore* src) {
+    int32_t result = -1;
+    ENTRY_LOG();
+    do {
+        COPIER_ERROR_CHECK_AND_DOWN_CAST(
+                TrackingStartedDataItem, TRACKING_STARTED_DATA_ITEM_ID);
+        s->mTrackingStarted = d->mTrackingStarted;
+        result = 0;
+    } while (0);
+    EXIT_LOG("%d", result);
+    return result;
+}
+
+void NtripStartedDataItem::stringify(string& valueStr) {
+    int32_t result = 0;
+    ENTRY_LOG();
+    do {
+        STRINGIFY_ERROR_CHECK_AND_DOWN_CAST(
+                NtripStartedDataItem, NTRIP_STARTED_DATA_ITEM_ID);
+        valueStr.clear ();
+        valueStr += NTRIP_STARTED_FIELD_NAME;
+        valueStr += ": ";
+        valueStr += (d->mNtripStarted) ? ("true") : ("false");
+    } while (0);
+    EXIT_LOG_WITH_ERROR("%d", result);
+}
+
+int32_t NtripStartedDataItem::copyFrom(IDataItemCore* src) {
+    int32_t result = -1;
+    ENTRY_LOG();
+    do {
+        COPIER_ERROR_CHECK_AND_DOWN_CAST(
+                NtripStartedDataItem, NTRIP_STARTED_DATA_ITEM_ID);
+        s->mNtripStarted = d->mNtripStarted;
+        result = 0;
+    } while (0);
+    EXIT_LOG("%d", result);
+    return result;
+}
+
 } //namespace loc_core
