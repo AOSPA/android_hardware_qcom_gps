@@ -1417,6 +1417,30 @@ typedef struct {
     float    protectVertical;
 } GnssLocationInfoNotification;
 
+// Indicate the API that is called to generate the location report
+enum LocReportTriggerType {
+    LOC_REPORT_TRIGGER_UNSPECIFIED               = 0,
+    LOC_REPORT_TRIGGER_SIMPLE_TRACKING_SESSION   = 1,
+    LOC_REPORT_TRIGGER_DETAILED_TRACKING_SESSION = 2,
+    LOC_REPORT_TRIGGER_ENGINE_TRACKING_SESSION   = 3,
+    LOC_REPORT_TRIGGER_SINGLE_TERRESTRIAL_FIX    = 4,
+    LOC_REPORT_TRIGGER_SINGLE_FIX                = 5,
+    LOC_REPORT_TRIGGER_TRIP_BATCHING_SESSION     = 6,
+    LOC_REPORT_TRIGGER_ROUTINE_BATCHING_SESSION  = 7,
+    LOC_REPORT_TRIGGER_GEOFENCE_SESSION          = 8,
+};
+
+struct DiagLocationInfoExt {
+    LocationCapabilitiesMask capMask;
+    uint64_t sessionStartBootTimestampNs;
+    LocReportTriggerType reportTriggerType;
+    inline DiagLocationInfoExt(LocationCapabilitiesMask inCapMask,
+                               uint64_t inSessionStartBootTimestampNs,
+                               LocReportTriggerType inReportTriggerType) :
+            capMask(inCapMask), sessionStartBootTimestampNs(inSessionStartBootTimestampNs),
+            reportTriggerType(inReportTriggerType) {}
+};
+
 typedef struct {
     uint32_t size;                           // set to sizeof(GnssNiNotification)
     GnssNiType type;                       // type of NI (Voice, SUPL, Control Plane)
