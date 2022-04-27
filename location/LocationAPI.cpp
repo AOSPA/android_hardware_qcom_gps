@@ -755,7 +755,7 @@ uint32_t LocationAPI::getAntennaInfo(AntennaInfoCallback* cb) {
         return gData.gnssInterface->getAntennaInfo(cb);
     } else {
         LOC_LOGe("No gnss interface available for Location API");
-        return ANTENNA_INFO_ERROR_GENERIC;
+        return LOCATION_ERROR_GENERAL_FAILURE;
     }
 }
 
