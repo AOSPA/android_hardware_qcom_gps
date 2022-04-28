@@ -2379,7 +2379,17 @@ typedef enum {
   ENGINE_LOCK_STATE_ENABLED = 1,  /**<  Location engine is enabled.  */
   ENGINE_LOCK_STATE_DISABLED = 2, /**<  location engine is disabled. */
   ENGINE_LOCK_STATE_MAX,
-}EngineLockState;
+} EngineLockState;
+
+typedef  uint32_t LocLaunchTriggerMask;
+typedef enum {
+    LOC_ON_LOCATION_ENABLE = 1 << 0,
+    LOC_ON_OPT_IN = 1 << 1,
+    LOC_ON_PRECISE_TRACKING_START = 1 << 2,
+    LOC_ON_TRACKING_START = 1 << 3,
+    LOC_ON_EMERGENCY = 1 << 4,
+    LOC_ON_NTRIP_START =  1 << 5
+} LocLaunchTriggerEvents;
 
 /* gps.conf GNSS_DEPLOYMENT value meanings */
 #define QTI_GNSS_ENABLED                0

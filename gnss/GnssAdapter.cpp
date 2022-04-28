@@ -3141,7 +3141,7 @@ GnssAdapter::saveTrackingSession(LocationAPI* client, uint32_t sessionId,
         }
         reportPowerStateIfChanged();
         // notify SystemStatus the engine tracking status
-        getSystemStatus()->setTracking(isInSession());
+        getSystemStatus()->eventSetTracking(isInSession(), true);
     }
 }
 
@@ -3160,8 +3160,13 @@ GnssAdapter::eraseTrackingSession(LocationAPI* client, uint32_t sessionId)
             }
         }
         reportPowerStateIfChanged();
-        getSystemStatus()->setTracking(isInSession());
+        getSystemStatus()->eventSetTracking(isInSession(), true);
     }
+}
+
+void GnssAdapter::testLaunchQppeBringUp(bool preciseTrkState) {
+    getSystemStatus()->eventPreciseLocation(preciseTrkState);
+    getSystemStatus()->eventSetTracking(preciseTrkState, false);
 }
 
 bool GnssAdapter::setLocPositionMode(const LocPosMode& mode) {
@@ -7640,6 +7645,8 @@ void GnssAdapter::handleEnablePPENtrip(const GnssNtripConnectionParams& params) 
     mDgnssState |= DGNSS_STATE_ENABLE_NTRIP_COMMAND;
     mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
     mDgnssState &= ~DGNSS_STATE_NTRIP_SESSION_STARTED;
+    getSystemStatus()->eventPreciseLocation(true);
+    getSystemStatus()->eventNtripStarted(true);
 
     mStartDgnssNtripParams.ntripParams = std::move(params);
     mStartDgnssNtripParams.nmea.clear();
@@ -7670,6 +7677,8 @@ void GnssAdapter::handleDisablePPENtrip() {
     mDgnssState &= ~DGNSS_STATE_ENABLE_NTRIP_COMMAND;
     mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
     stopDgnssNtrip();
+    getSystemStatus()->eventPreciseLocation(false);
+    getSystemStatus()->eventNtripStarted(false);
 }
 
 void GnssAdapter::checkUpdateDgnssNtrip(bool isLocationValid) {

@@ -548,7 +548,7 @@ typedef struct {
     char feature_wifi_supplicant_info[LOC_MAX_PARAM_STRING];
     char auto_platform[LOC_MAX_PARAM_STRING];
     unsigned int vendor_enhanced_process;
-    unsigned int launch_on_optin;
+    unsigned int launch_trigger_mask;
 } loc_launcher_conf;
 
 /* process configuration parameters */
@@ -583,7 +583,7 @@ static const loc_param_s_type loc_process_conf_parameter_table[] = {
     {"LOW_RAM_TARGETS",            &conf.low_ram_targets,          NULL, 's'},
     {"HARDWARE_TYPE",              &conf.auto_platform,            NULL, 's'},
     {"VENDOR_ENHANCED_PROCESS",    &conf.vendor_enhanced_process,  NULL, 'n'},
-    {"LAUNCH_ON_OPTIN",            &conf.launch_on_optin,          NULL, 'n'},
+    {"LAUNCH_TRIGGER_MASK",       &conf.launch_trigger_mask,     NULL, 'n'},
 };
 
 /*===========================================================================
@@ -632,6 +632,7 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
     char arg_gtp_waa[LOC_PROCESS_MAX_ARG_STR_LENGTH] = "--";
     char arg_gtp_modem_cell[LOC_PROCESS_MAX_ARG_STR_LENGTH] = "--";
     char arg_gtp_wifi[LOC_PROCESS_MAX_ARG_STR_LENGTH] = "--";
+    char arg_launch_trigger_mask[LOC_PROCESS_MAX_ARG_STR_LENGTH] = "--";
     char arg_disabled[LOC_PROCESS_MAX_ARG_STR_LENGTH] = LOC_FEATURE_MODE_DISABLED;
     char arg_basic[LOC_PROCESS_MAX_ARG_STR_LENGTH] = LOC_FEATURE_MODE_BASIC;
     char arg_premium[LOC_PROCESS_MAX_ARG_STR_LENGTH] = LOC_FEATURE_MODE_PREMIUM;
@@ -647,6 +648,8 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
     strlcat(arg_gtp_waa, LOC_FEATURE_GTP_WAA, LOC_PROCESS_MAX_ARG_STR_LENGTH-3);
     strlcat(arg_gtp_modem_cell, LOC_FEATURE_GTP_MODEM_CELL, LOC_PROCESS_MAX_ARG_STR_LENGTH-3);
     strlcat(arg_gtp_wifi, LOC_FEATURE_GTP_WIFI, LOC_PROCESS_MAX_ARG_STR_LENGTH-3);
+    strlcat(arg_launch_trigger_mask, LOC_FEATURE_LAUNCH_TRIGGER_MASK,
+            LOC_PROCESS_MAX_ARG_STR_LENGTH-3);
 
     //Get platform name from ro.board.platform property
     loc_get_platform_name(platform_name, sizeof(platform_name));
@@ -837,12 +840,6 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
         else if (strcmp(conf.proc_status, "ENABLED") == 0) {
             LOC_LOGD("%s:%d]: Process %s is enabled in conf file",
                      __func__, __LINE__, conf.proc_name);
-        }
-
-        if (conf.launch_on_optin) {
-            LOC_LOGD("%s:%d]: Process %s launch will be delayed for EULA opt in.",
-                     __func__, __LINE__, conf.proc_name);
-            child_proc[j].launch_on_optin = true;
         }
 
         //Since strlcpy copies length-1 characters, we add 1 to name_length
@@ -1079,7 +1076,7 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
             /*Fill up the remaining arguments from configuration file*/
             LOC_LOGD("%s] Parsing Process_Arguments from Configuration: %s \n",
                       __func__, conf.proc_argument);
-            if(0 != conf.proc_argument[0])
+            if ('\0' != conf.proc_argument[0])
             {
                 /**************************************
                 ** conf_proc_argument is shared by all the programs getting launched,
@@ -1092,13 +1089,27 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
                 loc_util_split_string(child_proc[j].argumentString, &temp_args[i],
                                       (LOC_PROCESS_MAX_NUM_ARGS - i), ' ');
                 // copy argument from the pointer to the memory
-                for (unsigned int index = i; index < LOC_PROCESS_MAX_NUM_ARGS; index++) {
+                for (unsigned int index = i; index < LOC_PROCESS_MAX_NUM_ARGS; index++, i++) {
                     if (temp_args[index] == NULL) {
                         break;
                     }
-                    strlcpy (child_proc[j].args[index], temp_args[index],
-                             sizeof (child_proc[j].args[index]));
+                    strlcpy(child_proc[j].args[index], temp_args[index],
+                            sizeof(child_proc[j].args[index]));
                 }
+            }
+
+            // Send auto shutdown feature status, to mute shutdown timer if auto shutdown
+            // feature is disable
+            if (conf.launch_trigger_mask) {
+                LOC_LOGd("Process %s launch will be delayed.", conf.proc_name);
+                child_proc[j].launch_trigger_mask = conf.launch_trigger_mask;
+                char launchTriggerMaskBuff[LOC_PROCESS_MAX_ARG_STR_LENGTH];
+                snprintf(launchTriggerMaskBuff, LOC_PROCESS_MAX_ARG_STR_LENGTH,
+                    "0x%x", conf.launch_trigger_mask);
+                strlcpy(child_proc[j].args[i++], arg_launch_trigger_mask,
+                        LOC_PROCESS_MAX_ARG_STR_LENGTH);
+                strlcpy(child_proc[j].args[i++], launchTriggerMaskBuff,
+                        LOC_PROCESS_MAX_ARG_STR_LENGTH);
             }
         }
         else {
