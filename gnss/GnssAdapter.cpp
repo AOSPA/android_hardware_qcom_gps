@@ -2767,7 +2767,8 @@ GnssAdapter::updateClientsEventMask()
     // need to register for leap second info
     // for proper nmea generation
     LOC_API_ADAPTER_EVENT_MASK_T mask = LOC_API_ADAPTER_BIT_LOC_SYSTEM_INFO |
-            LOC_API_ADAPTER_BIT_EVENT_REPORT_INFO;
+            LOC_API_ADAPTER_BIT_EVENT_REPORT_INFO |
+            LOC_API_ADAPTER_BIT_FEATURE_STATUS_UPDATE;
     for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
         if (it->second.trackingCb != nullptr ||
             it->second.gnssLocationInfoCb != nullptr ||
