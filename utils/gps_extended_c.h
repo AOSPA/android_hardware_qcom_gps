@@ -2328,12 +2328,6 @@ struct EngineServiceInfo {
     bool ppeIntEnabled;
 };
 
-enum AntennaInfoStatus {
-    ANTENNA_INFO_SUCCESS = 0,
-    ANTENNA_INFO_ERROR_ALREADY_INIT = 1,
-    ANTENNA_INFO_ERROR_GENERIC = 2
-};
-
 typedef struct {
     uint32_t size;                        // set to sizeof
     uint64_t elapsedRealTime;    // in ns

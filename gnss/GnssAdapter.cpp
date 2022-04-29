@@ -6935,10 +6935,10 @@ uint32_t GnssAdapter::getAntennaeInfoCommand(AntennaInfoCallback* antennaInfoCal
 
     if (nullptr == antennaInfoCallback) {
         LOC_LOGe("NULL antennaInfoCallback");
-        return ANTENNA_INFO_ERROR_GENERIC;
+        return LOCATION_ERROR_GENERAL_FAILURE;
     }
     sendMsg(new MsgReportAi(*this, antennaInfoCallback));
-    return ANTENNA_INFO_SUCCESS;
+    return LOCATION_ERROR_SUCCESS;
 }
 
 void

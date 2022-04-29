@@ -143,6 +143,7 @@ GnssAntennaInfo::~GnssAntennaInfo() {
 // Methods from ::android::hardware::gnss::V2_1::IGnssAntennaInfo follow.
 Return<GnssAntennaInfo::GnssAntennaInfoStatus>
         GnssAntennaInfo::setCallback(const sp<IGnssAntennaInfoCallback>& callback)  {
+    uint32_t retValue = LOCATION_ERROR_SUCCESS;
     GnssAntennaInfo::GnssAntennaInfoStatus retStat = GnssAntennaInfoStatus::SUCCESS;
 
     if (mGnss == nullptr || mGnss->getApi() == nullptr) {
@@ -150,8 +151,20 @@ Return<GnssAntennaInfo::GnssAntennaInfoStatus>
         return GnssAntennaInfoStatus::ERROR_GENERIC;
     }
     mGnssAntennaInfoCbIface = callback;
-    return (GnssAntennaInfo::GnssAntennaInfoStatus)(
-            mGnss->getApi()->locAPIGetAntennaInfo(&mAntennaInfoCb));
+    retValue = mGnss->getApi()->locAPIGetAntennaInfo(&mAntennaInfoCb);
+    switch (retValue) {
+        case LOCATION_ERROR_SUCCESS:
+            retStat = GnssAntennaInfoStatus::SUCCESS;
+            break;
+        case LOCATION_ERROR_ALREADY_STARTED:
+            retStat = GnssAntennaInfoStatus::ERROR_ALREADY_INIT;
+            break;
+        case LOCATION_ERROR_GENERAL_FAILURE:
+        default:
+            retStat = GnssAntennaInfoStatus::ERROR_GENERIC;
+            break;
+    }
+    return retStat;
 }
 
 Return<void> GnssAntennaInfo::close(void)  {

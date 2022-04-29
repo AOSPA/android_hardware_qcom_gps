@@ -583,7 +583,7 @@ static uint32_t getAntennaInfo(AntennaInfoCallback* antennaInfoCallback) {
     if (NULL != gGnssAdapter) {
         return gGnssAdapter->getAntennaeInfoCommand(antennaInfoCallback);
     } else {
-        return ANTENNA_INFO_ERROR_GENERIC;
+        return LOCATION_ERROR_GENERAL_FAILURE;
     }
 }
 
