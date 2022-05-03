@@ -200,6 +200,14 @@ public:
     inline bool isEngineCapabilitiesKnown() { return mIsEngineCapabilitiesKnown;}
     inline void setEngineCapabilitiesKnown(bool value) { mIsEngineCapabilitiesKnown = value;}
 
+    inline void startTimeBasedTracking(const TrackingOptions& options,
+                                       LocApiResponse* adapterResponse) {
+        mLocApi->startTimeBasedTracking(options, adapterResponse);
+    }
+    inline void stopTimeBasedTracking(LocApiResponse* adapterResponse) {
+        mLocApi->stopTimeBasedTracking(adapterResponse);
+    }
+
     virtual void handleEngineUpEvent();
     virtual void handleEngineDownEvent();
     virtual void reportPositionEvent(const UlpLocation& location,
