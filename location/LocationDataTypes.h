@@ -1094,19 +1094,27 @@ typedef enum {
     GNSS_POWER_MODE_M5   /* Background Mode */
 } GnssPowerMode;
 
+typedef enum {
+    SPECIAL_REQ_INVALID = 0,
+    SPECIAL_REQ_SHORT_CODE,   /* Short code */
+} SpecialReqType;
+
 struct TrackingOptions : LocationOptions {
     GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
                                 sessions */
     uint32_t tbm;  /* Time interval between measurements specified in millis.
                       Applicable to background power modes */
+    SpecialReqType specialReq; /* Special Request type */
 
     inline TrackingOptions() :
-            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            specialReq(SPECIAL_REQ_INVALID){}
     inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
-            LocationOptions(), powerMode(m), tbm(t) {
-            LocationOptions::size = s; }
+            LocationOptions(), powerMode(m), tbm(t),
+            specialReq(SPECIAL_REQ_INVALID){ LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
-            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            specialReq(SPECIAL_REQ_INVALID){}
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;
