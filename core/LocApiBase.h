@@ -271,8 +271,6 @@ public:
     // downward calls
     virtual void* getSibling();
     virtual LocApiProxyBase* getLocApiProxy();
-    virtual void startFix(const LocPosMode& fixCriteria, LocApiResponse* adapterResponse);
-    virtual void stopFix(LocApiResponse* adapterResponse);
     virtual void deleteAidingData(const GnssAidingData& data, LocApiResponse* adapterResponse);
     virtual void injectPosition(double latitude, double longitude, float accuracy,
             bool onDemandCpi);
