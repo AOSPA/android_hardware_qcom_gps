@@ -2855,7 +2855,7 @@ GnssAdapter::suspendSessions()
     if (!mTimeBasedTrackingSessions.empty()) {
         // inform engine hub that GNSS session has stopped
         mEngHubProxy->gnssStopFix();
-        mLocApi->stopFix(nullptr);
+        mLocApi->stopTimeBasedTracking(nullptr);
         if (isDgnssNmeaRequired()) {
             mDgnssState &= ~DGNSS_STATE_NO_NMEA_PENDING;
         }
@@ -3002,13 +3002,6 @@ GnssAdapter::hasCallbacksToStartTracking(LocationAPI* client)
         LOC_LOGi("client %p not found", client)
     }
     return allowed;
-}
-
-bool
-GnssAdapter::isTrackingSession(LocationAPI* client, uint32_t sessionId)
-{
-    LocationSessionKey key(client, sessionId);
-    return (mTimeBasedTrackingSessions.find(key) != mTimeBasedTrackingSessions.end());
 }
 
 void
@@ -3247,6 +3240,10 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
                 it->second.powerMode < multiplexedPowerMode) {
                 multiplexedPowerMode = it->second.powerMode;
             }
+            //if not set or there is a new higher qualityLevelAccepted, then set the higher one
+            if (it->second.qualityLevelAccepted > multiplexedOptions.qualityLevelAccepted) {
+                multiplexedOptions.qualityLevelAccepted = it->second.qualityLevelAccepted;
+            }
         }
         bool updateOptions = false;
         // if session we are starting has smaller interval then next smallest
@@ -3258,6 +3255,11 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
         // if session we are starting has smaller powerMode then next smallest
         if (options.powerMode < multiplexedPowerMode) {
             multiplexedOptions.powerMode = options.powerMode;
+            updateOptions = true;
+        }
+        // if session we are starting has higher qualityLevelAccepted then next highest
+        if (options.qualityLevelAccepted > multiplexedOptions.qualityLevelAccepted) {
+            multiplexedOptions.qualityLevelAccepted = options.qualityLevelAccepted;
             updateOptions = true;
         }
         if (updateOptions) {
@@ -3634,8 +3636,11 @@ GnssAdapter::stopTracking(LocationAPI* client, uint32_t id)
     // inform engine hub that GNSS session has stopped
     mEngHubProxy->gnssStopFix();
 
-    mLocApi->stopFix(new LocApiResponse(*getContext(),
-                     [this, client, id] (LocationError err) {
+    // client is nullptr when we want to stop any tracking session,
+    // e.g. when suspend.
+    mLocApi->stopTimeBasedTracking((nullptr == client) ? nullptr :
+            new LocApiResponse(*getContext(),
+                               [this, client, id] (LocationError err) {
         reportResponse(client, err, id);
     }));
 
