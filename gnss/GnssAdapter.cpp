@@ -4389,8 +4389,9 @@ bool GnssAdapter::needReportForClient(LocationAPI* client, enum loc_sess_status 
     return false;
 }
 
+/** Y2038- Compliant */
 bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
-        const struct timespec32_t &apTimeStamp)
+        const struct timespec64_t &apTimeStamp)
 {
     bool retVal = false;
     uint64_t currentTimeNsec = 0;
@@ -4408,7 +4409,7 @@ bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
                 ((0 != gpsTimeOfWeekMs) && (NMEA_MIN_THRESHOLD_MSEC >= (gpsTimeOfWeekMs % 1000)))) {
                 retVal = true;
             } else {
-                uint64_t timeDiffMsec = ((currentTimeNsec - mPrevNmeaRptTimeNsec) / 1000000);
+                int64_t timeDiffMsec = ((currentTimeNsec - mPrevNmeaRptTimeNsec) / 1000000);
                 // Send when the delta time becomes >= 1 sec
                 if (NMEA_MAX_THRESHOLD_MSEC <= timeDiffMsec) {
                     retVal = true;
