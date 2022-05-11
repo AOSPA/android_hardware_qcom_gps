@@ -3086,13 +3086,6 @@ GnssAdapter::hasCallbacksToStartTracking(LocationAPI* client)
     return allowed;
 }
 
-bool
-GnssAdapter::isTrackingSession(LocationAPI* client, uint32_t sessionId)
-{
-    LocationSessionKey key(client, sessionId);
-    return (mTimeBasedTrackingSessions.find(key) != mTimeBasedTrackingSessions.end());
-}
-
 void
 GnssAdapter::reportPowerStateIfChanged()
 {
@@ -3341,6 +3334,10 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
                 it->second.powerMode < multiplexedPowerMode) {
                 multiplexedPowerMode = it->second.powerMode;
             }
+            //if not set or there is a new higher qualityLevelAccepted, then set the higher one
+            if (it->second.qualityLevelAccepted > multiplexedOptions.qualityLevelAccepted) {
+                multiplexedOptions.qualityLevelAccepted = it->second.qualityLevelAccepted;
+            }
         }
         // if client is nullptr, that means that we do not have an active session
         // running in the modem, e.g. when we are trying to resume from suspension.
@@ -3355,6 +3352,11 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
         // if session we are starting has smaller powerMode then next smallest
         if (options.powerMode < multiplexedPowerMode) {
             multiplexedOptions.powerMode = options.powerMode;
+            updateOptions = true;
+        }
+        // if session we are starting has higher qualityLevelAccepted then next highest
+        if (options.qualityLevelAccepted > multiplexedOptions.qualityLevelAccepted) {
+            multiplexedOptions.qualityLevelAccepted = options.qualityLevelAccepted;
             updateOptions = true;
         }
         if (updateOptions) {
@@ -3739,7 +3741,7 @@ GnssAdapter::stopTracking(LocationAPI* client, uint32_t id)
 
     // client is nullptr when we want to stop any tracking session,
     // e.g. when suspend.
-    mLocApi->stopFix((nullptr == client) ? nullptr :
+    mLocApi->stopTimeBasedTracking((nullptr == client) ? nullptr :
             new LocApiResponse(*getContext(),
                                [this, client, id] (LocationError err) {
         reportResponse(client, err, id);
