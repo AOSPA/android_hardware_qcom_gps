@@ -539,6 +539,7 @@ typedef enum {
     GNSS_CONFIG_FLAGS_MIN_GPS_WEEK_BIT                     = (1<<13),
     GNSS_CONFIG_FLAGS_MIN_SV_ELEVATION_BIT                 = (1<<14),
     GNSS_CONFIG_FLAGS_CONSTELLATION_SECONDARY_BAND_BIT     = (1<<15),
+    GNSS_CONFIG_FLAGS_XTRA_STATUS_BIT                      = (1<<16),
 } GnssConfigFlagsBits;
 
 typedef enum {
@@ -1845,6 +1846,53 @@ struct GnssSvTypeConfig{
     }
 };
 
+/** Specify the XTRA assistance data status. */
+enum XtraDataStatus {
+    /** If XTRA feature is disabled or if XTRA feature is enabled,
+     *  but XTRA daemon has not yet retrieved the assistance data
+     *  status from modem on early stage of device bootup, xtra data
+     *  status will be unknown.   */
+    XTRA_DATA_STATUS_UNKNOWN = 0,
+    /** If XTRA feature is enabled, but XTRA data is not present
+     *  on the device. */
+    XTRA_DATA_STATUS_NOT_AVAIL = 1,
+    /** If XTRA feature is enabled, XTRA data has been downloaded
+     *  but it is no longer valid. */
+    XTRA_DATA_STATUS_NOT_VALID = 2,
+    /** If XTRA feature is enabled, XTRA data has been downloaded
+     *  and is currently valid. */
+    XTRA_DATA_STATUS_VALID = 3,
+};
+
+struct XtraStatus {
+    /** XTRA assistance data and NTP time download is enabled or
+     *  disabled. */
+    bool featureEnabled;
+    /** XTRA assistance data status. If XTRA assistance data
+     *  download is not enabled, this field will be set to
+     *  XTRA_DATA_STATUS_UNKNOWN. */
+    XtraDataStatus xtraDataStatus;
+    /** Number of hours that xtra assistance data will remain valid.
+     *  This field will be valid when xtraDataStatus is set to
+     *  XTRA_DATA_STATUS_VALID.
+     *  For all other XtraDataStatus, this field will be set to
+     *  0. */
+    uint32_t xtraValidForHours;
+
+    inline bool equals (const XtraStatus& inXtraStatus) const {
+        if (inXtraStatus.featureEnabled != featureEnabled) {
+            return false;
+        } else if (featureEnabled == false) {
+            return true;
+        } else if ((inXtraStatus.xtraDataStatus == xtraDataStatus) &&
+                   (inXtraStatus.xtraValidForHours == xtraValidForHours)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
+
 struct GnssConfig{
     uint32_t size;  // set to sizeof(GnssConfig)
     GnssConfigFlagsMask flags; // bitwise OR of GnssConfigFlagsBits to mark which params are valid
@@ -1864,6 +1912,7 @@ struct GnssConfig{
     uint16_t minGpsWeek;
     uint8_t minSvElevation;
     GnssSvTypeConfig secondaryBandConfig;
+    XtraStatus xtraStatus;
 
     inline bool equals(const GnssConfig& config) {
         if (flags == config.flags &&
@@ -2375,6 +2424,101 @@ struct GnssEnergyConsumedInfo {
      ever bootup, in unit of 0.1 milli watt seconds.
      A value of 0xffffffffffffffff indicates an invalid reading.*/
     uint64_t totalEnergyConsumedSinceFirstBoot;
+};
+
+/** Specify the logcat debug level. Currently, only XTRA
+ *  daemon will support the runtime configure of debug log
+ *  level. */
+enum DebugLogLevel {
+    /** No debug message will be outputed. */
+    DEBUG_LOG_LEVEL_NONE = 0,
+    /** Only error level debug messages will get logged. */
+    DEBUG_LOG_LEVEL_ERROR = 1,
+    /** Only warning/error level debug messages will get logged. */
+    DEBUG_LOG_LEVEL_WARNING = 2,
+    /** Only info/wanring/error level debug messages will get
+     *  logged. */
+    DEBUG_LOG_LEVEL_INFO = 3,
+    /** Only debug/info/wanring/error level debug messages will
+     *  get logged. */
+    DEBUG_LOG_LEVEL_DEBUG = 4,
+    /** Verbose/debug/info/wanring/error level debug messages will
+     *  get logged. */
+    DEBUG_LOG_LEVEL_VERBOSE = 5,
+};
+
+/** Xtra feature configuration parameters */
+struct XtraConfigParams {
+    /** Number of minutes between periodic, consecutive successful
+     *  XTRA assistance data downloads. The configured value is in
+     *  unit of 1 minute and will be capped at a maximum of 168
+     *  hours and minimum of 48 hours. 0 means to use modem
+     *  default download. */
+    uint32_t xtraDownloadIntervalMinute;
+    /** Connection timeout when connecting backend for both xtra
+     *  assistance data download and NTP time downlaod. The
+     *  configured value is in in unit of 1 second and should be
+     *  capped at a maximum of 300 secs (not indefinite) and minimum
+     *  of 3 secs. */
+    uint32_t xtraDownloadTimeoutSec;
+    /** Interval to wait before retrying xtra assistance data
+     *  download in case of device error. The configured value is in
+     *  unit of 1 minute and should be capped with a maximum of 1
+     *  day and a minimum of 3 minutes. Please note that this
+     *  parameter does not apply to NTP time download. */
+    uint32_t xtraDownloadRetryIntervalMinute;
+    /** Total number of allowed retry attempts for assistance data
+     *  download in case of device error.
+     *  The configured value is in unit of 1 retry and max number of
+     *  allowed retry is 6 per download interval.
+     *  Please note that this parameter does not apply to NTP
+     *  time download. */
+    uint32_t xtraDownloadRetryAttempts;
+    /** Path to the certificate authority (CA) repository that need
+     *  to be used for XTRA assistance data download. Max of 128
+     *  bytes, including null-terminating byte will be supported.
+     *  Please note that paraemter does not apply to NTP time
+     *  download. */
+    char xtraCaPath[128];
+    /** URLs from which XTRA assistance data will be fetched. Up to
+     *  three URLs can be configured when this API is used. The URLs
+     *  shall include the port number to be used for download. Max
+     *  of 128 bytes, including null-terminating byte will be
+     *  supported. Valid xtra server URLs should start with
+     *  "https://". */
+    uint32_t xtraServerURLsCount;
+    char xtraServerURLs[3][128];
+    /** URLs for NTP server to fetch current time. Up to three URLs
+     *  can be configured when this API is used. The URLs shall
+     *  include the port number to be used for download. Max of 128
+     *  bytes, including null-terminating byte will be supported.
+     *  Example of valid ntp server URL is:
+     *  ntp.contiserver.com:123. */
+    uint32_t ntpServerURLsCount;
+    char ntpServerURLs[3][128];
+    /** Enable or disable XTRA integrity download. */
+    bool xtraIntegrityDownloadEnable;
+    /** XTRA integrity download interval, only applicable if XTRA
+     *  integrity download is enabled. */
+    uint32_t xtraIntegrityDownloadIntervalMinute;
+    /** Level of debug log messages that will be logged. */
+    DebugLogLevel xtraDaemonDebugLogLevel;
+};
+
+enum XtraStatusUpdateType {
+    XTRA_STATUS_UPDATE_UNDEFINED = 0,
+    /** XTRA status update due to invoke getXtraStatus(). */
+    XTRA_STATUS_UPDATE_UPON_QUERY = 1,
+    /** XTRA status update due to first invokation of
+     *  registerXtraStatusUpdate(). */
+    XTRA_STATUS_UPDATE_UPON_REGISTRATION = 2,
+    /** XTRA status update due to calling configXtra() to
+     *  enable/disable XTRA feature. */
+    XTRA_STATUS_UPDATE_UPON_ENABLEMENT = 3,
+    /** XTRA status update due to status change in xtra assistance
+     *  data status, e.g.: from unknown to known during device
+     *  bootup, or when XTRA data gets downloaded. <br/> */
+    XTRA_STATUS_UPDATE_UPON_STATUS_CHANGE = 4,
 };
 
 /* Provides the capabilities of the system
