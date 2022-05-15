@@ -152,6 +152,7 @@ static uint32_t configEngineIntegrityRisk(PositioningEngineMask engType, uint32_
 static uint32_t configXtraParams(bool enable, const XtraConfigParams& configParams);
 static uint32_t getXtraStatus();
 static uint32_t registerXtraStatusUpdate(bool registerUpdate);
+static void configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -221,6 +222,7 @@ static const GnssInterface gGnssInterface = {
     configXtraParams,
     getXtraStatus,
     registerXtraStatusUpdate,
+    configPrecisePositioning,
 };
 
 #ifndef DEBUG_X86
@@ -745,5 +747,11 @@ static uint32_t registerXtraStatusUpdate(bool registerUpdate) {
         return gGnssAdapter->registerXtraStatusUpdateCommand(registerUpdate);
     } else {
         return 0;
+    }
+}
+
+static void configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->configPrecisePositioningCommand(featureId, enable, appHash);
     }
 }

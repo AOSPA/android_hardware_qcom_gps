@@ -81,6 +81,7 @@ using loc_core::IDataItemCore;
 struct StartDgnssNtripParams {
     GnssNtripConnectionParams ntripParams;
     string                    nmea;
+    bool enableRTKEngine;
 
     void clear() {
         ntripParams.hostNameOrIp.clear();
@@ -90,6 +91,7 @@ struct StartDgnssNtripParams {
         ntripParams.port = 0;
         ntripParams.useSSL = false;
         ntripParams.requiresNmeaLocation = false;
+        enableRTKEngine = false;
         nmea.clear();
     }
 };

@@ -401,7 +401,11 @@ public:
     inline void setEngineLockState(EngineLockState engineLockState) {
         mEngineLockState = engineLockState;
     }
+
     virtual void setTribandState(bool enabled);
+
+    virtual void configPrecisePositioning(uint32_t featureId, bool enable,
+            std::string appHash, LocApiResponse* adapterResponse=nullptr);
 };
 
 class ElapsedRealtimeEstimator {

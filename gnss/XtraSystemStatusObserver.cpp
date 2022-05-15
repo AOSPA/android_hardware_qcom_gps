@@ -321,6 +321,7 @@ void XtraSystemStatusObserver::startDgnssSource(const StartDgnssNtripParams& par
     ss << ntripParams->mountPoint.data() << endl;
     ss << ntripParams->username.data() << endl;
     ss << ntripParams->password.data() << endl;
+    ss << params.enableRTKEngine << endl;
     if (ntripParams->requiresNmeaLocation && !params.nmea.empty()) {
         ss << params.nmea.data() << endl;
     }

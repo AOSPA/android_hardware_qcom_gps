@@ -217,6 +217,11 @@ typedef uint16_t  DGnssStateBitMask;
 #define DGNSS_STATE_NO_NMEA_PENDING           0X02
 #define DGNSS_STATE_NTRIP_SESSION_STARTED     0X04
 
+typedef uint16_t QPPEFeatureStatusMask;
+#define QPPE_FEATURE_STATUS_LIRBARY_PRESENT   0X01
+#define QPPE_FEATURE_ENABLED_BY_DEFAULT       0X02
+#define QPPE_FEATURE_ENABLED_BY_QESDK         0X04
+
 class GnssReportLoggerUtil {
 public:
     typedef void (*LogGnssLatency)(const GnssLatencyInfo& gnssLatencyMeasInfo);
@@ -340,6 +345,9 @@ class GnssAdapter : public LocAdapterBase {
     GnssEnergyConsumedCallback mGnssEnergyConsumedCb;
     std::function<void(bool)> mPowerStateCb;
 
+    /* === QESDK RTK feature status =================================================== */
+    QPPEFeatureStatusMask mQppeFeatureStatusMask;
+
     /*==== CONVERSION ===================================================================*/
     static void convertOptions(LocPosMode& out, const TrackingOptions& trackingOptions);
     static void convertLocation(Location& out, const UlpLocation& ulpLocation,
@@ -367,6 +375,7 @@ class GnssAdapter : public LocAdapterBase {
     void checkUpdateDgnssNtrip(bool isLocationValid);
     void stopDgnssNtrip();
     uint64_t   mDgnssLastNmeaBootTimeMilli;
+    bool mQppeResp;
 
 protected:
 
@@ -535,6 +544,7 @@ public:
     uint32_t configXtraParamsCommand(bool enable, const XtraConfigParams& xtraParams);
     uint32_t getXtraStatusCommand();
     uint32_t registerXtraStatusUpdateCommand(bool registerUpdate);
+    void configPrecisePositioningCommand(uint32_t featureId, bool enable, std::string appHash);
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
@@ -658,7 +668,6 @@ public:
     void updateSystemPowerState(PowerStateType systemPowerState);
     void reportSvPolynomial(const GnssSvPolynomial &svPolynomial);
 
-
     std::vector<double> parseDoublesString(char* dString);
     void reportGnssAntennaInformation(AntennaInfoCallback* cb);
     inline void setPowerIndicationCb(const powerIndicationCb powerIndicationCallback) {
@@ -724,7 +733,7 @@ public:
     inline void setEsStatusCallback (std::function<void(bool)> esStatusCb) {
             mEsStatusCb = esStatusCb; }
     void setTribandState();
-    void testLaunchQppeBringUp(bool preciseTrkState);
+    void testLaunchQppeBringUp();
     /*==== DGnss Usable Report Flag ====================================================*/
     inline void setDGnssUsableFLag(bool dGnssNeedReport) { mDGnssNeedReport = dGnssNeedReport;}
     inline bool isNMEAPrintEnabled() {
@@ -735,7 +744,7 @@ public:
     void updateNTRIPGGAConsentCommand(bool consentAccepted) { mSendNmeaConsent = consentAccepted; }
     void enablePPENtripStreamCommand(const GnssNtripConnectionParams& params, bool enableRTKEngine);
     void disablePPENtripStreamCommand();
-    void handleEnablePPENtrip(const GnssNtripConnectionParams& params);
+    void handleEnablePPENtrip(const GnssNtripConnectionParams& params, bool enableRTKEngine);
     void handleDisablePPENtrip();
     void reportGGAToNtrip(const char* nmea);
     inline bool isDgnssNmeaRequired() { return mSendNmeaConsent &&
@@ -745,6 +754,12 @@ public:
     // Zpp related
     virtual bool reportZppBestAvailableFix(LocGpsLocation &zppLoc,
             GpsLocationExtended &location_extended, LocPosTechMask tech_mask) override;
+
+    // QESDK feature manange related
+    // This function can only be called from Engine Hub
+    void handleQesdkQwesStatusFromEHub(
+            const std::unordered_map<LocationQwesFeatureType, bool> &featureMap);
+
 };
 
 #endif //GNSS_ADAPTER_H

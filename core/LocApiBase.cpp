@@ -989,6 +989,11 @@ DEFAULT_IMPL()
 void LocApiBase::setTribandState(bool /*enabled*/)
 DEFAULT_IMPL()
 
+void LocApiBase::
+    configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash,
+            LocApiResponse* /*adpterResponse*/)
+DEFAULT_IMPL()
+
 int64_t ElapsedRealtimeEstimator::getElapsedRealtimeEstimateNanos(int64_t curDataTimeNanos,
             bool isCurDataTimeTrustable, int64_t tbfNanos) {
     //The algorithm works follow below steps:

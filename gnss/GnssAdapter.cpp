@@ -86,6 +86,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <loc_misc_utils.h>
 #include <gps_extended_c.h>
 #include <sys/stat.h>
+#include <thread>
 
 #define RAD2DEG    (180.0 / M_PI)
 #define DEG2RAD    (M_PI / 180.0)
@@ -205,7 +206,8 @@ GnssAdapter::GnssAdapter() :
     mPowerElapsedRealTimeCal(30000000),
     mPositionElapsedRealTimeCal(30000000),
     mAddressRequestCb(nullptr),
-    mHmacConfig(HMAC_CONFIG_UNKNOWN)
+    mHmacConfig(HMAC_CONFIG_UNKNOWN),
+    mQppeFeatureStatusMask(0)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -238,9 +240,11 @@ GnssAdapter::GnssAdapter() :
     initDefaultAgpsCommand();
     initCDFWServiceCommand();
     initEngHubProxyCommand();
+    testLaunchQppeBringUp();
     // at last step, let us inform adapater base that we are done
     // with initialization, e.g.: ready to process handleEngineUpEvent
     doneInit();
+
 }
 
 void
@@ -3163,9 +3167,24 @@ GnssAdapter::eraseTrackingSession(LocationAPI* client, uint32_t sessionId)
     }
 }
 
-void GnssAdapter::testLaunchQppeBringUp(bool preciseTrkState) {
-    getSystemStatus()->eventPreciseLocation(preciseTrkState);
-    getSystemStatus()->eventSetTracking(preciseTrkState, false);
+void GnssAdapter::testLaunchQppeBringUp() {
+    std::thread testLaunchThead([&](){
+        int retryAttempts = 60;
+        mQppeResp = false;
+        getSystemStatus()->eventPreciseLocation(true);
+        getSystemStatus()->eventSetTracking(true, true);
+        while (retryAttempts >= 0 && !mQppeResp) {
+            LOC_LOGd("testLaunchQppeBringUp, retry %d", (60 - retryAttempts));
+            sleep(1);
+            retryAttempts--;
+        }
+        if (!(mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT)) {
+            LOC_LOGd("timeout, no response from Qppe process.");
+            getSystemStatus()->eventPreciseLocation(false);
+        }
+        getSystemStatus()->eventSetTracking(isInSession(), false);
+    });
+    testLaunchThead.detach();
 }
 
 bool GnssAdapter::setLocPositionMode(const LocPosMode& mode) {
@@ -5357,6 +5376,72 @@ bool GnssAdapter::reportGnssAdditionalSystemInfoEvent(
     return true;
 }
 
+void GnssAdapter::handleQesdkQwesStatusFromEHub(
+        const std::unordered_map<LocationQwesFeatureType, bool> &featureMap)
+{
+    struct MsgReportQwesStatusFromEHub : public LocMsg {
+        GnssAdapter& mAdapter;
+        const std::unordered_map<LocationQwesFeatureType, bool> mFeatureMap;
+        inline MsgReportQwesStatusFromEHub(GnssAdapter& adapter,
+                const std::unordered_map<LocationQwesFeatureType, bool> &featureMap) :
+            LocMsg(),
+            mAdapter(adapter),
+            mFeatureMap(featureMap) {}
+        inline virtual void proc() const {
+            LOC_LOGd("ReportQwesFeatureStatus From Engine Hub, mppeFeatureStatusMask: %x",
+                    mAdapter.mQppeFeatureStatusMask);
+            auto iter1 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_PPE);
+            auto iter2 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_PPE_QESDK);
+            //QESDK feature status call back handling logic:
+            //1, If LOCATION_QWES_FEATURE_TYPE_PPE is presented in feature map,
+            //   It means Qwes status callback is triggered by Engine Servive try
+            //   to register to Engine Hub, set QPPE_FEATURE_STATUS_LIRBARY_PRESENT
+            //   bit, and set QPPE_FEATURE_ENABLED_BY_DEFAULT bit according to
+            //   PPE feature status;
+            //2, If LOCATION_QWES_FEATURE_TYPE_PPE_QESDK is presented in feature map,
+            //   It means Qwes status callback is triggered when Engine hub recieves
+            //   configPreciseLocation command from GnssAdapter, and already checked
+            //   QESDK feature status via QWES call checkInstalledLicense, set
+            //   QPPE_FEATURE_ENABLED_BY_QESDK bit according to QESDK feature status.
+            if (iter1 != mFeatureMap.end()) {
+                LOC_LOGd("ReportQwesFeatureStatus, set library present bit");
+                mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_STATUS_LIRBARY_PRESENT;
+                if (iter1->second) {
+                    mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_ENABLED_BY_DEFAULT;
+                    mAdapter.getSystemStatus()->eventPreciseLocation(true);
+                    LOC_LOGd("ReportQwesFeatureStatus, set device feature bit true");
+                } else {
+                    mAdapter.mQppeFeatureStatusMask &= (~QPPE_FEATURE_ENABLED_BY_DEFAULT);
+                    mAdapter.getSystemStatus()->eventPreciseLocation(false);
+                    LOC_LOGd("ReportQwesFeatureStatus, set device feature bit false");
+                }
+                mAdapter.mQppeResp = true;
+            } else if (iter2 != mFeatureMap.end()) {
+                LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit");
+                if (iter2->second) {
+                    mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_ENABLED_BY_QESDK;
+                    //Send enable precise location data item to loclauncher to inform
+                    //it QPPE engine-service need to launch
+                    if (mAdapter.mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+                        mAdapter.getSystemStatus()->eventPreciseLocation(true);
+                        LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit true");
+                    }
+                } else {
+                    mAdapter.mQppeFeatureStatusMask &= (~QPPE_FEATURE_ENABLED_BY_QESDK);
+                    //Send disable precise location data item to loclauncher to inform
+                    //it QPPE engine-service need to exit
+                    if (mAdapter.mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+                        mAdapter.getSystemStatus()->eventPreciseLocation(false);
+                        LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit false");
+                    }
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgReportQwesStatusFromEHub(*this, featureMap));
+}
+
 bool GnssAdapter::reportQwesCapabilities(
         const std::unordered_map<LocationQwesFeatureType, bool> &featureMap)
 {
@@ -7334,6 +7419,35 @@ uint32_t GnssAdapter::registerXtraStatusUpdateCommand(bool registerUpdate) {
     return sessionId;
 }
 
+void GnssAdapter::configPrecisePositioningCommand(
+        uint32_t featureId, bool enable, std::string appHash) {
+
+    struct MsgConfigPrecisePositioning : public LocMsg {
+        GnssAdapter& mAdapter;
+        bool mEnable;
+        std::string mAppHash;
+        uint32_t mFeatureId;
+
+        inline MsgConfigPrecisePositioning(GnssAdapter& adapter,
+                                           bool enable,
+                                           std::string appHash,
+                                           uint32_t featureId) :
+            LocMsg(),
+            mAdapter(adapter),
+            mEnable(enable),
+            mAppHash(appHash),
+            mFeatureId(featureId) {}
+        inline virtual void proc() const {
+            LOC_LOGd("ConfigPrecisePositioning: enable: %d, appHash: %s, featureId: %d", mEnable,
+                    mAppHash.c_str(), mFeatureId);
+            mAdapter.mEngHubProxy->configPrecisePositioning(mFeatureId, mEnable, mAppHash);
+            //call QMI API to configPrecisePositioning
+            mAdapter.mLocApi->configPrecisePositioning(mFeatureId, mEnable, mAppHash);
+        }
+    };
+    sendMsg(new MsgConfigPrecisePositioning(*this, enable, appHash, featureId));
+}
+
 void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig)
 {
     struct MsgReportGnssConfig : public LocMsg {
@@ -7476,6 +7590,7 @@ GnssAdapter::initEngHubProxy() {
 
         GnssAdapterUpdateQwesFeatureStatusCb updateQwesFeatureStatusCb =
             [this] (const std::unordered_map<LocationQwesFeatureType, bool> &featureMap) {
+            handleQesdkQwesStatusFromEHub(featureMap);
             reportQwesCapabilities(featureMap);
         };
 
@@ -7719,20 +7834,24 @@ void GnssAdapter::enablePPENtripStreamCommand(const GnssNtripConnectionParams& p
     struct enableNtripMsg : public LocMsg {
         GnssAdapter& mAdapter;
         const GnssNtripConnectionParams mParams;
+        bool mEnableRTKEngine;
 
         inline enableNtripMsg(GnssAdapter& adapter,
-                const GnssNtripConnectionParams& params) :
+                const GnssNtripConnectionParams& params,
+                bool enableRTKEngine) :
             LocMsg(),
             mAdapter(adapter),
-            mParams(std::move(params)) {}
+            mParams(std::move(params)),
+            mEnableRTKEngine(enableRTKEngine) {}
         inline virtual void proc() const {
-            mAdapter.handleEnablePPENtrip(mParams);
+            mAdapter.handleEnablePPENtrip(mParams, mEnableRTKEngine);
         }
     };
-    sendMsg(new enableNtripMsg(*this, params));
+    sendMsg(new enableNtripMsg(*this, params, enableRTKEngine));
 }
 
-void GnssAdapter::handleEnablePPENtrip(const GnssNtripConnectionParams& params) {
+void GnssAdapter::handleEnablePPENtrip(const GnssNtripConnectionParams& params,
+        bool enableRTKEngine) {
     LOC_LOGd("%d %s %d %s %s %s %d mSendNmeaConsent %d",
              params.useSSL, params.hostNameOrIp.data(), params.port,
              params.mountPoint.data(), params.username.data(), params.password.data(),
@@ -7755,10 +7874,10 @@ void GnssAdapter::handleEnablePPENtrip(const GnssNtripConnectionParams& params) 
     mDgnssState |= DGNSS_STATE_ENABLE_NTRIP_COMMAND;
     mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
     mDgnssState &= ~DGNSS_STATE_NTRIP_SESSION_STARTED;
-    getSystemStatus()->eventPreciseLocation(true);
     getSystemStatus()->eventNtripStarted(true);
 
     mStartDgnssNtripParams.ntripParams = std::move(params);
+    mStartDgnssNtripParams.enableRTKEngine = enableRTKEngine;
     mStartDgnssNtripParams.nmea.clear();
     if (mSendNmeaConsent && pNtripParams->requiresNmeaLocation) {
         mDgnssState &= ~DGNSS_STATE_NO_NMEA_PENDING;
@@ -7787,7 +7906,6 @@ void GnssAdapter::handleDisablePPENtrip() {
     mDgnssState &= ~DGNSS_STATE_ENABLE_NTRIP_COMMAND;
     mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
     stopDgnssNtrip();
-    getSystemStatus()->eventPreciseLocation(false);
     getSystemStatus()->eventNtripStarted(false);
 }
 

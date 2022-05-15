@@ -156,6 +156,7 @@ struct GnssInterface {
     uint32_t (*configXtraParams) (bool enable, const XtraConfigParams& configParams);
     uint32_t (*gnssGetXtraStatus)();
     uint32_t (*gnssRegisterXtraStatusUpdate)(bool registerUpdate);
+    void (*configPrecisePositioning)(uint32_t featureId, bool enable, std::string appHash);
 };
 
 struct BatchingInterface {

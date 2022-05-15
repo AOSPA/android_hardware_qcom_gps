@@ -81,6 +81,7 @@ using android::hardware::joinRpcThreadpool;
 using ::android::sp;
 
 typedef int vendorEnhancedServiceMain(int /* argc */, char* /* argv */ []);
+typedef void createQesdkHandle();
 
 using GnssAidl = ::android::hardware::gnss::aidl::implementation::Gnss;
 
@@ -110,6 +111,14 @@ int main() {
 
         // Loc AIDL service
 #define VENDOR_AIDL_LIB "vendor.qti.gnss-service.so"
+#define QESDK_SERVICE_LIB "liblocation_qesdk.so"
+    void* libQesdkHandle = NULL;
+    createQesdkHandle* qesdkMainMethod = (createQesdkHandle*)
+        dlGetSymFromLib(libQesdkHandle, QESDK_SERVICE_LIB, "createLocationQesdk");
+    if (NULL != qesdkMainMethod) {
+        ALOGI("start Location QESDK service");
+        (*qesdkMainMethod)();
+    }
 
     void* libAidlHandle = NULL;
     vendorEnhancedServiceMain* aidlMainMethod = (vendorEnhancedServiceMain*)
