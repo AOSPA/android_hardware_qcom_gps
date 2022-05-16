@@ -106,7 +106,7 @@ GnssAPIClient::GnssAPIClient(const shared_ptr<IGnssCallback>& gpsCb) :
     LocationAPIClientBase(),
     mControlClient(new LocationAPIControlClient()),
     mTracking(false),
-    mReportSpeOnly(false),
+    mReportSpeOnly(true),
     mLocationCapabilitiesMask(0),
     mLocationCapabilitiesCached(false),
     mSvStatusEnabled(false),
@@ -264,6 +264,10 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
     if (GNSS_POWER_MODE_INVALID != powerMode) {
         mTrackingOptions.powerMode = powerMode;
         mTrackingOptions.tbm = timeBetweenMeasurement;
+    }
+    mTrackingOptions.locReqEngTypeMask = LOC_REQ_ENGINE_SPE_BIT;
+    if (0 == mReportSpeOnly) {
+        mTrackingOptions.locReqEngTypeMask = LOC_REQ_ENGINE_FUSED_BIT;
     }
     locAPIUpdateTrackingOptions(mTrackingOptions);
     return retVal;
