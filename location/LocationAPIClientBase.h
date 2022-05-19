@@ -267,6 +267,7 @@ public:
 
     void locAPIGnssNiResponse(uint32_t id, GnssNiResponse response);
     void locAPIGetDebugReport(GnssDebugReport &report);
+    uint32_t locAPIGetAntennaInfo(AntennaInfoCallback* cb);
 
     // callbacks
     void onResponseCb(LocationError error, uint32_t id);

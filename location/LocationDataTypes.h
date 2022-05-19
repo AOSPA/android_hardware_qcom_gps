@@ -74,8 +74,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define GNSS_NI_REQUESTOR_MAX  (256)
 #define GNSS_NI_MESSAGE_ID_MAX (2048)
-#define GNSS_SV_MAX            (128)
-#define GNSS_MEASUREMENTS_MAX  (128)
+#define GNSS_SV_MAX            (144)
+#define GNSS_MEASUREMENTS_MAX  (144)
 #define GNSS_BANDS_MAX          (32)
 #define GNSS_UTC_TIME_OFFSET   (3657)
 
@@ -363,7 +363,9 @@ typedef enum {
     // This mask indicates DGNSS license bundle is enabled.
     LOCATION_CAPABILITIES_QWES_DGNSS                        = (1<<27),
     // This mask indicates engine debug data enabled.
-    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28)
+    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28),
+    // This mask indicates Antenna info is enabled.
+    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -840,6 +842,10 @@ typedef enum {
     GNSS_SIGNAL_NAVIC_L5            = (1<<20),
     /** BEIDOU B2A_Q RF Band */
     GNSS_SIGNAL_BEIDOU_B2AQ         = (1<<21),
+    /** BEIDOU B2B_I RF Band */
+    GNSS_SIGNAL_BEIDOU_B2BI         = (1<<22),
+    /** BEIDOU B2B_Q RF Band */
+    GNSS_SIGNAL_BEIDOU_B2BQ         = (1<<23),
 } GnssSignalTypeBits;
 
 #define GNSS_SIGNAL_TYPE_MASK_ALL\
@@ -849,7 +855,8 @@ typedef enum {
      GNSS_SIGNAL_BEIDOU_B1I | GNSS_SIGNAL_BEIDOU_B1C | GNSS_SIGNAL_BEIDOU_B2I|\
      GNSS_SIGNAL_BEIDOU_B2AI | GNSS_SIGNAL_QZSS_L1CA | GNSS_SIGNAL_QZSS_L1S |\
      GNSS_SIGNAL_QZSS_L2| GNSS_SIGNAL_QZSS_L5 | GNSS_SIGNAL_SBAS_L1 |\
-     GNSS_SIGNAL_NAVIC_L5 | GNSS_SIGNAL_BEIDOU_B2AQ)
+     GNSS_SIGNAL_NAVIC_L5 | GNSS_SIGNAL_BEIDOU_B2AQ | GNSS_SIGNAL_BEIDOU_B2BI |\
+     GNSS_SIGNAL_BEIDOU_B2BQ)
 
 typedef enum
 {
@@ -1087,19 +1094,27 @@ typedef enum {
     GNSS_POWER_MODE_M5   /* Background Mode */
 } GnssPowerMode;
 
+typedef enum {
+    SPECIAL_REQ_INVALID = 0,
+    SPECIAL_REQ_SHORT_CODE,   /* Short code */
+} SpecialReqType;
+
 struct TrackingOptions : LocationOptions {
     GnssPowerMode powerMode; /* Power Mode to be used for time based tracking
                                 sessions */
     uint32_t tbm;  /* Time interval between measurements specified in millis.
                       Applicable to background power modes */
+    SpecialReqType specialReq; /* Special Request type */
 
     inline TrackingOptions() :
-            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            specialReq(SPECIAL_REQ_INVALID){}
     inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
-            LocationOptions(), powerMode(m), tbm(t) {
-            LocationOptions::size = s; }
+            LocationOptions(), powerMode(m), tbm(t),
+            specialReq(SPECIAL_REQ_INVALID){ LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
-            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0) {}
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            specialReq(SPECIAL_REQ_INVALID){}
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;
@@ -1410,6 +1425,30 @@ typedef struct {
     float    protectVertical;
 } GnssLocationInfoNotification;
 
+// Indicate the API that is called to generate the location report
+enum LocReportTriggerType {
+    LOC_REPORT_TRIGGER_UNSPECIFIED               = 0,
+    LOC_REPORT_TRIGGER_SIMPLE_TRACKING_SESSION   = 1,
+    LOC_REPORT_TRIGGER_DETAILED_TRACKING_SESSION = 2,
+    LOC_REPORT_TRIGGER_ENGINE_TRACKING_SESSION   = 3,
+    LOC_REPORT_TRIGGER_SINGLE_TERRESTRIAL_FIX    = 4,
+    LOC_REPORT_TRIGGER_SINGLE_FIX                = 5,
+    LOC_REPORT_TRIGGER_TRIP_BATCHING_SESSION     = 6,
+    LOC_REPORT_TRIGGER_ROUTINE_BATCHING_SESSION  = 7,
+    LOC_REPORT_TRIGGER_GEOFENCE_SESSION          = 8,
+};
+
+struct DiagLocationInfoExt {
+    LocationCapabilitiesMask capMask;
+    uint64_t sessionStartBootTimestampNs;
+    LocReportTriggerType reportTriggerType;
+    inline DiagLocationInfoExt(LocationCapabilitiesMask inCapMask,
+                               uint64_t inSessionStartBootTimestampNs,
+                               LocReportTriggerType inReportTriggerType) :
+            capMask(inCapMask), sessionStartBootTimestampNs(inSessionStartBootTimestampNs),
+            reportTriggerType(inReportTriggerType) {}
+};
+
 typedef struct {
     uint32_t size;                           // set to sizeof(GnssNiNotification)
     GnssNiType type;                       // type of NI (Voice, SUPL, Control Plane)
@@ -1438,6 +1477,8 @@ typedef struct {
 #define BEIDOU_B2_I_CARRIER_FREQUENCY   (1207140000.0)
 #define BEIDOU_B2A_I_CARRIER_FREQUENCY  (1176450000.0)
 #define BEIDOU_B2A_Q_CARRIER_FREQUENCY  (1176450000.0)
+#define BEIDOU_B2B_I_CARRIER_FREQUENCY  (1207140000.0)
+#define BEIDOU_B2B_Q_CARRIER_FREQUENCY  (1207140000.0)
 #define QZSS_L1CA_CARRIER_FREQUENCY     (1575420000.0)
 #define QZSS_L1S_CARRIER_FREQUENCY      (1575420000.0)
 #define QZSS_L2C_L_CARRIER_FREQUENCY    (1227600000.0)
@@ -2494,13 +2535,14 @@ typedef std::function<void(
     GnssMeasurementCorrectionsCapabilitiesMask capabilities
 )> measCorrSetCapabilitiesCallback;
 
-
 /*
 * Callback with Antenna information.
 */
-typedef std::function<void(
-    std::vector<GnssAntennaInformation> gnssAntennaInformations
-)> antennaInfoCallback;
+struct AntennaInfoCallback {
+    AntennaInfoCallback() = default;
+    virtual ~AntennaInfoCallback() = default;
+    virtual void operator()(std::vector<GnssAntennaInformation>& gnssAntennaInformations) = 0;
+};
 
 /*
 * Callback with NFW information.
@@ -2519,7 +2561,6 @@ typedef std::function<bool(
 typedef std::function<void(
     const GnssEnergyConsumedInfo& gnssEneryConsumed
 )> gnssEnergyConsumedCallback;
-
 
 typedef struct {
     uint32_t size; // set to sizeof(LocationCallbacks)
@@ -2550,7 +2591,6 @@ typedef struct {
     gnssConfigCallback gnssConfigCb;                 // optional
     odcpiRequestCallback odcpiReqCb;                 //optional
     measCorrSetCapabilitiesCallback measCorrSetCapabilitiesCb; // optional
-    antennaInfoCallback antennaInfoCb;               //optional
     agnssStatusIpV4Callback   agpsStatusIpV4Cb;      //optional
     nfwStatusCallback nfwStatusCb;                   // optional
     isInEmergencySessionCallback isInEmergencyStatusCb; // optional

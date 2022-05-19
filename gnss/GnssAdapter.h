@@ -280,7 +280,6 @@ class GnssAdapter : public LocAdapterBase {
     /* ==== Measurement Corrections========================================================= */
     bool mIsMeasCorrInterfaceOpen;
     bool initMeasCorr(bool bSendCbWhenNotSupported);
-    bool mIsAntennaInfoInterfaceOpened;
 
     /* ==== DGNSS Data Usable Report======================================================== */
     QDgnssListenerHDL mQDgnssListenerHDL;
@@ -523,9 +522,7 @@ public:
     bool openMeasCorrCommand(const measCorrSetCapabilitiesCallback setCapabilitiesCb);
     bool measCorrSetCorrectionsCommand(const GnssMeasurementCorrections gnssMeasCorr);
     inline void closeMeasCorrCommand() { mIsMeasCorrInterfaceOpen = false; }
-    uint32_t antennaInfoInitCommand(const antennaInfoCallback antennaInfoCallback);
-    void getGnssAntennaeInfoCommand();
-    inline void antennaInfoCloseCommand() { mIsAntennaInfoInterfaceOpened = false; }
+    uint32_t getAntennaeInfoCommand(AntennaInfoCallback* antennaInfoCallback);
     uint32_t configMinGpsWeekCommand(uint16_t minGpsWeek);
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
@@ -659,7 +656,7 @@ public:
 
 
     std::vector<double> parseDoublesString(char* dString);
-    void reportGnssAntennaInformation();
+    void reportGnssAntennaInformation(AntennaInfoCallback* cb);
     inline void setPowerIndicationCb(const powerIndicationCb powerIndicationCallback) {
         mPowerIndicationCb = powerIndicationCallback;
     }
@@ -722,7 +719,8 @@ public:
     void setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb);
     inline void setEsStatusCallback (std::function<void(bool)> esStatusCb) {
             mEsStatusCb = esStatusCb; }
-
+    void setTribandState();
+    void testLaunchQppeBringUp(bool preciseTrkState);
     /*==== DGnss Usable Report Flag ====================================================*/
     inline void setDGnssUsableFLag(bool dGnssNeedReport) { mDGnssNeedReport = dGnssNeedReport;}
     inline bool isNMEAPrintEnabled() {

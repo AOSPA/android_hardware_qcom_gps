@@ -86,6 +86,7 @@
 #define LOC_FEATURE_GTP_WIFI           "gtp-wifi"
 #define LOC_FEATURE_GTP_WAA            "gtp-waa"
 #define LOC_FEATURE_SAP                "sap"
+#define LOC_FEATURE_LAUNCH_TRIGGER_MASK   "launch-trigger-mask"
 
 #define LOC_PROCESS_MAX_NUM_GROUPS     20
 #define LOC_PROCESS_MAX_NUM_ARGS       25
@@ -136,7 +137,7 @@ typedef struct {
     unsigned char        num_groups;
     char                 args[LOC_PROCESS_MAX_NUM_ARGS][LOC_PROCESS_MAX_ARG_STR_LENGTH];
     char                 argumentString[LOC_MAX_PARAM_STRING];
-    bool                 launch_on_optin;
+    unsigned int         launch_trigger_mask;
 } loc_process_info_s_type;
 
 /*=============================================================================

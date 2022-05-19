@@ -719,7 +719,7 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  " satellitePvt.tropoDelayMeters: %.2f"
                  " satellitePvt.timeOfClockSeconds: %d"
                  " satellitePvt.issueOfDataClock: %d"
-                 " satellitePvt.timeOfEphemerisSeconds: %%d"
+                 " satellitePvt.timeOfEphemerisSeconds: %d"
                  " satellitePvt.issueOfDataEphemeris: %d"
                  " satellitePvt.ephemerisSource: %d",
                  data.measurements[i].satellitePvt.flags,

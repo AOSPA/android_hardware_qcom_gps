@@ -33,6 +33,7 @@
 
 #include <android/hardware/gnss/2.1/IGnssAntennaInfo.h>
 #include <hidl/Status.h>
+#include <LocationDataTypes.h>
 
 namespace android {
 namespace hardware {
@@ -61,7 +62,7 @@ struct GnssAntennaInfo : public IGnssAntennaInfo {
             setCallback(const sp<IGnssAntennaInfoCallback>& callback) override;
     Return<void> close(void) override;
 
-    void gnssAntennaInfoCb(std::vector<GnssAntennaInformation> gnssAntennaInformations);
+    void gnssAntennaInfoCb(std::vector<GnssAntennaInformation>& gnssAntennaInformations);
 
  private:
     struct GnssAntennaInfoDeathRecipient : hidl_death_recipient {
@@ -70,11 +71,21 @@ struct GnssAntennaInfo : public IGnssAntennaInfo {
         virtual void serviceDied(uint64_t cookie, const wp<IBase>& who) override;
     };
 
+    struct AntennaInfoHidlCallback : public AntennaInfoCallback {
+        GnssAntennaInfo& mGAI;
+        inline AntennaInfoHidlCallback(GnssAntennaInfo& gai) :
+             AntennaInfoCallback(), mGAI(gai) {}
+        inline virtual void operator()(
+                std::vector<GnssAntennaInformation>& antennaInfo) override {
+            mGAI.gnssAntennaInfoCb(antennaInfo);
+        }
+    };
+
  private:
     sp<GnssAntennaInfoDeathRecipient> mGnssAntennaInfoDeathRecipient = nullptr;
     sp<IGnssAntennaInfoCallback> mGnssAntennaInfoCbIface = nullptr;
     Gnss* mGnss = nullptr;
-    bool mCallBackIsSet = false;
+    AntennaInfoHidlCallback mAntennaInfoCb;
 };
 
 }  // namespace implementation

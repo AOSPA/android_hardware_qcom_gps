@@ -183,6 +183,7 @@ typedef struct loc_sv_cache_info_s
     uint32_t bds_b1i_count;
     uint32_t bds_b1c_count;
     uint32_t bds_b2_count;
+    uint32_t bds_b2b_count;
     uint32_t navic_l5_count;
     float hdop;
     float pdop;
@@ -379,6 +380,10 @@ static uint32_t convert_signalType_to_signalId(GnssSignalTypeMask signalType)
         case GNSS_SIGNAL_BEIDOU_B2AQ:
             signalId = SIGNAL_ID_BDS_B2A;
             break;
+        case GNSS_SIGNAL_BEIDOU_B2BI:
+        case GNSS_SIGNAL_BEIDOU_B2BQ:
+            signalId = SIGNAL_ID_BDS_B2B;
+            break;
         case GNSS_SIGNAL_NAVIC_L5:
             signalId = SIGNAL_ID_NAVIC_L5SPS;
             break;
@@ -538,6 +543,9 @@ static loc_nmea_sv_meta* loc_nmea_sv_meta_init(loc_nmea_sv_meta& sv_meta,
                     break;
                 case GNSS_SIGNAL_BEIDOU_B2AI:
                     sv_meta.svCount = sv_cache_info.bds_b2_count;
+                    break;
+                case GNSS_SIGNAL_BEIDOU_B2BI:
+                    sv_meta.svCount = sv_cache_info.bds_b2b_count;
                     break;
             }
             break;
@@ -2290,6 +2298,9 @@ void loc_nmea_generate_sv(const GnssSvNotification &svNotify,
             if ((GNSS_SIGNAL_BEIDOU_B2AI == svNotify.gnssSvs[svOffset].gnssSignalTypeMask) ||
                    (GNSS_SIGNAL_BEIDOU_B2AQ == svNotify.gnssSvs[svOffset].gnssSignalTypeMask)) {
                 sv_cache_info.bds_b2_count++;
+            } else if ((GNSS_SIGNAL_BEIDOU_B2BI == svNotify.gnssSvs[svOffset].gnssSignalTypeMask) ||
+                      (GNSS_SIGNAL_BEIDOU_B2BQ == svNotify.gnssSvs[svOffset].gnssSignalTypeMask)) {
+                sv_cache_info.bds_b2b_count++;
             } else if (GNSS_SIGNAL_BEIDOU_B1C == svNotify.gnssSvs[svOffset].gnssSignalTypeMask) {
                 sv_cache_info.bds_b1c_count++;
             } else {
@@ -2409,6 +2420,12 @@ void loc_nmea_generate_sv(const GnssSvNotification &svNotify,
         loc_nmea_generate_GSV(svNotify, sentence, sizeof(sentence),
                 loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_BEIDOU,
                 GNSS_SIGNAL_BEIDOU_B2AI, false), nmeaArraystr);
+        // -----------------------------
+        // ------$GBGSV (BEIDOU:B2BI)---
+        // -----------------------------
+        loc_nmea_generate_GSV(svNotify, sentence, sizeof(sentence),
+                loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_BEIDOU,
+                GNSS_SIGNAL_BEIDOU_B2BI, false), nmeaArraystr);
     }
 
 

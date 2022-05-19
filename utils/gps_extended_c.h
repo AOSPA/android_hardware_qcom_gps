@@ -595,6 +595,8 @@ typedef struct {
     uint64_t bds_b1c_sv_used_ids_mask;      // BDS B1C
     uint64_t bds_b2i_sv_used_ids_mask;      // BDS B2I
     uint64_t bds_b2ai_sv_used_ids_mask;     // BDS B2AI
+    uint64_t bds_b2bi_sv_used_ids_mask;     // BDS B2BI
+    uint64_t bds_b2bq_sv_used_ids_mask;     // BDS B2BQ
     uint64_t qzss_l1ca_sv_used_ids_mask;    // QZSS L1CA
     uint64_t qzss_l1s_sv_used_ids_mask;     // QZSS L1S
     uint64_t qzss_l2_sv_used_ids_mask;      // QZSS L2
@@ -1091,6 +1093,7 @@ enum loc_api_adapter_event_index {
     LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT,        // Latency information report
     LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT,          // Engine Debug data report
     LOC_API_ADAPTER_REPORT_DISASTER_CRISIS,            // Disaster crisis message report
+    LOC_API_ADAPTER_ENGINE_LOCK_STATE_DATA_REPORT,      // Engine lock state data report
     LOC_API_ADAPTER_EVENT_MAX
 };
 
@@ -1135,8 +1138,8 @@ enum loc_api_adapter_event_index {
 #define LOC_API_ADAPTER_BIT_EVENT_REPORT_INFO                (1ULL<<LOC_API_ADAPTER_EVENT_REPORT_INFO)
 #define LOC_API_ADAPTER_BIT_LATENCY_INFORMATION              (1ULL<<LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT)
 #define LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT         (1ULL<<LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT)
-#define LOC_API_ADAPTER_BIT_DISASTER_CRISIS_REPORT \
-        (1ULL<<LOC_API_ADAPTER_REPORT_DISASTER_CRISIS)
+#define LOC_API_ADAPTER_BIT_DISASTER_CRISIS_REPORT           (1ULL<<LOC_API_ADAPTER_REPORT_DISASTER_CRISIS)
+#define LOC_API_ADAPTER_BIT_ENGINE_LOCK_STATE_DATA_REPORT    (1ULL<<LOC_API_ADAPTER_ENGINE_LOCK_STATE_DATA_REPORT)
 
 typedef uint64_t LOC_API_ADAPTER_EVENT_MASK_T;
 
@@ -1170,7 +1173,7 @@ typedef uint32_t LOC_GPS_LOCK_MASK;
 #define GNSS_SV_POLY_XYZ_N_TH_ORDER_COEFF_MAX_SIZE  9
 #define GNSS_SV_POLY_SV_CLKBIAS_COEFF_MAX_SIZE      4
 /** Max number of GNSS SV measurement */
-#define GNSS_LOC_SV_MEAS_LIST_MAX_SIZE              128
+#define GNSS_LOC_SV_MEAS_LIST_MAX_SIZE              144
 
 enum ulp_gnss_sv_measurement_valid_flags{
 
@@ -1228,6 +1231,8 @@ enum ulp_gnss_sv_measurement_valid_flags{
 #define ULP_GNSS_SV_POLY_BIT_NAVIC_TGD_L5           (0x040000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_TGD_B1C            (0x080000000)
 #define ULP_GNSS_SV_POLY_BIT_BDS_ISC_B1C            (0x100000000)
+#define ULP_GNSS_SV_POLY_BIT_BDS_TGD_B2BI           (0x200000000)
+#define ULP_GNSS_SV_POLY_BIT_BDS_ISC_B2BI           (0x400000000)
 #define ULP_GNSS_SV_POLY_BIT_TOC                    (0x800000000)
 #define ULP_GNSS_SV_POLY_BIT_IODC                   (0x1000000000)
 #define ULP_GNSS_SV_POLY_BIT_TOE                    (0x2000000000)
@@ -1604,6 +1609,7 @@ typedef uint64_t GpsSvMeasHeaderFlags;
 #define GNSS_SV_MEAS_HEADER_HAS_BDSB1IB1C_TIME_BIAS           0x400000000
 #define GNSS_SV_MEAS_HEADER_HAS_GALE1E5B_TIME_BIAS            0x800000000
 #define GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS_UNC           0x1000000000
+#define GNSS_SV_MEAS_HEADER_HAS_BDSB1IB2BI_TIME_BIAS          0x2000000000
 
 typedef struct
 {
@@ -1630,6 +1636,7 @@ typedef struct
     Gnss_InterSystemBiasStructType              gpsL1L5TimeBias;
     Gnss_InterSystemBiasStructType              galE1E5aTimeBias;
     Gnss_InterSystemBiasStructType              bdsB1iB2aTimeBias;
+    Gnss_InterSystemBiasStructType              bdsB1iB2biTimeBias;
     Gnss_InterSystemBiasStructType              gpsL1L2cTimeBias;
     Gnss_InterSystemBiasStructType              gloG1G2TimeBias;
     Gnss_InterSystemBiasStructType              bdsB1iB1cTimeBias;
@@ -1768,6 +1775,8 @@ typedef struct {
     float navicTgdL5;
     float bdsTgdB1c;
     float bdsIscB1c;
+    float bdsTgdB2bi;
+    float bdsIscB2bi;
     uint32_t     toc;       /*  Clock data reference time of week [seconds] */
     uint16_t     iodc;      /*  Issue of data, clock [unitless] */
     uint32_t     toe;       /*  Reference time of ephemeris [seconds] */
@@ -2316,12 +2325,7 @@ typedef enum {
 struct EngineServiceInfo {
     bool dreIntEnabled;
     bool ppeEnabled;
-};
-
-enum AntennaInfoStatus {
-    ANTENNA_INFO_SUCCESS = 0,
-    ANTENNA_INFO_ERROR_ALREADY_INIT = 1,
-    ANTENNA_INFO_ERROR_GENERIC = 2
+    bool ppeIntEnabled;
 };
 
 typedef struct {
@@ -2369,7 +2373,23 @@ typedef enum {
   ENGINE_LOCK_STATE_ENABLED = 1,  /**<  Location engine is enabled.  */
   ENGINE_LOCK_STATE_DISABLED = 2, /**<  location engine is disabled. */
   ENGINE_LOCK_STATE_MAX,
-}EngineLockState;
+} EngineLockState;
+
+typedef  uint32_t LocLaunchTriggerMask;
+typedef enum {
+    LOC_ON_LOCATION_ENABLE = 1 << 0,
+    LOC_ON_OPT_IN = 1 << 1,
+    LOC_ON_PRECISE_TRACKING_START = 1 << 2,
+    LOC_ON_TRACKING_START = 1 << 3,
+    LOC_ON_EMERGENCY = 1 << 4,
+    LOC_ON_NTRIP_START =  1 << 5
+} LocLaunchTriggerEvents;
+
+/* gps.conf GNSS_DEPLOYMENT value meanings */
+#define QTI_GNSS_ENABLED                0
+#define QCSR_SS5_ENABLED                1
+#define PDS_API_ENABLED                 2
+#define QTI_MDM_GNSS_ENABLED            3
 
 #ifdef __cplusplus
 }

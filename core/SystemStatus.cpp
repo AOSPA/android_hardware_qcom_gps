@@ -180,15 +180,17 @@ SystemStatusPQWM1::SystemStatusPQWM1(const GnssEngineDebugDataInfo& info) {
     mClockFreqBias = info.clkFreqBias;
     mClockFreqBiasUnc = info.clkFreqUnc;
     mXoState = info.xoState;
-    mJammerGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].jammerInd;
-    mJammerGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].jammerInd;
-    mJammerBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].jammerInd;
-    mJammerGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].jammerInd;
     mRecErrorRecovery = info.rcvrErrRecovery;
-    mAgcGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].agc;
-    mAgcGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].agc;
-    mAgcBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].agc;
-    mAgcGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].agc;
+    if (info.jammerData.size() > 0) {
+        mJammerGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].jammerInd;
+        mJammerGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].jammerInd;
+        mJammerBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].jammerInd;
+        mJammerGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].jammerInd;
+        mAgcGps = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GPS_L1CA].agc;
+        mAgcGlo = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GLONASS_G1].agc;
+        mAgcBds = info.jammerData[GNSS_LOC_SIGNAL_TYPE_BEIDOU_B1_I].agc;
+        mAgcGal = info.jammerData[GNSS_LOC_SIGNAL_TYPE_GALILEO_E1_C].agc;
+    }
     mLeapSeconds = info.leapSecondInfo.leapSec;
     mLeapSecUnc = info.leapSecondInfo.leapSecUnc;
     mTimeUncNs = info.clkTimeUnc * 1000000LL;
@@ -1807,6 +1809,21 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
             ret = setIteminReport(mCache.mBtLeDeviceScanDetail, SystemStatusBtleDeviceScanDetail(
                         *(static_cast<BtLeDeviceScanDetailsDataItem*>(dataitem))));
             break;
+        case TRACKING_STARTED_DATA_ITEM_ID:
+            ret = setIteminReport(mCache.mTrackingStarted,
+                    SystemStatusTrackingStarted(
+                        *(static_cast<TrackingStartedDataItem*>(dataitem))));
+            break;
+        case NTRIP_STARTED_DATA_ITEM_ID:
+            ret = setIteminReport(mCache.mNtripStarted,
+                    SystemStatusNtripStarted(
+                        *(static_cast<NtripStartedDataItem*>(dataitem))));
+            break;
+        case PRECISE_LOCATION_ENABLED_DATA_ITEM_ID:
+            ret = setIteminReport(mCache.mPreciseLocationEnabled,
+                    SystemStatusPreciseLocationEnabled(
+                        *(static_cast<PreciseLocationEnabledDataItem*>(dataitem))));
+            break;
         default:
             break;
     }
@@ -2015,12 +2032,47 @@ bool SystemStatus::eventInEmergencyCall(bool isEmergency)
 }
 
 /******************************************************************************
-@brief      API to update engine tracking state
+@brief      API to update precise location state
+
+@param[In]  precise Location state
+
+@return     true when successfully done
 ******************************************************************************/
-void SystemStatus::setTracking(bool tracking) {
+bool SystemStatus::eventPreciseLocation(bool preciseLocation) {
+    SystemStatusPreciseLocationEnabled s(preciseLocation);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
+/******************************************************************************
+@brief      API to update Ntrip started state
+
+@param[In]  Ntrip started state
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventNtripStarted(bool ntripStarted) {
+    SystemStatusNtripStarted s(ntripStarted);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
+/******************************************************************************
+@brief      API to update engine tracking state
+
+@param[In]  tracking state
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventSetTracking(bool tracking, bool updateSysStatusTrkState) {
     pthread_mutex_lock(&mMutexSystemStatus);
-    mTracking = tracking;
+    if (updateSysStatusTrkState) {
+        mTracking = tracking;
+    }
+    SystemStatusTrackingStarted s(tracking);
+    mSysStatusObsvr.notify({&s.mDataItem});
     pthread_mutex_unlock(&mMutexSystemStatus);
+    return true;
 }
 } // namespace loc_core
 

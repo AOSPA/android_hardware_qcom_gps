@@ -114,11 +114,11 @@ static pthread_mutex_t gDataMutex = PTHREAD_MUTEX_INITIALIZER;
 static bool gGnssLoadFailed = false;
 static bool gBatchingLoadFailed = false;
 static bool gGeofenceLoadFailed = false;
-static uint32_t gEnableInfotainmentHal = 0;
-static bool gReadInfotainmentHalConfigOnce = false;
+static uint32_t gEnableMDMGnssHal = 0;
+static bool gReadGnssDeploymentConfigOnce = false;
 
 const loc_param_s_type gps_conf_params[] = {
-    {"ENABLE_INFOTAINMENT_HAL", &gEnableInfotainmentHal, nullptr, 'n'}
+    {"GNSS_DEPLOYMENT", &gEnableMDMGnssHal, nullptr, 'n'}
 };
 
 template <typename T1, typename T2>
@@ -133,11 +133,11 @@ static const T1* loadLocationInterface(const char* library, const char* name) {
 }
 
 bool LocationAPI::isInfotainmentHalConfigured() {
-    if (!gReadInfotainmentHalConfigOnce) {
+    if (!gReadGnssDeploymentConfigOnce) {
         UTIL_READ_CONF(LOC_PATH_GPS_CONF, gps_conf_params);
-        gReadInfotainmentHalConfigOnce = true;
+        gReadGnssDeploymentConfigOnce = true;
     }
-    return gEnableInfotainmentHal;
+    return (gEnableMDMGnssHal == QTI_MDM_GNSS_ENABLED);
 }
 
 static void loadLibGnss() {
@@ -750,6 +750,15 @@ void LocationAPI::getDebugReport(GnssDebugReport& report) {
     }
 }
 
+uint32_t LocationAPI::getAntennaInfo(AntennaInfoCallback* cb) {
+    if (gData.gnssInterface != NULL) {
+        return gData.gnssInterface->getAntennaInfo(cb);
+    } else {
+        LOC_LOGe("No gnss interface available for Location API");
+        return LOCATION_ERROR_GENERAL_FAILURE;
+    }
+}
+
 ILocationControlAPI*
 LocationControlAPI::getInstance(LocationControlCallbacks& locationControlCallbacks)
 {
@@ -1113,8 +1122,6 @@ uint32_t LocationControlAPI::updateCallbacks(LocationControlCallbacks& callbacks
     } else if (callbacks.agpsStatusIpV4Cb) {
         AgpsCbInfo cbInfo {callbacks.agpsStatusIpV4Cb, AGPS_ATL_TYPE_SUPL | AGPS_ATL_TYPE_SUPL_ES};
         gData.gnssInterface->agpsInit(cbInfo);
-    } else if (callbacks.antennaInfoCb) {
-        retVal = gData.gnssInterface->antennaInfoInit(callbacks.antennaInfoCb);
     } else if (callbacks.measCorrSetCapabilitiesCb) {
         retVal = gData.gnssInterface->measCorrInit(callbacks.measCorrSetCapabilitiesCb);
     } else if ((callbacks.nfwStatusCb) || (callbacks.isInEmergencyStatusCb)) {
@@ -1262,32 +1269,6 @@ void LocationControlAPI::measCorrClose() {
 
     pthread_mutex_unlock(&gDataMutex);
 
-}
-
-void LocationControlAPI::getGnssAntennaeInfo() {
-    pthread_mutex_lock(&gDataMutex);
-
-    if (gData.gnssInterface != NULL) {
-        gData.gnssInterface->getGnssAntennaeInfo();
-    }
-    else {
-        LOC_LOGe("No gnss interface available for Location Control API");
-    }
-
-    pthread_mutex_unlock(&gDataMutex);
-}
-
-void LocationControlAPI::antennaInfoClose() {
-    pthread_mutex_lock(&gDataMutex);
-
-    if (gData.gnssInterface != NULL) {
-        gData.gnssInterface->antennaInfoClose();
-    }
-    else {
-        LOC_LOGe("No gnss interface available for Location Control API");
-    }
-
-    pthread_mutex_unlock(&gDataMutex);
 }
 
 void LocationControlAPI::enableNfwLocationAccess(std::vector<std::string>& enabledNfws) {
