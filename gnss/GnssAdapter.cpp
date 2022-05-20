@@ -6390,9 +6390,9 @@ GnssAdapter::getDataInformation(GnssDataNotification& data, int msInWeek)
 
         if ((!reports.mRfAndParams.empty()) && (!reports.mTimeAndClock.empty()) &&
             (abs(msInWeek - (int)reports.mTimeAndClock.back().mGpsTowMs) < 2000)) {
-
-            for (int sig = GNSS_LOC_SIGNAL_TYPE_GPS_L1CA;
-                 sig < GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES; sig++) {
+            int maxSig = std::min((int)GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES,
+                    (int)reports.mRfAndParams.back().mJammerData.size());
+            for (int sig = GNSS_LOC_SIGNAL_TYPE_GPS_L1CA; sig < maxSig; sig++) {
                 data.gnssDataMask[sig] = 0;
                 data.jammerInd[sig] = 0.0;
                 data.agc[sig] = 0.0;
