@@ -754,6 +754,46 @@ public:
     */
     virtual uint32_t configEngineIntegrityRisk(
             PositioningEngineMask engType, uint32_t integrityRisk) = 0;
+
+     /** @brief
+        This API is used to enable/disable the XTRA (Predicted GNSS
+        Satellite Orbit Data) feature on device. If XTRA feature is
+        to be enabled, this API is also used to configure the
+        various XTRA settings in the device.
+
+        Client should wait for the command to finish, e.g.: via
+        configCb received before issuing a second configXtraParams
+        command. Behavior is not defined if client issues a second
+        request of configXtraParams without waiting for the finish of the
+        previous configXtraParams request.
+
+        Please note that configXtraParamsParams is not incremental, as a
+        second call of configXtraParamsParams will always overwrite the
+        previous one. Also, the configured xtra parameters will be
+        made persistent. However, to be consistent with other
+        location integration API, it is recommended to config xtra
+        params using location integration API upon device bootup.
+        <br/>
+
+        @param
+        enable: true to enable XTRA feature on the device
+                false to disable XTRA feature on the device. When
+                setting to false, both XTRA assistance data and NTP
+                time download will be disabled.
+
+        @param
+        configParams:pointer to XtraConfigParams to be used by XTRA
+        daemon module when enabling XTRA feature on the device.
+        if xtra feature is to be disabled, this parameter should be
+        set to NULL. If it is not set to NULL, the parameter will be
+        ignored.
+
+         @return
+         A session id that will be returned in responseCallback to
+         match command with response.
+    */
+    virtual uint32_t configXtraParams(
+            bool enable, const XtraConfigParams& configParams) = 0;
 };
 
 #endif /* ILOCATIONAPI_H */
