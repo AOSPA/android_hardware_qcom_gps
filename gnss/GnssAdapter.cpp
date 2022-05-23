@@ -2834,8 +2834,8 @@ GnssAdapter::updateClientsEventMask()
     ** engine hub is loaded successfully).
     ** Note: this need to be called from msg queue thread.
     */
-    if((1 == ContextBase::mGps_conf.EXTERNAL_DR_ENABLED) ||
-       (true == initEngHubProxy())) {
+    if (1 == ContextBase::mGps_conf.EXTERNAL_DR_ENABLED ||
+        (true == isPreciseEnabled())) {
         mask |= LOC_API_ADAPTER_BIT_GNSS_MEASUREMENT;
         mask |= LOC_API_ADAPTER_BIT_GNSS_SV_POLYNOMIAL_REPORT;
         mask |= LOC_API_ADAPTER_BIT_PARSED_UNPROPAGATED_POSITION_REPORT;
@@ -2844,7 +2844,6 @@ GnssAdapter::updateClientsEventMask()
         // Nhz measurement bit is set based on callback from loc eng hub
         // for Nhz engines.
         mask |= checkMask(LOC_API_ADAPTER_BIT_GNSS_NHZ_MEASUREMENT);
-
         LOC_LOGd("Auto usecase, Enable MEAS/POLY/EPHEMERIS - mask 0x%" PRIx64 "",
                 mask);
     }
@@ -4131,7 +4130,7 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
                 }
             }
 
-            if (true == mAdapter.initEngHubProxy()){
+            if (true == mAdapter.isPreciseEnabled()){
                 // report out all SPE fix if it is not propagated, even for failed fix
                 if (false == mUlpLocation.unpropagatedPosition) {
                     EngineLocationInfo engLocationInfo = {};
@@ -4217,7 +4216,7 @@ GnssAdapter::needReportForAllClients(const UlpLocation& ulpLocation,
     bool reported = false;
 
 #ifdef USE_GLIB
-    if (true == initEngHubProxy()) {
+    if (true == isPreciseEnabled()) {
         reported = true;
     }
 #endif
@@ -4283,6 +4282,10 @@ bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
     return retVal;
 }
 
+void GnssAdapter::notifyPreciseLocation(bool enable) {
+     getSystemStatus()->eventPreciseLocation(enable);
+     updateClientsEventMask();
+}
 void
 GnssAdapter::logLatencyInfo()
 {
@@ -4351,9 +4354,9 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
     bool reportToAnyClient = needReportForAnyClient(status);
 
     LOC_LOGd("reportToAllClients %d, reportToAnyClient %d, status %d, eng type %d, "
-             "eng hub inited %d",
+             "precise location enabled %d",
              reportToAllClients, reportToAnyClient, status,
-             locationExtended.locOutputEngType, initEngHubProxy());
+             locationExtended.locOutputEngType, isPreciseEnabled());
 
     if (reportToAllClients || reportToAnyClient) {
         GnssLocationInfoNotification locationInfo = {};
@@ -4368,7 +4371,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
                 if (nullptr != it->second.gnssLocationInfoCb) {
                     it->second.gnssLocationInfoCb(locationInfo);
                 } else if ((nullptr != it->second.engineLocationsInfoCb) &&
-                        (false == initEngHubProxy())) {
+                        (false == isPreciseEnabled())) {
                     // if engine hub is disabled, this is SPE fix from modem
                     // we need to have one copy marked as fused and leave the other copy
                     // unmodified (which is marked as SPE fix in LocAPIV02.cpp) and
@@ -5421,11 +5424,11 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
                 mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_STATUS_LIRBARY_PRESENT;
                 if (iter1->second) {
                     mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_ENABLED_BY_DEFAULT;
-                    mAdapter.getSystemStatus()->eventPreciseLocation(true);
+                    mAdapter.notifyPreciseLocation(true);
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit true");
                 } else {
                     mAdapter.mQppeFeatureStatusMask &= (~QPPE_FEATURE_ENABLED_BY_DEFAULT);
-                    mAdapter.getSystemStatus()->eventPreciseLocation(false);
+                    mAdapter.notifyPreciseLocation(false);
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit false");
                 }
                 mAdapter.mQppeResp = true;
@@ -5436,7 +5439,7 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
                     //Send enable precise location data item to loclauncher to inform
                     //it QPPE engine-service need to launch
                     if (mAdapter.mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
-                        mAdapter.getSystemStatus()->eventPreciseLocation(true);
+                        mAdapter.notifyPreciseLocation(true);
                         LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit true");
                     }
                 } else {
@@ -5444,7 +5447,7 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
                     //Send disable precise location data item to loclauncher to inform
                     //it QPPE engine-service need to exit
                     if (mAdapter.mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
-                        mAdapter.getSystemStatus()->eventPreciseLocation(false);
+                        mAdapter.notifyPreciseLocation(false);
                         LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit false");
                     }
                 }
