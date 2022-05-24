@@ -404,7 +404,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     }
     data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
 
-    IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015 };
+    IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015, "aidl-impl" };
 
     if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
         gnssInfo.yearOfHw++; // 2016
