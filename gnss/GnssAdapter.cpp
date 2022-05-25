@@ -1141,15 +1141,11 @@ GnssAdapter::setConfig()
         mLocApi->setPositionAssistedClockEstimatorMode(
                 mLocConfigInfo.paceConfigInfo.enable);
 
-        // load robust location configuration from config file on first boot-up,
-        // e.g.: adapter.mLocConfigInfo.robustLocationConfigInfo.isValid is false
+        // robust location to be disabled on bootup by default
         if (mLocConfigInfo.robustLocationConfigInfo.isValid == false) {
             mLocConfigInfo.robustLocationConfigInfo.isValid = true;
-            bool robustLocationEnabled = (gpsConf.ROBUST_LOCATION_ENABLED & 0x01);
-            bool robustLocationE911Enabled = robustLocationEnabled ?
-                    ((gpsConf.ROBUST_LOCATION_ENABLED & 0x02) != 0) : false;
-            mLocConfigInfo.robustLocationConfigInfo.enable = robustLocationEnabled;
-            mLocConfigInfo.robustLocationConfigInfo.enableFor911 = robustLocationE911Enabled;
+            mLocConfigInfo.robustLocationConfigInfo.enable = false;
+            mLocConfigInfo.robustLocationConfigInfo.enableFor911 = false;
         }
         mLocApi->configRobustLocation(
                 mLocConfigInfo.robustLocationConfigInfo.enable,
