@@ -122,6 +122,7 @@ public :
     bool updateXtraThrottle(const bool enabled);
     inline const MsgTask* getMsgTask() { return mMsgTask; }
     void subscribe(bool yes);
+    bool notifySessionStart();
     bool onStatusRequested(int32_t xtraStatusUpdated);
     void startDgnssSource(const StartDgnssNtripParams& params);
     void restartDgnssSource();

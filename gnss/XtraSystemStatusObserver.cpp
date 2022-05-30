@@ -150,14 +150,18 @@ public:
             mMsgTask->sendMsg(new HandleStatusRequestMsg(mXSSO, xtraStatusUpdated, socketName));
         } else if (!STRNCMP(data, "xtraStatusUpdate")) {
             uint32_t sessionId = 0;
+            uint8_t downloadReason[XTRA_STATS_DL_REASON_CODE_MAX_LEN];
             XtraStatusUpdateType updateType = XTRA_STATUS_UPDATE_UNDEFINED;
             GnssConfig gnssConfig = {};
             gnssConfig.size = sizeof(gnssConfig);
             gnssConfig.flags = GNSS_CONFIG_FLAGS_XTRA_STATUS_BIT;
-            sscanf(data, "%*s %d %d %d %d %d", &sessionId, &updateType,
+            sscanf(data, "%*s %d %d %d %d %d %63s", &sessionId, &updateType,
                    &gnssConfig.xtraStatus.featureEnabled,
                    &gnssConfig.xtraStatus.xtraDataStatus,
-                   &gnssConfig.xtraStatus.xtraValidForHours);
+                   &gnssConfig.xtraStatus.xtraValidForHours,
+                   &downloadReason[0]);
+            std::string lastDownloadReason((char *) &downloadReason[0]);
+            gnssConfig.xtraStatus.lastDownloadReasonCode = lastDownloadReason;
 
             mXSSO.mAdapter->reportGnssConfigEvent(sessionId, gnssConfig);
         } else if (!STRNCMP(data, "xtraMpDisabled")) {
@@ -278,6 +282,15 @@ bool XtraSystemStatusObserver::updateXtraThrottle(const bool enabled) {
     ss <<  "xtrathrottle";
     ss << " " << (enabled ? 1 : 0);
     string s = ss.str();
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
+bool XtraSystemStatusObserver::notifySessionStart() {
+    if (!mReqStatusReceived) {
+        return true;
+    }
+
+    string s = "sessionstart";
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
 }
 
@@ -463,18 +476,15 @@ bool XtraSystemStatusObserver::updateXtraDataDeletion() {
 void XtraSystemStatusObserver::subscribe(bool yes)
 {
     // Subscription data unordered_set
-    unordered_set<DataItemId> subItemIdSet;
-    subItemIdSet.insert(NETWORKINFO_DATA_ITEM_ID);
-    subItemIdSet.insert(MCCMNC_DATA_ITEM_ID);
+    unordered_set<DataItemId> subItemIdSet = {
+            NETWORKINFO_DATA_ITEM_ID,
+            MCCMNC_DATA_ITEM_ID,
+            TRACKING_STARTED_DATA_ITEM_ID};
 
     if (yes) {
         mSystemStatusObsrvr->subscribe(subItemIdSet, this);
-
-        unordered_set<DataItemId> reqItemIdSet;
-        reqItemIdSet.insert(TAC_DATA_ITEM_ID);
-
+        unordered_set<DataItemId> reqItemIdSet = {TAC_DATA_ITEM_ID};
         mSystemStatusObsrvr->requestData(reqItemIdSet, this);
-
     } else {
         mSystemStatusObsrvr->unsubscribe(subItemIdSet, this);
     }
@@ -539,6 +549,16 @@ void XtraSystemStatusObserver::notify(const unordered_set<IDataItemCore*>& dlist
                     {
                         MccmncDataItem* mccmnc = static_cast<MccmncDataItem*>(each);
                         mXtraSysStatObj->updateMccMnc(mccmnc->mValue);
+                    }
+                    break;
+
+                    case TRACKING_STARTED_DATA_ITEM_ID:
+                    {
+                        TrackingStartedDataItem* trackingStarted =
+                                static_cast<TrackingStartedDataItem*>(each);
+                        if (trackingStarted->mTrackingStarted) {
+                            mXtraSysStatObj->notifySessionStart();
+                        }
                     }
                     break;
 

@@ -259,15 +259,22 @@ GnssAdapter::setControlCallbacksCommand(LocationControlCallbacks& controlCallbac
             mAdapter(adapter),
             mControlCallbacks(controlCallbacks) {}
         inline virtual void proc() const {
-        if (mControlCallbacks.responseCb != NULL)
-            mAdapter.mControlCallbacks.responseCb = mControlCallbacks.responseCb;
-        if (mControlCallbacks.collectiveResponseCb != NULL)
-            mAdapter.mControlCallbacks.collectiveResponseCb =
-                     mControlCallbacks.collectiveResponseCb;
-        if (mControlCallbacks.gnssConfigCb != NULL)
-            mAdapter.mControlCallbacks.gnssConfigCb = mControlCallbacks.gnssConfigCb;
-        if (mControlCallbacks.odcpiReqCb != NULL)
-            mAdapter.mControlCallbacks.odcpiReqCb = mControlCallbacks.odcpiReqCb;
+            if (mControlCallbacks.responseCb != NULL) {
+                mAdapter.mControlCallbacks.responseCb = mControlCallbacks.responseCb;
+            }
+            if (mControlCallbacks.collectiveResponseCb != NULL) {
+                mAdapter.mControlCallbacks.collectiveResponseCb =
+                        mControlCallbacks.collectiveResponseCb;
+            }
+            if (mControlCallbacks.gnssConfigCb != NULL) {
+                mAdapter.mControlCallbacks.gnssConfigCb = mControlCallbacks.gnssConfigCb;
+            }
+            if (mControlCallbacks.odcpiReqCb != NULL) {
+                mAdapter.mControlCallbacks.odcpiReqCb = mControlCallbacks.odcpiReqCb;
+            }
+            if (mControlCallbacks.xtraStatusCb != NULL) {
+                mAdapter.mControlCallbacks.xtraStatusCb = mControlCallbacks.xtraStatusCb;
+            }
         }
     };
 
@@ -7481,6 +7488,10 @@ void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gn
                 mAdapter.mControlCallbacks.gnssConfigCb(mSessionId, mGnssConfig);
             } else {
                 LOC_LOGe("Failed to report, callback not registered");
+            }
+            // pipe XtraStatus to DebugReportService for LA
+            if (nullptr != mAdapter.mControlCallbacks.xtraStatusCb) {
+                mAdapter.mControlCallbacks.xtraStatusCb(mSessionId, mGnssConfig.xtraStatus);
             }
         }
     };

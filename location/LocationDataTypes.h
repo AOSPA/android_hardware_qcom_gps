@@ -88,6 +88,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GNSS_BUGREPORT_NAVIC_MIN  (1)
 
 #define GNSS_MAX_NAME_LENGTH    (8)
+#define XTRA_STATS_DL_REASON_CODE_MAX_LEN (64)
 
 typedef enum {
     LOCATION_ERROR_SUCCESS = 0,
@@ -1881,6 +1882,7 @@ struct XtraStatus {
      *  For all other XtraDataStatus, this field will be set to
      *  0. */
     uint32_t xtraValidForHours;
+    std::string lastDownloadReasonCode;
 
     inline bool equals (const XtraStatus& inXtraStatus) const {
         if (inXtraStatus.featureEnabled != featureEnabled) {
@@ -1888,7 +1890,8 @@ struct XtraStatus {
         } else if (featureEnabled == false) {
             return true;
         } else if ((inXtraStatus.xtraDataStatus == xtraDataStatus) &&
-                   (inXtraStatus.xtraValidForHours == xtraValidForHours)) {
+                   (inXtraStatus.xtraValidForHours == xtraValidForHours) &&
+                   (0 == inXtraStatus.lastDownloadReasonCode.compare(lastDownloadReasonCode))) {
             return true;
         } else {
             return false;
@@ -2700,6 +2703,7 @@ typedef std::function<void(
 
 typedef std::function<bool(
 )> isInEmergencySessionCallback;
+typedef std::function<void(uint32_t session_id, XtraStatus xtraStatus)> xtraStatusCallback;
 
 /**
 * Callback used to retrieve energy consumed by modem GNSS
@@ -2741,6 +2745,7 @@ typedef struct {
     agnssStatusIpV4Callback   agpsStatusIpV4Cb;      //optional
     nfwStatusCallback nfwStatusCb;                   // optional
     isInEmergencySessionCallback isInEmergencyStatusCb; // optional
+    xtraStatusCallback xtraStatusCb;                  // optional
 } LocationControlCallbacks;
 
 
