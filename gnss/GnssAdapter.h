@@ -564,6 +564,11 @@ public:
     virtual bool isInSession() { return !mTimeBasedTrackingSessions.empty(); }
     void initDefaultAgps();
     bool initEngHubProxy();
+    inline bool isPreciseEnabled() {
+        return (mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) &&
+                (mQppeFeatureStatusMask &
+                (QPPE_FEATURE_ENABLED_BY_DEFAULT | QPPE_FEATURE_ENABLED_BY_QESDK));
+    }
     void initCDFWService();
     void odcpiTimerExpireEvent();
 
@@ -626,6 +631,7 @@ public:
     }
     bool needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
         const struct timespec32_t &apTimeStamp);
+    void notifyPreciseLocation(bool enable);
     void reportPosition(const UlpLocation &ulpLocation,
                         const GpsLocationExtended &locationExtended,
                         enum loc_sess_status status,
