@@ -96,6 +96,7 @@ static uint32_t TIMESTAMP = 0;
 static uint32_t DATUM_TYPE = 0;
 static bool sVendorEnhanced = true;
 static uint32_t sLogBufferEnabled = 0;
+static uint32_t sQxdmLogEnabled = 0;
 
 /* Parameter spec table */
 static const loc_param_s_type loc_param_table[] =
@@ -104,6 +105,7 @@ static const loc_param_s_type loc_param_table[] =
     {"TIMESTAMP",               &TIMESTAMP,          NULL, 'n'},
     {"DATUM_TYPE",              &DATUM_TYPE,         NULL, 'n'},
     {"LOG_BUFFER_ENABLED",      &sLogBufferEnabled,  NULL, 'n'},
+    {"QXDM_LOG",                &sQxdmLogEnabled,    NULL, 'n'},
 };
 static const int loc_param_num = sizeof(loc_param_table) / sizeof(loc_param_s_type);
 
@@ -114,6 +116,8 @@ typedef struct loc_param_v_type
     int param_int_value;
     double param_double_value;
 }loc_param_v_type;
+
+typedef bool(*LogGnssF3Init)(void);
 
 // Reference below arrays wherever needed to avoid duplicating
 // same conf path string over and again in location code.
@@ -475,6 +479,7 @@ void loc_read_conf_long(const char* conf_file_name, const loc_param_s_type* conf
                         uint32_t table_length, uint16_t string_len)
 {
     FILE *conf_fp = NULL;
+    QxdmF3 qxdmF3 = NULL;
 
     log_buffer_init(false);
     if ((conf_fp = fopen(conf_file_name, "r")) != NULL)
@@ -487,8 +492,22 @@ void loc_read_conf_long(const char* conf_file_name, const loc_param_s_type* conf
         if (DEBUG_LEVEL == UINT32_MAX) {
             /* Read default config entries*/
             loc_read_conf_r(conf_fp, loc_param_table, loc_param_num);
+            if (sQxdmLogEnabled) {
+                LogGnssF3Init logGnssF3Init;
+                const char* libname = "liblocdiagiface.so";
+                void* libHandle = nullptr;
+                logGnssF3Init = (LogGnssF3Init)dlGetSymFromLib(libHandle, libname, "LogGnssF3Init");
+                qxdmF3 = (QxdmF3)dlGetSymFromLib(libHandle, libname, "LogGnssF3");
+                if (nullptr == logGnssF3Init || nullptr == qxdmF3) {
+                    ALOGE("DiagIface logGnssF3Init or qxdmF3 is nullptr !!\n");
+                } else {
+                    if (true != logGnssF3Init()) {
+                        ALOGE("logF3Init failed !!\n");
+                    }
+                }
+            }
             /* Initialize logging mechanism with parsed data */
-            loc_logger_init(DEBUG_LEVEL, TIMESTAMP);
+            loc_logger_init(DEBUG_LEVEL, TIMESTAMP, qxdmF3);
             log_buffer_init(sLogBufferEnabled);
             log_tag_level_map_init();
         }
