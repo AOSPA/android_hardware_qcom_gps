@@ -120,7 +120,6 @@ typedef struct loc_gps_cfg_s
     uint32_t       NI_SUPL_DENY_ON_NFW_LOCKED;
     uint32_t       ENABLE_NMEA_PRINT;
     uint32_t       NMEA_TAG_BLOCK_GROUPING_ENABLED;
-    uint32_t       ROBUST_LOCATION_ENABLED;
 } loc_gps_cfg_s_type;
 
 /* NOTE: the implementation of the parser casts number
