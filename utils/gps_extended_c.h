@@ -2392,6 +2392,10 @@ typedef enum {
     LOC_ON_NTRIP_START =  1 << 5
 } LocLaunchTriggerEvents;
 
+/* Process subscribed for dynamic launch
+can runtime disable itself with this exit code*/
+#define LOC_DYNAMIC_PROC_DISABLE_CODE 100
+
 /* gps.conf GNSS_DEPLOYMENT value meanings */
 #define QTI_GNSS_ENABLED                0
 #define QCSR_SS5_ENABLED                1
