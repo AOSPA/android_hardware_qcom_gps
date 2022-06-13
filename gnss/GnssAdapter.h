@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -88,6 +88,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOC_GPS_NI_RESPONSE_IGNORE 4
 #define ODCPI_EXPECTED_INJECTION_TIME_MS 10000
 #define DELETE_AIDING_DATA_EXPECTED_TIME_MS 5000
+#define ONE_SECOND_IN_MS  1000
 
 class GnssAdapter;
 
