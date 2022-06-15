@@ -407,9 +407,9 @@ typedef enum {
     LOCATION_QWES_FEATURE_TYPE_VPE,
     // This indicates DGNSS license is enabled.
     LOCATION_QWES_FEATURE_TYPE_DGNSS,
-    // This indicates QPPE feature is enabled by QESDK APP
+    // This indicates DLP feature is enabled by QESDK APP
     // license
-    LOCATION_QWES_FEATURE_TYPE_PPE_QESDK,
+    LOCATION_QWES_FEATURE_TYPE_DLP_QESDK,
     // Max value
     LOCATION_QWES_FEATURE_TYPE_MAX
 } LocationQwesFeatureTypes;

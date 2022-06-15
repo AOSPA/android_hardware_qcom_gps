@@ -5403,22 +5403,24 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
             LOC_LOGd("ReportQwesFeatureStatus From Engine Hub, mppeFeatureStatusMask: %x",
                     mAdapter.mQppeFeatureStatusMask);
             auto iter1 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_PPE);
-            auto iter2 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_PPE_QESDK);
+            auto iter2 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_DLP_QESDK);
+            auto iter3 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_QDR3);
             //QESDK feature status call back handling logic:
             //1, If LOCATION_QWES_FEATURE_TYPE_PPE is presented in feature map,
             //   It means Qwes status callback is triggered by Engine Servive try
             //   to register to Engine Hub, set QPPE_FEATURE_STATUS_LIRBARY_PRESENT
             //   bit, and set QPPE_FEATURE_ENABLED_BY_DEFAULT bit according to
             //   PPE feature status;
-            //2, If LOCATION_QWES_FEATURE_TYPE_PPE_QESDK is presented in feature map,
+            //2, If LOCATION_QWES_FEATURE_TYPE_DLP_QESDK is presented in feature map,
             //   It means Qwes status callback is triggered when Engine hub recieves
             //   configPreciseLocation command from GnssAdapter, and already checked
             //   QESDK feature status via QWES call checkInstalledLicense, set
             //   QPPE_FEATURE_ENABLED_BY_QESDK bit according to QESDK feature status.
-            if (iter1 != mFeatureMap.end()) {
+            if (iter1 != mFeatureMap.end() || iter3 != mFeatureMap.end()) {
                 LOC_LOGd("ReportQwesFeatureStatus, set library present bit");
                 mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_STATUS_LIRBARY_PRESENT;
-                if (iter1->second) {
+                if ((iter1 != mFeatureMap.end() && iter1->second) ||
+                        (iter3 != mFeatureMap.end() && iter3->second)) {
                     mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_ENABLED_BY_DEFAULT;
                     mAdapter.notifyPreciseLocation(true);
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit true");
