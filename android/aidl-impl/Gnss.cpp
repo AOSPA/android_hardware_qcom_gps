@@ -396,8 +396,10 @@ ScopedAStatus Gnss::setPositionMode(const IGnss::PositionModeOptions& options) {
     ENTRY_LOG_CALLFLOW();
     GnssAPIClient* api = getApi();
     if (api) {
+        GnssPowerMode powerMode = options.lowPowerMode? GNSS_POWER_MODE_M4 : GNSS_POWER_MODE_M2;
         api->gnssSetPositionMode(options.mode, options.recurrence, options.minIntervalMs,
-                options.preferredAccuracyMeters, options.preferredTimeMs);
+                options.preferredAccuracyMeters, options.preferredTimeMs, powerMode,
+                options.minIntervalMs);
     }
     return ScopedAStatus::ok();
 }
