@@ -1082,7 +1082,6 @@ enum loc_api_adapter_event_index {
     LOC_API_ADAPTER_GNSS_MEASUREMENT,                  // GNSS Measurement report
     LOC_API_ADAPTER_REQUEST_TIMEZONE,                  // Timezone injection request
     LOC_API_ADAPTER_REPORT_GENFENCE_DWELL_REPORT,      // Geofence dwell report
-    LOC_API_ADAPTER_REQUEST_SRN_DATA,                  // request srn data from AP
     LOC_API_ADAPTER_REQUEST_POSITION_INJECTION,        // Position injection request
     LOC_API_ADAPTER_BATCH_STATUS,                      // batch status
     LOC_API_ADAPTER_FDCL_SERVICE_REQ,                  // FDCL service request
@@ -1130,7 +1129,6 @@ enum loc_api_adapter_event_index {
 #define LOC_API_ADAPTER_BIT_GNSS_MEASUREMENT                 (1ULL<<LOC_API_ADAPTER_GNSS_MEASUREMENT)
 #define LOC_API_ADAPTER_BIT_REQUEST_TIMEZONE                 (1ULL<<LOC_API_ADAPTER_REQUEST_TIMEZONE)
 #define LOC_API_ADAPTER_BIT_REPORT_GENFENCE_DWELL            (1ULL<<LOC_API_ADAPTER_REPORT_GENFENCE_DWELL_REPORT)
-#define LOC_API_ADAPTER_BIT_REQUEST_SRN_DATA                 (1ULL<<LOC_API_ADAPTER_REQUEST_SRN_DATA)
 #define LOC_API_ADAPTER_BIT_POSITION_INJECTION_REQUEST       (1ULL<<LOC_API_ADAPTER_REQUEST_POSITION_INJECTION)
 #define LOC_API_ADAPTER_BIT_BATCH_STATUS                     (1ULL<<LOC_API_ADAPTER_BATCH_STATUS)
 #define LOC_API_ADAPTER_BIT_FDCL_SERVICE_REQ                 (1ULL<<LOC_API_ADAPTER_FDCL_SERVICE_REQ)
@@ -2287,33 +2285,6 @@ typedef struct {
     double tauC;
     int8_t leapSec;
 } GnssAdditionalSystemInfo;
-
-/* Various Short Range Node Technology type*/
-typedef enum {
-    SRN_AP_DATA_TECH_TYPE_NONE,
-    SRN_AP_DATA_TECH_TYPE_BT,
-    SRN_AP_DATA_TECH_TYPE_BTLE,
-    SRN_AP_DATA_TECH_TYPE_NFC,
-    SRN_AP_DATA_TECH_TYPE_MOBILE_CODE,
-    SRN_AP_DATA_TECH_TYPE_OTHER
-} Gnss_SrnTech;
-
-/* Mac Address type requested by modem */
-typedef enum {
-    SRN_AP_DATA_PUBLIC_MAC_ADDR_TYPE_INVALID, /* No valid mac address type send */
-    SRN_AP_DATA_PUBLIC_MAC_ADDR_TYPE_PUBLIC, /* SRN AP MAC Address type PUBLIC  */
-    SRN_AP_DATA_PUBLIC_MAC_ADDR_TYPE_PRIVATE, /* SRN AP MAC Address type PRIVATE  */
-    SRN_AP_DATA_PUBLIC_MAC_ADDR_TYPE_OTHER, /* SRN AP MAC Address type OTHER  */
-}Gnss_Srn_MacAddr_Type;
-
-typedef struct
-{
-    uint32_t                 size;
-    Gnss_SrnTech           srnTechType; /* SRN Technology type in request */
-    bool                   srnRequest; /* scan - start(true) or stop(false) */
-    bool                   e911Mode; /* If in E911 emergency */
-    Gnss_Srn_MacAddr_Type  macAddrType; /* SRN AP MAC Address type */
-} GnssSrnDataReq;
 
 /* Provides the current GNSS SV Type configuration to the client.
  * This is fetched via direct call to GNSS Adapter bypassing

@@ -779,48 +779,6 @@ public:
     }
 };
 
-class SystemStatusBtDeviceScanDetail : public SystemStatusItemBase {
-public:
-    BtDeviceScanDetailsDataItem mDataItem;
-    inline SystemStatusBtDeviceScanDetail(): mDataItem() {}
-    inline SystemStatusBtDeviceScanDetail(const BtDeviceScanDetailsDataItem& itemBase):
-            mDataItem(itemBase) {}
-    inline bool equals(const SystemStatusItemBase& peer) override {
-        return mDataItem.mApSrnRssi ==
-                ((const SystemStatusBtDeviceScanDetail&)peer).mDataItem.mApSrnRssi &&
-                memcmp(mDataItem.mApSrnMacAddress,
-                ((const SystemStatusBtDeviceScanDetail&)peer).mDataItem.mApSrnMacAddress,
-                sizeof(mDataItem.mApSrnMacAddress)) == 0 &&
-                mDataItem.mApSrnTimestamp ==
-                ((const SystemStatusBtDeviceScanDetail&)peer).mDataItem.mApSrnTimestamp &&
-                mDataItem.mRequestTimestamp ==
-                ((const SystemStatusBtDeviceScanDetail&)peer).mDataItem.mRequestTimestamp &&
-                mDataItem.mReceiveTimestamp ==
-                ((const SystemStatusBtDeviceScanDetail&)peer).mDataItem.mReceiveTimestamp;
-    }
-};
-
-class SystemStatusBtleDeviceScanDetail : public SystemStatusItemBase {
-public:
-    BtLeDeviceScanDetailsDataItem mDataItem;
-    inline SystemStatusBtleDeviceScanDetail(): mDataItem() {}
-    inline SystemStatusBtleDeviceScanDetail(const BtLeDeviceScanDetailsDataItem& itemBase):
-            mDataItem(itemBase) {}
-    inline bool equals(const SystemStatusItemBase& peer) override {
-        return mDataItem.mApSrnRssi ==
-                ((const SystemStatusBtleDeviceScanDetail&)peer).mDataItem.mApSrnRssi &&
-                memcmp(mDataItem.mApSrnMacAddress,
-                ((const SystemStatusBtleDeviceScanDetail&)peer).mDataItem.mApSrnMacAddress,
-                sizeof(mDataItem.mApSrnMacAddress)) == 0 &&
-                mDataItem.mApSrnTimestamp ==
-                ((const SystemStatusBtleDeviceScanDetail&)peer).mDataItem.mApSrnTimestamp &&
-                mDataItem.mRequestTimestamp ==
-                ((const SystemStatusBtleDeviceScanDetail&)peer).mDataItem.mRequestTimestamp &&
-                mDataItem.mReceiveTimestamp ==
-                ((const SystemStatusBtleDeviceScanDetail&)peer).mDataItem.mReceiveTimestamp;
-    }
-};
-
 class SystemStatusInEmergencyCall : public SystemStatusItemBase {
 public:
     InEmergencyCallDataItem mDataItem;
@@ -929,8 +887,6 @@ public:
     std::vector<SystemStatusShutdownState>    mShutdownState;
     std::vector<SystemStatusTac>              mTac;
     std::vector<SystemStatusMccMnc>           mMccMnc;
-    std::vector<SystemStatusBtDeviceScanDetail> mBtDeviceScanDetail;
-    std::vector<SystemStatusBtleDeviceScanDetail> mBtLeDeviceScanDetail;
     std::vector<SystemStatusPreciseLocationEnabled>  mPreciseLocationEnabled;
     std::vector<SystemStatusTrackingStarted>  mTrackingStarted;
     std::vector<SystemStatusNtripStarted>  mNtripStarted;

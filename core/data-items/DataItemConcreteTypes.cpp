@@ -138,22 +138,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TAC_FIELD_NAME "TAC"
 #define MCCMNC_FIELD_NAME "MCCMNC"
 
-#define BTLESCANDETAILS_FIELD_VALID "BTLE_VALID_DEV"
-#define BTLESCANDETAILS_FIELD_RSSI "BTLE_DEV_RSSI"
-#define BTLESCANDETAILS_FIELD_MAC "BTLE_DEV_MAC"
-#define BTLESCANDETAILS_FIELD_SCANREQ "BTLE_SCAN_REQ_TIME"
-#define BTLESCANDETAILS_FIELD_SCANSTART "BTLE_SCAN_START_TIME"
-#define BTLESCANDETAILS_FIELD_SCANRECV "BTLE_SCAN_RECV_TIME"
-#define BTLESCANDETAILS_FIELD_SCANERROR "BTLE_SCAN_ERR"
-
-#define BTSCANDETAILS_FIELD_VALID "BT_VALID_DEV"
-#define BTSCANDETAILS_FIELD_RSSI "BT_DEV_RSSI"
-#define BTSCANDETAILS_FIELD_MAC "BT_DEV_MAC"
-#define BTSCANDETAILS_FIELD_SCANREQ "BT_SCAN_REQ_TIME"
-#define BTSCANDETAILS_FIELD_SCANSTART "BT_SCAN_START_TIME"
-#define BTSCANDETAILS_FIELD_SCANRECV "BT_SCAN_RECV_TIME"
-#define BTSCANDETAILS_FIELD_SCANERROR "BT_SCAN_ERR"
-
 #define OEM_GTP_UPLAOD_TRIGGER_READY_FIELD_NAME "OEM-GTP-UPLOAD-TRIGGER-READY"
 #define BATTERYLEVEL_FIELD_BATTERY_PCT "BATTERY_PCT"
 
@@ -488,103 +472,6 @@ void MccmncDataItem::stringify(string& valueStr) {
     } while (0);
     EXIT_LOG_WITH_ERROR("%d", result);
 }
-void BtLeDeviceScanDetailsDataItem::stringify(string& valueStr) {
-    int32_t result = 0;
-    ENTRY_LOG();
-    do {
-        STRINGIFY_ERROR_CHECK_AND_DOWN_CAST(BtLeDeviceScanDetailsDataItem, BTLE_SCAN_DATA_ITEM_ID);
-        valueStr.clear ();
-        valueStr += BTLESCANDETAILS_FIELD_VALID;
-        valueStr += ": ";
-        valueStr += d->mValidSrnData;
-        valueStr += ", ";
-
-        valueStr += BTLESCANDETAILS_FIELD_RSSI;
-        valueStr += ": ";
-        valueStr += d->mApSrnRssi;
-        valueStr += ", ";
-
-        char t[10];
-        memset (t, '\0', 10);
-        valueStr += BTLESCANDETAILS_FIELD_MAC;
-        valueStr += ": ";
-        snprintf(t, 10, "[%02x:%02x:%02x:%02x:%02x:%02x]", d->mApSrnMacAddress[0],
-                d->mApSrnMacAddress[1], d->mApSrnMacAddress[2], d->mApSrnMacAddress[3],
-                d->mApSrnMacAddress[4], d->mApSrnMacAddress[5]);
-        valueStr += t;
-        valueStr += ", ";
-
-        valueStr += BTLESCANDETAILS_FIELD_SCANREQ;
-        valueStr += ": ";
-        valueStr += d->mApSrnTimestamp;
-        valueStr += ", ";
-
-        valueStr += BTLESCANDETAILS_FIELD_SCANSTART;
-        valueStr += ": ";
-        valueStr += d->mRequestTimestamp;
-        valueStr += ", ";
-
-        valueStr += BTLESCANDETAILS_FIELD_SCANRECV;
-        valueStr += ": ";
-        valueStr += d->mReceiveTimestamp;
-        valueStr += ", ";
-
-        valueStr += BTLESCANDETAILS_FIELD_SCANERROR;
-        valueStr += ": ";
-        valueStr += d->mErrorCause;
-        valueStr += ", ";
-    } while (0);
-    EXIT_LOG_WITH_ERROR("%d", result);
-}
-void BtDeviceScanDetailsDataItem::stringify(string& valueStr) {
-    int32_t result = 0;
-    ENTRY_LOG();
-    do {
-        STRINGIFY_ERROR_CHECK_AND_DOWN_CAST(BtDeviceScanDetailsDataItem, BT_SCAN_DATA_ITEM_ID);
-        valueStr.clear ();
-
-        valueStr += BTSCANDETAILS_FIELD_VALID;
-        valueStr += ": ";
-        valueStr += d->mValidSrnData;
-        valueStr += ", ";
-
-        valueStr += BTSCANDETAILS_FIELD_RSSI;
-        valueStr += ": ";
-        valueStr += d->mApSrnRssi;
-        valueStr += ", ";
-
-        char t[10];
-        memset (t, '\0', 10);
-        valueStr += BTSCANDETAILS_FIELD_MAC;
-        valueStr += ": ";
-        snprintf(t, 10, "[%02x:%02x:%02x:%02x:%02x:%02x]", d->mApSrnMacAddress[0],
-                d->mApSrnMacAddress[1], d->mApSrnMacAddress[2], d->mApSrnMacAddress[3],
-                d->mApSrnMacAddress[4], d->mApSrnMacAddress[5]);
-        valueStr += t;
-        valueStr += ", ";
-
-        valueStr += BTSCANDETAILS_FIELD_SCANREQ;
-        valueStr += ": ";
-        valueStr += d->mApSrnTimestamp;
-        valueStr += ", ";
-
-        valueStr += BTSCANDETAILS_FIELD_SCANSTART;
-        valueStr += ": ";
-        valueStr += d->mRequestTimestamp;
-        valueStr += ", ";
-
-        valueStr += BTSCANDETAILS_FIELD_SCANRECV;
-        valueStr += ": ";
-        valueStr += d->mReceiveTimestamp;
-        valueStr += ", ";
-
-        valueStr += BTSCANDETAILS_FIELD_SCANERROR;
-        valueStr += ": ";
-        valueStr += d->mErrorCause;
-        valueStr += ", ";
-    } while (0);
-    EXIT_LOG_WITH_ERROR("%d", result);
-}
 
 // copy
 int32_t AirplaneModeDataItem::copyFrom(IDataItemCore* src) {
@@ -894,56 +781,6 @@ int32_t MccmncDataItem::copyFrom(IDataItemCore* src) {
         COPIER_ERROR_CHECK_AND_DOWN_CAST(MccmncDataItem, MCCMNC_DATA_ITEM_ID);
         if (0 == s->mValue.compare(d->mValue)) { result = 0; break; }
         s->mValue= d->mValue;
-        result = 0;
-    } while (0);
-    EXIT_LOG("%d", result);
-    return result;
-}
-int32_t BtLeDeviceScanDetailsDataItem::copyFrom(IDataItemCore* src) {
-    int32_t result = -1;
-    ENTRY_LOG();
-    do {
-        COPIER_ERROR_CHECK_AND_DOWN_CAST(BtLeDeviceScanDetailsDataItem, BTLE_SCAN_DATA_ITEM_ID);
-
-        if (s->mValidSrnData != d->mValidSrnData) { s->mValidSrnData = d->mValidSrnData;}
-        if (s->mApSrnRssi != d->mApSrnRssi) { s->mApSrnRssi = d->mApSrnRssi;}
-        if (memcmp(s->mApSrnMacAddress, d->mApSrnMacAddress, sizeof(s->mApSrnMacAddress)) != 0) {
-            memcpy(static_cast<void*>(s->mApSrnMacAddress), static_cast<void*>(d->mApSrnMacAddress),
-                    sizeof(s->mApSrnMacAddress));
-        }
-        if (s->mApSrnTimestamp != d->mApSrnTimestamp) {s->mApSrnTimestamp = d->mApSrnTimestamp;}
-        if (s->mRequestTimestamp != d->mRequestTimestamp) {
-            s->mRequestTimestamp = d->mRequestTimestamp;
-        }
-        if (s->mReceiveTimestamp != d->mReceiveTimestamp) {
-            s->mReceiveTimestamp = d->mReceiveTimestamp;
-        }
-        if (s->mErrorCause != d->mErrorCause) {s->mErrorCause = d->mErrorCause;}
-        result = 0;
-    } while (0);
-    EXIT_LOG("%d", result);
-    return result;
-}
-int32_t BtDeviceScanDetailsDataItem::copyFrom(IDataItemCore* src) {
-    int32_t result = -1;
-    ENTRY_LOG();
-    do {
-        COPIER_ERROR_CHECK_AND_DOWN_CAST(BtDeviceScanDetailsDataItem, BT_SCAN_DATA_ITEM_ID);
-
-        if (s->mValidSrnData != d->mValidSrnData) { s->mValidSrnData = d->mValidSrnData;}
-        if (s->mApSrnRssi != d->mApSrnRssi) { s->mApSrnRssi = d->mApSrnRssi;}
-        if (memcmp(s->mApSrnMacAddress, d->mApSrnMacAddress, sizeof(s->mApSrnMacAddress)) != 0) {
-            memcpy(static_cast<void*>(s->mApSrnMacAddress), static_cast<void*>(d->mApSrnMacAddress),
-                    sizeof(s->mApSrnMacAddress));
-        }
-        if (s->mApSrnTimestamp != d->mApSrnTimestamp) {s->mApSrnTimestamp = d->mApSrnTimestamp;}
-        if (s->mRequestTimestamp != d->mRequestTimestamp) {
-            s->mRequestTimestamp = d->mRequestTimestamp;
-        }
-        if (s->mReceiveTimestamp != d->mReceiveTimestamp) {
-            s->mReceiveTimestamp = d->mReceiveTimestamp;
-        }
-        if (s->mErrorCause != d->mErrorCause) {s->mErrorCause = d->mErrorCause;}
         result = 0;
     } while (0);
     EXIT_LOG("%d", result);

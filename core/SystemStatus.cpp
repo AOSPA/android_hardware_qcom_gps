@@ -1527,8 +1527,6 @@ SystemStatus::SystemStatus(const MsgTask* msgTask) :
     mCache.mShutdownState.clear();
     mCache.mTac.clear();
     mCache.mMccMnc.clear();
-    mCache.mBtDeviceScanDetail.clear();
-    mCache.mBtLeDeviceScanDetail.clear();
 
     EXIT_LOG_WITH_ERROR ("%d",result);
 }
@@ -1801,14 +1799,6 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
             ret = setIteminReport(mCache.mMccMnc,
                     SystemStatusMccMnc(*(static_cast<MccmncDataItem*>(dataitem))));
             break;
-        case BTLE_SCAN_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mBtDeviceScanDetail, SystemStatusBtDeviceScanDetail(
-                        *(static_cast<BtDeviceScanDetailsDataItem*>(dataitem))));
-            break;
-        case BT_SCAN_DATA_ITEM_ID:
-            ret = setIteminReport(mCache.mBtLeDeviceScanDetail, SystemStatusBtleDeviceScanDetail(
-                        *(static_cast<BtLeDeviceScanDetailsDataItem*>(dataitem))));
-            break;
         case TRACKING_STARTED_DATA_ITEM_ID:
             ret = setIteminReport(mCache.mTrackingStarted,
                     SystemStatusTrackingStarted(
@@ -1886,8 +1876,6 @@ bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly,
         getIteminReport(report.mShutdownState, mCache.mShutdownState);
         getIteminReport(report.mTac, mCache.mTac);
         getIteminReport(report.mMccMnc, mCache.mMccMnc);
-        getIteminReport(report.mBtDeviceScanDetail, mCache.mBtDeviceScanDetail);
-        getIteminReport(report.mBtLeDeviceScanDetail, mCache.mBtLeDeviceScanDetail);
     }
     else {
         // copy entire reports and return them
@@ -1928,8 +1916,6 @@ bool SystemStatus::getReport(SystemStatusReports& report, bool isLatestOnly,
         report.mShutdownState.clear();
         report.mTac.clear();
         report.mMccMnc.clear();
-        report.mBtDeviceScanDetail.clear();
-        report.mBtLeDeviceScanDetail.clear();
 
         report = mCache;
     }
