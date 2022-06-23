@@ -132,10 +132,11 @@ ssize_t Sock::sendto(const void *buf, size_t len, int flags, const struct sockad
     if (len <= mMaxTxSize) {
         rtv = ::sendto(mSid, buf, len, flags, destAddr, addrlen);
     } else {
-        snprintf((char *)LOC_IPC_HEAD+33, sizeof(LOC_IPC_HEAD) - 33, "%8.8X$", len);
         rtv = 1;
         char tempBuf[sizeof(LOC_IPC_HEAD) + mMaxTxSize];
         memcpy(tempBuf, LOC_IPC_HEAD, sizeof(LOC_IPC_HEAD) - 9);
+        /** Writting 10 instead of 9 bytes into tempBuf to prevent overwritting of "$" by null
+        character at last index of LOC_IPC_HEAD. tempBuff is large enough to prevent any overflow */
         snprintf(tempBuf + 33, sizeof(LOC_IPC_HEAD) - 32, "%8.8X$", len);
         for (size_t offset = 0; offset < len && rtv > 0; offset += (rtv - sizeof(LOC_IPC_HEAD))) {
             size_t thisLen = min(len - offset, (size_t)mMaxTxSize);
