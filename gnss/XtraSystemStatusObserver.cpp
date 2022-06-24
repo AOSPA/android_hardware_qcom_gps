@@ -26,6 +26,43 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+/*
+Changes from Qualcomm Innovation Center are provided under the following license:
+
+Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted (subject to the limitations in the
+disclaimer below) provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #define LOG_TAG "LocSvc_XtraSystemStatusObs"
 
 #include <sys/stat.h>
@@ -43,11 +80,12 @@
 #include <SystemStatus.h>
 #include <vector>
 #include <sstream>
-#include <XtraSystemStatusObserver.h>
 #include <LocAdapterBase.h>
 #include <DataItemId.h>
 #include <DataItemsFactoryProxy.h>
 #include <DataItemConcreteTypes.h>
+#include <GnssAdapter.h>
+#include <XtraSystemStatusObserver.h>
 
 using namespace loc_util;
 using namespace loc_core;
@@ -106,23 +144,44 @@ public:
                     if (0 == mSocketName.compare(LOC_IPC_DGNSS)) {
                         mXSSO.restartDgnssSource();
                     }
+                    mXSSO.registerXtraStatusUpdate(0, mXSSO.mRegisterForXtraStatus);
                 }
             };
             mMsgTask->sendMsg(new HandleStatusRequestMsg(mXSSO, xtraStatusUpdated, socketName));
+        } else if (!STRNCMP(data, "xtraStatusUpdate")) {
+            uint32_t sessionId = 0;
+            uint8_t downloadReason[XTRA_STATS_DL_REASON_CODE_MAX_LEN];
+            XtraStatusUpdateType updateType = XTRA_STATUS_UPDATE_UNDEFINED;
+            GnssConfig gnssConfig = {};
+            gnssConfig.size = sizeof(gnssConfig);
+            gnssConfig.flags = GNSS_CONFIG_FLAGS_XTRA_STATUS_BIT;
+            sscanf(data, "%*s %d %d %d %d %d %63s", &sessionId, &updateType,
+                   &gnssConfig.xtraStatus.featureEnabled,
+                   &gnssConfig.xtraStatus.xtraDataStatus,
+                   &gnssConfig.xtraStatus.xtraValidForHours,
+                   &downloadReason[0]);
+            std::string lastDownloadReason((char *) &downloadReason[0]);
+            gnssConfig.xtraStatus.lastDownloadReasonCode = lastDownloadReason;
+
+            mXSSO.mAdapter->reportGnssConfigEvent(sessionId, gnssConfig);
+        } else if (!STRNCMP(data, "xtraMpDisabled")) {
+            mXSSO.mAdapter->reportXtraMpDisabledEvent();
         } else {
             LOC_LOGw("unknown event: %s", data);
         }
     }
 };
 
-XtraSystemStatusObserver::XtraSystemStatusObserver(IOsObserver* sysStatObs,
+XtraSystemStatusObserver::XtraSystemStatusObserver(GnssAdapter* adapter,
+                                                   IOsObserver* sysStatObs,
                                                    const MsgTask* msgTask) :
-        mSystemStatusObsrvr(sysStatObs), mMsgTask(msgTask),
+        mAdapter(adapter), mSystemStatusObsrvr(sysStatObs), mMsgTask(msgTask),
         mGpsLock(-1), mConnections(~0), mRoaming(false), mXtraThrottle(true),
         mReqStatusReceived(false),
         mIsConnectivityStatusKnown(false),
         mXtraSender(LocIpc::getLocIpcLocalSender(LOC_IPC_XTRA)),
         mDgnssSender(LocIpc::getLocIpcLocalSender(LOC_IPC_DGNSS)),
+        mRegisterForXtraStatus(false),
         mDelayLocTimer(*mXtraSender, *mDgnssSender) {
     subscribe(true);
     auto recver = LocIpc::getLocIpcLocalRecver(
@@ -226,6 +285,15 @@ bool XtraSystemStatusObserver::updateXtraThrottle(const bool enabled) {
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
 }
 
+bool XtraSystemStatusObserver::notifySessionStart() {
+    if (!mReqStatusReceived) {
+        return true;
+    }
+
+    string s = "sessionstart";
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
 inline bool XtraSystemStatusObserver::onStatusRequested(int32_t statusUpdated) {
     mReqStatusReceived = true;
 
@@ -266,6 +334,7 @@ void XtraSystemStatusObserver::startDgnssSource(const StartDgnssNtripParams& par
     ss << ntripParams->mountPoint.data() << endl;
     ss << ntripParams->username.data() << endl;
     ss << ntripParams->password.data() << endl;
+    ss << params.enableRTKEngine << endl;
     if (ntripParams->requiresNmeaLocation && !params.nmea.empty()) {
         ss << params.nmea.data() << endl;
     }
@@ -304,21 +373,118 @@ void XtraSystemStatusObserver::updateNmeaToDgnssServer(const string& nmea)
     LocIpc::send(*mDgnssSender, (const uint8_t*)s.data(), s.size());
 }
 
+bool XtraSystemStatusObserver::updateXtraConfig(bool enable, const XtraConfigParams& configParams) {
+    if (!mReqStatusReceived) {
+        return false;
+    }
+
+    stringstream ss;
+    ss << "xtraConfig" << endl;
+    ss << (enable ? 1 : 0) << endl;
+    if (enable == true) {
+        ss << configParams.xtraDownloadIntervalMinute << endl;
+        ss << configParams.xtraDownloadTimeoutSec << endl;
+        ss << configParams.xtraDownloadRetryIntervalMinute << endl;
+        ss << configParams.xtraDownloadRetryAttempts << endl;
+        ss << configParams.xtraCaPath << endl;
+
+        if (configParams.xtraServerURLsCount == 2 ||
+                configParams.ntpServerURLsCount == 2) {
+             srand(time(0));
+        }
+        if (configParams.xtraServerURLsCount == 1) {
+            ss << configParams.xtraServerURLs[0] << endl;
+            ss << configParams.xtraServerURLs[0] << endl;
+            ss << configParams.xtraServerURLs[0] << endl;
+        } else if (configParams.xtraServerURLsCount == 2) {
+            ss << configParams.xtraServerURLs[0] << endl;
+            ss << configParams.xtraServerURLs[1] << endl;
+            int index = rand() % 2;
+            ss << configParams.xtraServerURLs[index] << endl;
+        } else {
+            ss << configParams.xtraServerURLs[0] << endl;
+            ss << configParams.xtraServerURLs[1] << endl;
+            ss << configParams.xtraServerURLs[2] << endl;
+        }
+
+        if (configParams.ntpServerURLsCount == 1) {
+            ss << configParams.ntpServerURLs[0] << endl;
+            ss << configParams.ntpServerURLs[0] << endl;
+            ss << configParams.ntpServerURLs[0] << endl;
+        } else if (configParams.ntpServerURLsCount == 2) {
+            ss << configParams.ntpServerURLs[0] << endl;
+            ss << configParams.ntpServerURLs[1] << endl;
+            int index = rand() % 2;
+            ss << configParams.ntpServerURLs[index] << endl;
+        } else {
+            ss << configParams.ntpServerURLs[0] << endl;
+            ss << configParams.ntpServerURLs[1] << endl;
+            ss << configParams.ntpServerURLs[2] << endl;
+        }
+        ss << configParams.xtraIntegrityDownloadEnable << endl;
+        ss << configParams.xtraIntegrityDownloadIntervalMinute << endl;
+        ss << configParams.xtraDaemonDebugLogLevel << endl;
+    }
+
+    string s = ss.str();
+    LOC_LOGd("config params: %s", s.c_str());
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
+bool XtraSystemStatusObserver::getXtraStatus(uint32_t sessionId) {
+    if (!mReqStatusReceived) {
+        return false;
+    }
+
+    stringstream ss;
+    ss << "getXtraStatus" << endl;
+    ss << sessionId <<endl;
+
+    string s = ss.str();
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
+bool XtraSystemStatusObserver::registerXtraStatusUpdate(uint32_t sessionId,
+                                                        bool registerUpdate) {
+    if (!mReqStatusReceived) {
+        return false;
+    }
+
+    mRegisterForXtraStatus = registerUpdate;
+
+    stringstream ss;
+    ss << "registerXtraStatusUpdate" << endl;
+    ss << sessionId << endl;
+    ss << registerUpdate << endl;
+
+    string s = ss.str();
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
+bool XtraSystemStatusObserver::updateXtraDataDeletion() {
+    if (!mReqStatusReceived) {
+        return false;
+    }
+
+    stringstream ss;
+    ss << "updateXtraDataDeletion" << endl;
+
+    string s = ss.str();
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
 void XtraSystemStatusObserver::subscribe(bool yes)
 {
     // Subscription data unordered_set
-    unordered_set<DataItemId> subItemIdSet;
-    subItemIdSet.insert(NETWORKINFO_DATA_ITEM_ID);
-    subItemIdSet.insert(MCCMNC_DATA_ITEM_ID);
+    unordered_set<DataItemId> subItemIdSet = {
+            NETWORKINFO_DATA_ITEM_ID,
+            MCCMNC_DATA_ITEM_ID,
+            TRACKING_STARTED_DATA_ITEM_ID};
 
     if (yes) {
         mSystemStatusObsrvr->subscribe(subItemIdSet, this);
-
-        unordered_set<DataItemId> reqItemIdSet;
-        reqItemIdSet.insert(TAC_DATA_ITEM_ID);
-
+        unordered_set<DataItemId> reqItemIdSet = {TAC_DATA_ITEM_ID};
         mSystemStatusObsrvr->requestData(reqItemIdSet, this);
-
     } else {
         mSystemStatusObsrvr->unsubscribe(subItemIdSet, this);
     }
@@ -383,6 +549,16 @@ void XtraSystemStatusObserver::notify(const unordered_set<IDataItemCore*>& dlist
                     {
                         MccmncDataItem* mccmnc = static_cast<MccmncDataItem*>(each);
                         mXtraSysStatObj->updateMccMnc(mccmnc->mValue);
+                    }
+                    break;
+
+                    case TRACKING_STARTED_DATA_ITEM_ID:
+                    {
+                        TrackingStartedDataItem* trackingStarted =
+                                static_cast<TrackingStartedDataItem*>(each);
+                        if (trackingStarted->mTrackingStarted) {
+                            mXtraSysStatObj->notifySessionStart();
+                        }
                     }
                     break;
 

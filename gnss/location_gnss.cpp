@@ -149,6 +149,10 @@ static void setAddressRequestCb(const std::function<void(const Location&)> addre
 static void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr);
 static uint32_t setOptInStatus(bool userConsent);
 static uint32_t configEngineIntegrityRisk(PositioningEngineMask engType, uint32_t integrityRisk);
+static uint32_t configXtraParams(bool enable, const XtraConfigParams& configParams);
+static uint32_t getXtraStatus();
+static uint32_t registerXtraStatusUpdate(bool registerUpdate);
+static void configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash);
 
 static const GnssInterface gGnssInterface = {
     sizeof(GnssInterface),
@@ -215,6 +219,10 @@ static const GnssInterface gGnssInterface = {
     injectLocationAndAddr,
     setOptInStatus,
     configEngineIntegrityRisk,
+    configXtraParams,
+    getXtraStatus,
+    registerXtraStatusUpdate,
+    configPrecisePositioning,
 };
 
 #ifndef DEBUG_X86
@@ -715,5 +723,35 @@ static uint32_t configEngineIntegrityRisk(PositioningEngineMask engType,
         return gGnssAdapter->configEngineIntegrityRiskCommand(engType, integrityRisk);
     } else {
         return 0;
+    }
+}
+
+static uint32_t configXtraParams(bool enable, const XtraConfigParams& xtraParams) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->configXtraParamsCommand(enable, xtraParams);
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t getXtraStatus(){
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->getXtraStatusCommand();
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t registerXtraStatusUpdate(bool registerUpdate) {
+    if (NULL != gGnssAdapter) {
+        return gGnssAdapter->registerXtraStatusUpdateCommand(registerUpdate);
+    } else {
+        return 0;
+    }
+}
+
+static void configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->configPrecisePositioningCommand(featureId, enable, appHash);
     }
 }

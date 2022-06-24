@@ -187,8 +187,10 @@ typedef enum {
     LOC_SUPPORTED_FEATURE_MULTIPLE_ATTRIBUTION_APPS,
     /**< Support the FLP, NLP Z-Source provider feature */
     LOC_SUPPORTED_FEATURE_QMI_FLP_NLP_SOURCE,
-    /**<  Support the feature to report engine debug data  */
-    LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA
+    /**< Support the feature to report engine debug data */
+    LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA,
+    /**< Support the feature to report feature update in QMI_LOC_EVENT_REPORT_IND */
+    LOC_SUPPORTED_FEATURE_DYNAMIC_FEATURE_STATUS
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -1093,7 +1095,9 @@ enum loc_api_adapter_event_index {
     LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT,        // Latency information report
     LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT,          // Engine Debug data report
     LOC_API_ADAPTER_REPORT_DISASTER_CRISIS,            // Disaster crisis message report
-    LOC_API_ADAPTER_ENGINE_LOCK_STATE_DATA_REPORT,      // Engine lock state data report
+    LOC_API_ADAPTER_ENGINE_LOCK_STATE_DATA_REPORT,     // Engine lock state data report
+    LOC_API_ADAPTER_FEATURE_STATUS_UPDATE,             // Dynamic feature status update
+    LOC_API_ADAPTER_REQUEST_ASSISTANCE_TIME,           // NTP time download request
     LOC_API_ADAPTER_EVENT_MAX
 };
 
@@ -1140,6 +1144,9 @@ enum loc_api_adapter_event_index {
 #define LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT         (1ULL<<LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT)
 #define LOC_API_ADAPTER_BIT_DISASTER_CRISIS_REPORT           (1ULL<<LOC_API_ADAPTER_REPORT_DISASTER_CRISIS)
 #define LOC_API_ADAPTER_BIT_ENGINE_LOCK_STATE_DATA_REPORT    (1ULL<<LOC_API_ADAPTER_ENGINE_LOCK_STATE_DATA_REPORT)
+#define LOC_API_ADAPTER_BIT_FEATURE_STATUS_UPDATE            (1ULL<<LOC_API_ADAPTER_FEATURE_STATUS_UPDATE)
+#define LOC_API_ADAPTER_BIT_ASSISTANCE_TIME_REQUEST \
+        (1ULL<<LOC_API_ADAPTER_REQUEST_ASSISTANCE_TIME)
 
 typedef uint64_t LOC_API_ADAPTER_EVENT_MASK_T;
 
@@ -2384,6 +2391,10 @@ typedef enum {
     LOC_ON_EMERGENCY = 1 << 4,
     LOC_ON_NTRIP_START =  1 << 5
 } LocLaunchTriggerEvents;
+
+/* Process subscribed for dynamic launch
+can runtime disable itself with this exit code*/
+#define LOC_DYNAMIC_PROC_DISABLE_CODE 100
 
 /* gps.conf GNSS_DEPLOYMENT value meanings */
 #define QTI_GNSS_ENABLED                0

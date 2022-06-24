@@ -1463,6 +1463,33 @@ void loc_nmea_generate_pos(const UlpLocation &location,
         uint32_t count = 0;
         loc_nmea_sv_meta sv_meta;
 
+        lla_w84.lat = location.gpsLocation.latitude / 180.0 * M_PI;
+        lla_w84.lon = location.gpsLocation.longitude / 180.0 * M_PI;
+        lla_w84.alt = location.gpsLocation.altitude;
+
+        convert_Lla_to_Ecef(lla_w84, ecef_w84);
+        convert_WGS84_to_PZ90(ecef_w84, ecef_p90);
+        convert_Ecef_to_Lla(ecef_p90, lla_p90);
+
+        ref_lla.lat = location.gpsLocation.latitude;
+        ref_lla.lon = location.gpsLocation.longitude;
+        ref_lla.alt = location.gpsLocation.altitude;
+
+        switch (datum_type) {
+            case LOC_GNSS_DATUM_WGS84:
+                local_lla.lat = location.gpsLocation.latitude;
+                local_lla.lon = location.gpsLocation.longitude;
+                local_lla.alt = location.gpsLocation.altitude;
+                break;
+            case LOC_GNSS_DATUM_PZ90:
+                local_lla.lat = lla_p90.lat / M_PI * 180.0;
+                local_lla.lon = lla_p90.lon / M_PI * 180.0;
+                local_lla.alt = lla_p90.alt;
+                break;
+            default:
+                break;
+        }
+
         if (mEnabledNmeaTypes & NMEA_TYPE_GSA) {
             // -------------------
             // ---$GPGSA/$GNGSA---
@@ -1619,33 +1646,6 @@ void loc_nmea_generate_pos(const UlpLocation &location,
 
             length = loc_nmea_put_checksum(sentence, sizeof(sentence), false);
             nmeaArraystr.push_back(sentence);
-
-            lla_w84.lat = location.gpsLocation.latitude / 180.0 * M_PI;
-            lla_w84.lon = location.gpsLocation.longitude / 180.0 * M_PI;
-            lla_w84.alt = location.gpsLocation.altitude;
-
-            convert_Lla_to_Ecef(lla_w84, ecef_w84);
-            convert_WGS84_to_PZ90(ecef_w84, ecef_p90);
-            convert_Ecef_to_Lla(ecef_p90, lla_p90);
-
-            ref_lla.lat = location.gpsLocation.latitude;
-            ref_lla.lon = location.gpsLocation.longitude;
-            ref_lla.alt = location.gpsLocation.altitude;
-
-            switch (datum_type) {
-                case LOC_GNSS_DATUM_WGS84:
-                    local_lla.lat = location.gpsLocation.latitude;
-                    local_lla.lon = location.gpsLocation.longitude;
-                    local_lla.alt = location.gpsLocation.altitude;
-                    break;
-                case LOC_GNSS_DATUM_PZ90:
-                    local_lla.lat = lla_p90.lat / M_PI * 180.0;
-                    local_lla.lon = lla_p90.lon / M_PI * 180.0;
-                    local_lla.alt = lla_p90.alt;
-                    break;
-                default:
-                    break;
-            }
         }
 
         // -------------------

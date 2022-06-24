@@ -106,7 +106,7 @@ GnssAPIClient::GnssAPIClient(const shared_ptr<IGnssCallback>& gpsCb) :
     LocationAPIClientBase(),
     mControlClient(new LocationAPIControlClient()),
     mTracking(false),
-    mReportSpeOnly(false),
+    mReportSpeOnly(true),
     mLocationCapabilitiesMask(0),
     mLocationCapabilitiesCached(false),
     mSvStatusEnabled(false),
@@ -265,6 +265,10 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
         mTrackingOptions.powerMode = powerMode;
         mTrackingOptions.tbm = timeBetweenMeasurement;
     }
+    mTrackingOptions.locReqEngTypeMask = LOC_REQ_ENGINE_SPE_BIT;
+    if (0 == mReportSpeOnly) {
+        mTrackingOptions.locReqEngTypeMask = LOC_REQ_ENGINE_FUSED_BIT;
+    }
     locAPIUpdateTrackingOptions(mTrackingOptions);
     return retVal;
 }
@@ -285,47 +289,45 @@ void GnssAPIClient::gnssDeleteAidingData(IGnss::GnssAidingData aidingDataFlags)
         GNSS_AIDING_DATA_SV_TYPE_NAVIC_BIT;
     data.posEngineMask = STANDARD_POSITIONING_ENGINE;
 
-    if (aidingDataFlags == IGnss::GnssAidingData::ALL)
+    if (aidingDataFlags == IGnss::GnssAidingData::ALL) {
         data.deleteAll = true;
-    else {
-        switch (aidingDataFlags) {
-        case IGnss::GnssAidingData::EPHEMERIS:
+    } else {
+        uint32_t delAidDataFlag = (uint32_t)aidingDataFlags;
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::EPHEMERIS) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_EPHEMERIS_BIT;
-            break;
-        case IGnss::GnssAidingData::ALMANAC:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::ALMANAC) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_ALMANAC_BIT;
-            break;
-        case IGnss::GnssAidingData::POSITION:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::POSITION) {
             data.common.mask |= GNSS_AIDING_DATA_COMMON_POSITION_BIT;
-            break;
-        case IGnss::GnssAidingData::TIME:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::TIME) {
             data.common.mask |= GNSS_AIDING_DATA_COMMON_TIME_BIT;
-            break;
-        case IGnss::GnssAidingData::IONO:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::IONO) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_IONOSPHERE_BIT;
-            break;
-        case IGnss::GnssAidingData::UTC:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::UTC) {
             data.common.mask |= GNSS_AIDING_DATA_COMMON_UTC_BIT;
-            break;
-        case IGnss::GnssAidingData::HEALTH:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::HEALTH) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_HEALTH_BIT;
-            break;
-        case IGnss::GnssAidingData::SVDIR:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::SVDIR) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_DIRECTION_BIT;
-            break;
-        case IGnss::GnssAidingData::SVSTEER:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::SVSTEER) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_STEER_BIT;
-            break;
-        case IGnss::GnssAidingData::SADATA:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::SADATA) {
             data.sv.svMask |= GNSS_AIDING_DATA_SV_SA_DATA_BIT;
-            break;
-        case IGnss::GnssAidingData::RTI:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::RTI) {
             data.common.mask |= GNSS_AIDING_DATA_COMMON_RTI_BIT;
-            break;
-        case IGnss::GnssAidingData::CELLDB_INFO:
+        }
+        if (delAidDataFlag & (uint32_t)IGnss::GnssAidingData::CELLDB_INFO) {
             data.common.mask |= GNSS_AIDING_DATA_COMMON_CELLDB_BIT;
-            break;
-
         }
     }
     mControlClient->locAPIGnssDeleteAidingData(data);
@@ -404,7 +406,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     }
     data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
 
-    IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015 };
+    IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015, "aidl-impl" };
 
     if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
         gnssInfo.yearOfHw++; // 2016
