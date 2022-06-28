@@ -76,8 +76,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MAC_ADDRESS_LENGTH    6
 // MAC address length in bytes
-// QMI_LOC_SRN_MAC_ADDR_LENGTH_V02
-#define SRN_MAC_ADDRESS_LENGTH    6
 #define WIFI_SUPPLICANT_DEFAULT_STATE    0
 
 #define TIME_DEFAULT_CURRTIME 0
@@ -579,51 +577,6 @@ public:
     virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
 // Data members
     string mValue;
-};
-
-class SrnDeviceScanDetailsDataItem: public IDataItemCore {
-public:
-    SrnDeviceScanDetailsDataItem(DataItemId Id) :
-        mValidSrnData(false),
-        mApSrnRssi(-1),
-        mApSrnTimestamp(0),
-        mRequestTimestamp(0),
-        mReceiveTimestamp(0),
-       mErrorCause(-1) {mId = Id;}
-    virtual ~SrnDeviceScanDetailsDataItem() {}
-    // Data members common to all SRN tech types
-    /* Represents info on whether SRN data is valid (no error)*/
-    bool mValidSrnData;
-    /* SRN device RSSI reported */
-    int32_t mApSrnRssi;
-    /* MAC adress of SRN device */
-    uint8_t mApSrnMacAddress[SRN_MAC_ADDRESS_LENGTH];
-    /* UTC timestamp at which the scan was requested.for this SRN device*/
-    int64_t mApSrnTimestamp;
-    /* UTC timestamp at which the scan was started. */
-    int64_t mRequestTimestamp;
-    /* UTC timestamp at which the scan was received.*/
-    int64_t mReceiveTimestamp;
-    /* Reason for the error/failure if SRN details are not valid */
-    int32_t mErrorCause;
-};
-
-class BtDeviceScanDetailsDataItem: public SrnDeviceScanDetailsDataItem {
-public:
-    BtDeviceScanDetailsDataItem() :
-        SrnDeviceScanDetailsDataItem(BT_SCAN_DATA_ITEM_ID) {}
-    virtual ~BtDeviceScanDetailsDataItem() {}
-    virtual void stringify(string& /*valueStr*/) override;
-    virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
-};
-
-class BtLeDeviceScanDetailsDataItem: public SrnDeviceScanDetailsDataItem {
-public:
-    BtLeDeviceScanDetailsDataItem() :
-        SrnDeviceScanDetailsDataItem(BTLE_SCAN_DATA_ITEM_ID) {}
-    virtual ~BtLeDeviceScanDetailsDataItem() {}
-    virtual void stringify(string& /*valueStr*/) override;
-    virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
 };
 
 class BatteryLevelDataItem: public IDataItemCore {
