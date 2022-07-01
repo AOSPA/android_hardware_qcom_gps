@@ -7619,7 +7619,8 @@ GnssAdapter::initEngHubProxy() {
             locUtilWaitForDir(SOCKET_DIR_EHUB);
             EngineHubProxyBase* hubProxy = (*getter) (mMsgTask, mSystemStatus->getOsObserver(),
                       mEngServiceInfo, reportPositionEventCb, reqAidingDataCb,
-                      updateNHzRequirementCb, updateQwesFeatureStatusCb);
+                      updateNHzRequirementCb, updateQwesFeatureStatusCb,
+                      [ this ] { return isPreciseEnabled(); });
             if (hubProxy != nullptr) {
                 mEngHubProxy = hubProxy;
                 engHubLoadSuccessful = true;
