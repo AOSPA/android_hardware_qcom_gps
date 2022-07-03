@@ -151,7 +151,6 @@ ssize_t Sock::recvfrom(const LocIpcRecver& recver, const shared_ptr<ILocIpcListe
                        int sid, int flags, struct sockaddr *srcAddr, socklen_t *addrlen) const  {
     std::string msg(mMaxTxSize + sizeof(LOC_IPC_HEAD), 0);
     ssize_t nBytes = ::recvfrom(sid, (void*)msg.data(), msg.size(), flags, srcAddr, addrlen);
-    LOC_LOGe("nBytes : %u", nBytes);
     if (nBytes > 0) {
         if (strncmp(msg.data(), MSG_ABORT, sizeof(MSG_ABORT)) == 0) {
             LOC_LOGi("recvd abort msg.data %s", msg.data());
@@ -180,7 +179,6 @@ ssize_t Sock::recvfrom(const LocIpcRecver& recver, const shared_ptr<ILocIpcListe
                 iter->second.first -= payLoadSize;
 
                 if (0 == iter->second.first) {
-                    LOC_LOGv("Calling onReceive size: %u", sSockToPayloadMap[key].second.size());
                     dataCb->onReceive(iter->second.second.data(),
                             iter->second.second.size(), &recver);
                     sSockToPayloadMap.erase(iter);
