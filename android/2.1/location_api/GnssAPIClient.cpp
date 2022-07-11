@@ -312,6 +312,11 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
             (int)mode, recurrence, minIntervalMs, preferredAccuracyMeters,
             preferredTimeMs, (int)powerMode, timeBetweenMeasurement);
     bool retVal = true;
+
+    if (0 == minIntervalMs) {
+        minIntervalMs = 1000;
+    }
+
     memset(&mTrackingOptions, 0, sizeof(TrackingOptions));
     mTrackingOptions.size = sizeof(TrackingOptions);
     mTrackingOptions.minInterval = minIntervalMs;

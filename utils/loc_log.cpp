@@ -259,7 +259,7 @@ void log_tag_level_map_init()
 
     std::ifstream s(filename);
     if (!s.is_open()) {
-        ALOGE("cannot open file:%s", LOG_TAG_LEVEL_CONF_FILE_PATH);
+        ALOGI("cannot open file:%s", LOG_TAG_LEVEL_CONF_FILE_PATH);
     } else {
         std::string line;
         while (std::getline(s, line)) {

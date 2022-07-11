@@ -144,12 +144,6 @@ IDataItemCore* DataItemsFactoryProxy::createNewDataItem(IDataItemCore* dataItem)
     case MCCMNC_DATA_ITEM_ID:
         mydi = new MccmncDataItem(*((MccmncDataItem*)dataItem));
         break;
-    case BTLE_SCAN_DATA_ITEM_ID:
-        mydi = new BtLeDeviceScanDetailsDataItem(*((BtLeDeviceScanDetailsDataItem*)dataItem));
-        break;
-    case BT_SCAN_DATA_ITEM_ID:
-        mydi = new BtDeviceScanDetailsDataItem(*((BtDeviceScanDetailsDataItem*)dataItem));
-        break;
     case BATTERY_LEVEL_DATA_ITEM_ID:
         mydi = new BatteryLevelDataItem(*((BatteryLevelDataItem*)dataItem));
         break;
