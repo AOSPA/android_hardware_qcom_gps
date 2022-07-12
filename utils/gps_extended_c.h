@@ -660,6 +660,7 @@ typedef struct {
 typedef struct {
 
   /**<   Current GPS week as calculated from midnight, Jan. 6, 1980. \n
+         65535 means unknown gps week
        - Units: Weeks */
   uint16_t gpsWeek;
 

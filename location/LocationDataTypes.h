@@ -90,6 +90,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GNSS_MAX_NAME_LENGTH    (8)
 #define XTRA_STATS_DL_REASON_CODE_MAX_LEN (64)
 
+#define UNKNOWN_GPS_WEEK_NUM    (65535)
+#define REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC (20.0f)
+
 typedef enum {
     LOCATION_ERROR_SUCCESS = 0,
     LOCATION_ERROR_GENERAL_FAILURE,
@@ -1290,6 +1293,23 @@ typedef struct {
     uint32_t refFCount;
     /** Number of clock resets/discontinuities detected, affecting the local hardware counter value. */
     uint32_t numClockResets;
+
+    inline bool hasAccurateTime() const {
+        bool retVal = false;
+        if ((validityMask & GNSS_SYSTEM_TIME_WEEK_VALID) &&
+                // 65535 GPS week from modem means unknown
+                (systemWeek != UNKNOWN_GPS_WEEK_NUM) &&
+                (validityMask & GNSS_SYSTEM_TIME_WEEK_MS_VALID) &&
+                (validityMask & GNSS_SYSTEM_CLK_TIME_BIAS_VALID) &&
+                (systemClkTimeBias != 0.0f) &&
+                (systemClkTimeBias < REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC) &&
+                (validityMask & GNSS_SYSTEM_CLK_TIME_BIAS_UNC_VALID) &&
+                (systemClkTimeUncMs != 0.0f) &&
+                (systemClkTimeUncMs < REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC)) {
+            retVal = true;
+        }
+        return retVal;
+    }
 } GnssSystemTimeStructType;
 
 typedef struct {
@@ -1331,6 +1351,7 @@ typedef union {
     GnssGloTimeStructType    gloSystemTime;
     GnssSystemTimeStructType navicSystemTime;
 } SystemTimeStructUnion;
+
     /** Time applicability of PVT report */
 typedef struct {
     /** Specifies GNSS system time reported. Mandatory field */
@@ -1341,6 +1362,16 @@ typedef struct {
       Mandatory field
      */
     SystemTimeStructUnion u;
+
+    inline bool hasAccurateGpsTime() const {
+        bool retVal = false;
+        if ((gnssSystemTimeSrc == GNSS_LOC_SV_SYSTEM_GPS) &&
+                (u.gpsSystemTime.hasAccurateTime() == true)) {
+            retVal = true;
+        }
+        return retVal;
+    }
+
 } GnssSystemTime;
 
 typedef uint32_t DrSolutionStatusMask;
