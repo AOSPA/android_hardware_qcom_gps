@@ -3050,6 +3050,9 @@ GnssAdapter::getCapabilities()
     if (ContextBase::isAntennaInfoAvailable()) {
         mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
     }
+    if (mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+        mask |= LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT;
+    }
     //Get QWES feature status mask
     mask |= ContextBase::getQwesFeatureStatus();
     return mask;

@@ -367,7 +367,9 @@ typedef enum {
     // This mask indicates engine debug data enabled.
     LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28),
     // This mask indicates Antenna info is enabled.
-    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29)
+    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29),
+    // This mask indicates qppe or qfe library is presented.
+    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT                  = (1<<30)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
