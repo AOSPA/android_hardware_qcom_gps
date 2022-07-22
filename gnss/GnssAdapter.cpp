@@ -2876,8 +2876,7 @@ GnssAdapter::updateClientsEventMask()
 void
 GnssAdapter::handleEngineLockStatusEvent(EngineLockState engineLockState) {
 
-    LOC_LOGD("%s]: Old Engine state %d, New Engine state : %d,",
-        __func__, mLocApi->getEngineLockState(), engineLockState);
+    LOC_LOGd("Engine state : %d", engineLockState);
 
     struct MsgEngineLockStateEvent : public LocMsg {
         GnssAdapter& mAdapter;

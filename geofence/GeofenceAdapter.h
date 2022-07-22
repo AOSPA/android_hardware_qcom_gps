@@ -162,9 +162,6 @@ public:
     LocationError getHwIdFromClient(LocationAPI* client, uint32_t clientId, uint32_t& hwId);
     LocationError getGeofenceKeyFromHwId(uint32_t hwId, GeofenceKey& key);
     void dump();
-    /* ==== REPORTS ======================================================================== */
-    virtual void handleEngineLockStatusEvent(EngineLockState engineLockState);
-    void handleEngineLockStatus(EngineLockState engineLockState);
     /* ======== EVENTS ====(Called from QMI Thread)========================================= */
     void geofenceBreachEvent(size_t count, uint32_t* hwIds, Location& location,
                              GeofenceBreachType breachType, uint64_t timestamp);
