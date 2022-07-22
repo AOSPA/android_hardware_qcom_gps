@@ -128,9 +128,10 @@ struct Gnss : public BnGnss {
     ScopedAStatus stopNmea() override;
 
     // These methods are not part of the IGnss base class.
-    GnssAPIClient* getApi();
+    inline GnssAPIClient& getApi() { return mApi; }
     ScopedAStatus updateConfiguration(GnssConfig& gnssConfig);
     ILocationControlAPI* getLocationControlApi();
+    void handleAidlClientSsr();
 
     // ILocationControlAPI callbacks
     void onCtrlResponseCb(LocationError error, uint32_t id) {}
@@ -139,7 +140,7 @@ struct Gnss : public BnGnss {
     void odcpiRequestCb(const OdcpiRequestInfo& request);
 
 private:
-    GnssAPIClient* mApi;
+    GnssAPIClient mApi;
     shared_ptr<IGnssConfiguration> mGnssConfiguration = nullptr;
     shared_ptr<IGnssPowerIndication> mGnssPowerIndication = nullptr;
     shared_ptr<IGnssMeasurementInterface> mGnssMeasurementInterface = nullptr;
@@ -151,8 +152,6 @@ private:
     shared_ptr<IGnssVisibilityControl> mGnssVisibCtrl = nullptr;
     shared_ptr<IGnssAntennaInfo> mGnssAntennaInfo = nullptr;
     shared_ptr<IMeasurementCorrectionsInterface> mGnssMeasCorr = nullptr;
-    GnssConfig mPendingConfig;
-
 
     shared_ptr<IGnssCallback> mGnssCallback = nullptr;
     ILocationControlAPI* mLocationControlApi = nullptr;

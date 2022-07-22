@@ -84,6 +84,7 @@ class GnssAPIClient : public LocationAPIClientBase {
 public:
     GnssAPIClient(const shared_ptr<IGnssCallback>& gpsCb);
     GnssAPIClient(const GnssAPIClient&) = delete;
+    virtual ~GnssAPIClient();
     GnssAPIClient& operator=(const GnssAPIClient&) = delete;
 
     // for GpsInterface
@@ -120,7 +121,6 @@ public:
     void onStopTrackingCb(LocationError error) final;
 
 private:
-    virtual ~GnssAPIClient();
     void setCallbacks();
     void initLocationOptions();
 
@@ -133,7 +133,7 @@ private:
     bool mLocationCapabilitiesCached;
     bool mSvStatusEnabled;
     bool mNmeaEnabled;
-    shared_ptr<IGnssCallback> mGnssCbIface;
+    const shared_ptr<IGnssCallback>& mGnssCbIface;
 };
 
 }  // namespace implementation
