@@ -103,6 +103,7 @@ typedef enum {
     LOCATION_ERROR_TIMEOUT,
     LOCATION_ERROR_SYSTEM_NOT_READY,
     LOCATION_ERROR_EXCLUSIVE_SESSION_IN_PROGRESS,
+    LOCATION_ERROR_TZ_LOCKED,
 } LocationError;
 
 // Flags to indicate which values are valid in a Location
