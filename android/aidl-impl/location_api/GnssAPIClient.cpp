@@ -184,10 +184,6 @@ void GnssAPIClient::setCallbacks() {
 
 // for GpsInterface
 void GnssAPIClient::gnssUpdateCallbacks(const shared_ptr<IGnssCallback>& gpsCb) {
-    mMutex.lock();
-    mGnssCbIface = gpsCb;
-    mMutex.unlock();
-
     if (gpsCb != nullptr) {
         setCallbacks();
     }

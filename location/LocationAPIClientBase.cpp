@@ -382,6 +382,21 @@ void LocationAPIClientBase::destroy()
 
 LocationAPIClientBase::~LocationAPIClientBase()
 {
+    pthread_mutex_lock(&mMutex);
+    ILocationAPI* localHandle = nullptr;
+    if (nullptr != mLocationAPI) {
+        LocationCallbacks emptryCallbacks = {};
+        mLocationAPI->updateCallbacks(emptryCallbacks);
+        localHandle = mLocationAPI;
+        mLocationAPI = nullptr;
+    }
+
+    pthread_mutex_unlock(&mMutex);
+
+    if (nullptr != localHandle) {
+        localHandle->destroy();
+    }
+
     pthread_mutex_destroy(&mMutex);
 }
 
