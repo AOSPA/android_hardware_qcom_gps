@@ -820,6 +820,14 @@ GnssAdapter::convertLocationInfo(GnssLocationInfoNotification& out,
         out.flags |= GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT;
         out.protectVertical = locationExtended.protectVertical;
     }
+
+    if (GPS_LOCATION_EXTENDED_HAS_DGNSS_STATION_ID & locationExtended.flags) {
+        out.flags |= GNSS_LOCATION_INFO_DGNSS_STATION_ID_BIT;
+        out.numOfDgnssStationId = locationExtended.numOfDgnssStationId;
+        for (uint32_t i = 0; i < locationExtended.numOfDgnssStationId; i++) {
+            out.dgnssStationId[i] = locationExtended.dgnssStationId[i];
+        }
+    }
 }
 
 inline uint32_t
