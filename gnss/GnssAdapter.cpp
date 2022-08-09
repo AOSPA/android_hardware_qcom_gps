@@ -173,7 +173,6 @@ GnssAdapter::GnssAdapter() :
     mNfwCb(NULL),
     mIsE911Session(NULL),
     mIsMeasCorrInterfaceOpen(false),
-    mIsAntennaInfoInterfaceOpened(false),
     mQDgnssListenerHDL(nullptr),
     mCdfwInterface(nullptr),
     mDGnssNeedReport(false),
@@ -6682,13 +6681,8 @@ uint32_t GnssAdapter::antennaInfoInitCommand(const antennaInfoCb antennaInfoCall
             mAdapter.reportGnssAntennaInformation(mAntennaInfoCb);
         }
     };
-    if (mIsAntennaInfoInterfaceOpened) {
-        return ANTENNA_INFO_ERROR_ALREADY_INIT;
-    } else {
-        mIsAntennaInfoInterfaceOpened = true;
-        sendMsg(new MsgInitAi(antennaInfoCallback, *this));
-        return ANTENNA_INFO_SUCCESS;
-    }
+    sendMsg(new MsgInitAi(antennaInfoCallback, *this));
+    return ANTENNA_INFO_SUCCESS;
 }
 
 void
