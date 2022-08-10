@@ -360,7 +360,7 @@ static uint32_t* gnssGetConfig(GnssConfigFlagsMask mask)
 static void gnssUpdateSvTypeConfig(GnssSvTypeConfig& config)
 {
     if (NULL != gGnssAdapter) {
-        gGnssAdapter->gnssUpdateSvTypeConfigCommand(config);
+        gGnssAdapter->gnssUpdateSvTypeConfigCommand(config, SV_TYPE_CONFIG_FROM_API);
     }
 }
 
