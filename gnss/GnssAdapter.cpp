@@ -2825,6 +2825,7 @@ GnssAdapter::updateSystemPowerStateCommand(PowerStateType systemPowerState) {
             mSystemPowerState(systemPowerState) {}
         inline virtual void proc() const {
             mAdapter.updateSystemPowerState(mSystemPowerState);
+            mAdapter.mXtraObserver.updatePowerState(mSystemPowerState);
         }
     };
 
