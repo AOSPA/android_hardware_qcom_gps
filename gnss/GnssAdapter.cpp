@@ -454,7 +454,8 @@ void GnssAdapter::fillElapsedRealTime(const GpsLocationExtended& locationExtende
             out.elapsedRealTimeUnc = (int64_t) (elapsedTimeUncMsec * 1000000);
         }
 #ifndef FEATURE_AUTOMOTIVE
-        else if (out.timestamp > 0) {
+        else if ((out.timestamp > 0) &&
+                 (locationExtended.gpsTime.gpsWeek != UNKNOWN_GPS_WEEK_NUM)) {
             int64_t locationTimeNanos = (int64_t)out.timestamp * 1000000;
             bool isCurDataTimeTrustable = (out.timestamp % mLocPositionMode.min_interval == 0);
             out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
@@ -2876,8 +2877,7 @@ GnssAdapter::updateClientsEventMask()
 void
 GnssAdapter::handleEngineLockStatusEvent(EngineLockState engineLockState) {
 
-    LOC_LOGD("%s]: Old Engine state %d, New Engine state : %d,",
-        __func__, mLocApi->getEngineLockState(), engineLockState);
+    LOC_LOGd("Engine state : %d", engineLockState);
 
     struct MsgEngineLockStateEvent : public LocMsg {
         GnssAdapter& mAdapter;
@@ -3049,6 +3049,9 @@ GnssAdapter::getCapabilities()
     }
     if (ContextBase::isAntennaInfoAvailable()) {
         mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
+    }
+    if (mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+        mask |= LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT;
     }
     //Get QWES feature status mask
     mask |= ContextBase::getQwesFeatureStatus();
