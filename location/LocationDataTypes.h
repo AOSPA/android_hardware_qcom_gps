@@ -1897,6 +1897,13 @@ struct GnssSvTypeConfig{
     }
 };
 
+// Specify the caller who set SV Type config
+enum GnssSvTypeConfigSource {
+    SV_TYPE_CONFIG_FROM_API = 0,
+    SV_TYPE_CONFIG_FROM_XTRA,
+    SV_TYPE_CONFIG_MAX_SOURCE
+};
+
 /** Specify the XTRA assistance data status. */
 enum XtraDataStatus {
     /** If XTRA feature is disabled or if XTRA feature is enabled,
