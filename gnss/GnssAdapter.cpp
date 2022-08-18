@@ -206,7 +206,7 @@ GnssAdapter::GnssAdapter() :
     mPositionElapsedRealTimeCal(30000000),
     mAddressRequestCb(nullptr),
     mHmacConfig(HMAC_CONFIG_UNKNOWN),
-    mQppeFeatureStatusMask(0)
+    mDlpFeatureStatusMask(0)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -2761,7 +2761,7 @@ GnssAdapter::setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb)
 void
 GnssAdapter::setTribandState() {
     bool enabled = false;
-    if (isInSession() && mEngServiceInfo.ppeIntEnabled) {
+    if (isInSession() && mEngServiceInfo.ppeIntEnabled && isQppeEnabled()) {
         enabled = true;
     }
     LOC_LOGd("enabled:%d", enabled);
@@ -3153,7 +3153,7 @@ GnssAdapter::getCapabilities()
     if (ContextBase::isAntennaInfoAvailable()) {
         mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
     }
-    if (mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+    if (mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
         mask |= LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT;
     }
     //Get QWES feature status mask
@@ -3293,7 +3293,7 @@ void GnssAdapter::testLaunchQppeBringUp() {
             sleep(1);
             retryAttempts--;
         }
-        if (!(mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT)) {
+        if (!(mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT)) {
             LOC_LOGd("timeout, no response from Qppe process.");
             getSystemStatus()->eventPreciseLocation(false);
         }
@@ -5507,51 +5507,61 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
             mAdapter(adapter),
             mFeatureMap(featureMap) {}
         inline virtual void proc() const {
-            LOC_LOGd("ReportQwesFeatureStatus From Engine Hub, mppeFeatureStatusMask: %x",
-                    mAdapter.mQppeFeatureStatusMask);
-            auto iter1 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_PPE);
-            auto iter2 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_DLP_QESDK);
-            auto iter3 = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_QDR3);
+            LOC_LOGd("ReportQwesFeatureStatus From Engine Hub, mDlpFeatureStatusMask: %x",
+                    mAdapter.mDlpFeatureStatusMask);
+            auto ppeInFeatureMap = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_PPE);
+            auto dlpQesdkInFeatureMap = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_DLP_QESDK);
+            auto qfeInFeatureMap = mFeatureMap.find(LOCATION_QWES_FEATURE_TYPE_QDR3);
             //QESDK feature status call back handling logic:
             //1, If LOCATION_QWES_FEATURE_TYPE_PPE is presented in feature map,
             //   It means Qwes status callback is triggered by Engine Servive try
-            //   to register to Engine Hub, set QPPE_FEATURE_STATUS_LIRBARY_PRESENT
-            //   bit, and set QPPE_FEATURE_ENABLED_BY_DEFAULT bit according to
+            //   to register to Engine Hub, set DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT
+            //   bit, and set DLP_FEATURE_ENABLED_BY_DEFAULT bit according to
             //   PPE feature status;
-            //2, If LOCATION_QWES_FEATURE_TYPE_DLP_QESDK is presented in feature map,
+            //2, If LOCATION_QWES_FEATURE_TYPE_QDR3 is presented in feature map,
+            //   It means Qwes status callback is triggered by Engine Servive try
+            //   to register to Engine Hub, set DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT
+            //   bit, and set DLP_FEATURE_ENABLED_BY_DEFAULT bit according to
+            //   PPE feature status;
+            //3, If LOCATION_QWES_FEATURE_TYPE_DLP_QESDK is presented in feature map,
             //   It means Qwes status callback is triggered when Engine hub recieves
             //   configPreciseLocation command from GnssAdapter, and already checked
             //   QESDK feature status via QWES call checkInstalledLicense, set
-            //   QPPE_FEATURE_ENABLED_BY_QESDK bit according to QESDK feature status.
-            if (iter1 != mFeatureMap.end() || iter3 != mFeatureMap.end()) {
+            //   DLP_FEATURE_ENABLED_BY_QESDK bit according to QESDK feature status.
+            if (ppeInFeatureMap != mFeatureMap.end() || qfeInFeatureMap != mFeatureMap.end()) {
                 LOC_LOGd("ReportQwesFeatureStatus, set library present bit");
-                mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_STATUS_LIRBARY_PRESENT;
-                if ((iter1 != mFeatureMap.end() && iter1->second) ||
-                        (iter3 != mFeatureMap.end() && iter3->second)) {
-                    mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_ENABLED_BY_DEFAULT;
+                if (ppeInFeatureMap != mFeatureMap.end()) {
+                    mAdapter.mDlpFeatureStatusMask |= DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT;
+                }
+                if (qfeInFeatureMap != mFeatureMap.end()) {
+                    mAdapter.mDlpFeatureStatusMask |= DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT;
+                }
+                if ((ppeInFeatureMap != mFeatureMap.end() && ppeInFeatureMap->second) ||
+                        (qfeInFeatureMap != mFeatureMap.end() && qfeInFeatureMap->second)) {
+                    mAdapter.mDlpFeatureStatusMask |= DLP_FEATURE_ENABLED_BY_DEFAULT;
                     mAdapter.notifyPreciseLocation(true);
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit true");
                 } else {
-                    mAdapter.mQppeFeatureStatusMask &= (~QPPE_FEATURE_ENABLED_BY_DEFAULT);
+                    mAdapter.mDlpFeatureStatusMask &= (~DLP_FEATURE_ENABLED_BY_DEFAULT);
                     mAdapter.notifyPreciseLocation(false);
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit false");
                 }
                 mAdapter.mQppeResp = true;
-            } else if (iter2 != mFeatureMap.end()) {
+            } else if (dlpQesdkInFeatureMap != mFeatureMap.end()) {
                 LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit");
-                if (iter2->second) {
-                    mAdapter.mQppeFeatureStatusMask |= QPPE_FEATURE_ENABLED_BY_QESDK;
+                if (dlpQesdkInFeatureMap->second) {
+                    mAdapter.mDlpFeatureStatusMask |= DLP_FEATURE_ENABLED_BY_QESDK;
                     //Send enable precise location data item to loclauncher to inform
                     //it QPPE engine-service need to launch
-                    if (mAdapter.mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+                    if (mAdapter.mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
                         mAdapter.notifyPreciseLocation(true);
                         LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit true");
                     }
                 } else {
-                    mAdapter.mQppeFeatureStatusMask &= (~QPPE_FEATURE_ENABLED_BY_QESDK);
+                    mAdapter.mDlpFeatureStatusMask &= (~DLP_FEATURE_ENABLED_BY_QESDK);
                     //Send disable precise location data item to loclauncher to inform
                     //it QPPE engine-service need to exit
-                    if (mAdapter.mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) {
+                    if (mAdapter.mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
                         mAdapter.notifyPreciseLocation(false);
                         LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit false");
                     }
