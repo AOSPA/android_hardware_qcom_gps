@@ -87,8 +87,7 @@ void gnssServiceDied(void* cookie) {
     LOC_LOGe("IGnssCallback AIDL service died");
     Gnss* iface = static_cast<Gnss*>(cookie);
     if (iface != nullptr) {
-        iface->close();
-        iface = nullptr;
+        iface->handleAidlClientSsr();
     }
 }
 ScopedAStatus Gnss::setCallback(const shared_ptr<IGnssCallback>& callback) {
@@ -102,26 +101,21 @@ ScopedAStatus Gnss::setCallback(const shared_ptr<IGnssCallback>& callback) {
         AIBinder_unlinkToDeath(mGnssCallback->asBinder().get(), mDeathRecipient, this);
     }
     mGnssCallback = callback;
-    GnssAPIClient* api = getApi();
 
     if (mGnssCallback != nullptr) {
         AIBinder_linkToDeath(callback->asBinder().get(), mDeathRecipient, this);
     }
     mMutex.unlock();
 
-    if (api != nullptr) {
-        api->gnssUpdateCallbacks(callback);
-        api->gnssEnable(LOCATION_TECHNOLOGY_TYPE_GNSS);
-        api->requestCapabilities();
-    }
+    mApi.gnssUpdateCallbacks(callback);
+    mApi.gnssEnable(LOCATION_TECHNOLOGY_TYPE_GNSS);
+    mApi.requestCapabilities();
 
     return ScopedAStatus::ok();
 }
 
 ScopedAStatus Gnss::close() {
-    if (mApi != nullptr) {
-        mApi->gnssDisable();
-    }
+    mApi.gnssDisable();
     return ScopedAStatus::ok();
 }
 
@@ -132,9 +126,8 @@ void location_on_battery_status_changed(bool charging) {
     }
 }
 
-Gnss::Gnss(): mGnssCallback(nullptr),
+Gnss::Gnss(): mApi(mGnssCallback), mGnssCallback(nullptr),
     mDeathRecipient(AIBinder_DeathRecipient_new(&gnssServiceDied)) {
-    memset(&mPendingConfig, 0, sizeof(GnssConfig));
     ENTRY_LOG_CALLFLOW();
     sGnss = this;
     // register health client to listen on battery change
@@ -143,11 +136,17 @@ Gnss::Gnss(): mGnssCallback(nullptr),
 
 Gnss::~Gnss() {
     ENTRY_LOG_CALLFLOW();
-    if (mApi != nullptr) {
-        mApi->destroy();
-        mApi = nullptr;
-    }
+    handleAidlClientSsr();
+    mApi.destroy();
     sGnss = nullptr;
+}
+
+void Gnss::handleAidlClientSsr() {
+    if (mGnssCallback != nullptr) {
+        AIBinder_unlinkToDeath(mGnssCallback->asBinder().get(), mDeathRecipient, this);
+        mGnssCallback = nullptr;
+    }
+    close();
 }
 
 ILocationControlAPI* Gnss::getLocationControlApi() {
@@ -171,69 +170,7 @@ ILocationControlAPI* Gnss::getLocationControlApi() {
 
 ScopedAStatus Gnss::updateConfiguration(GnssConfig& gnssConfig) {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->gnssConfigurationUpdate(gnssConfig);
-    } else if (gnssConfig.flags != 0) {
-        // api is not ready yet, update mPendingConfig with gnssConfig
-        mPendingConfig.size = sizeof(GnssConfig);
-
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_GPS_LOCK_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_GPS_LOCK_VALID_BIT;
-            mPendingConfig.gpsLock = gnssConfig.gpsLock;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_SUPL_VERSION_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_SUPL_VERSION_VALID_BIT;
-            mPendingConfig.suplVersion = gnssConfig.suplVersion;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_SET_ASSISTANCE_DATA_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_SET_ASSISTANCE_DATA_VALID_BIT;
-            mPendingConfig.assistanceServer.size = sizeof(GnssConfigSetAssistanceServer);
-            mPendingConfig.assistanceServer.type = gnssConfig.assistanceServer.type;
-            if (mPendingConfig.assistanceServer.hostName != nullptr) {
-                free((void*)mPendingConfig.assistanceServer.hostName);
-                mPendingConfig.assistanceServer.hostName =
-                    strdup(gnssConfig.assistanceServer.hostName);
-            }
-            mPendingConfig.assistanceServer.port = gnssConfig.assistanceServer.port;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT;
-            mPendingConfig.lppProfileMask = gnssConfig.lppProfileMask;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT;
-            mPendingConfig.lppeControlPlaneMask = gnssConfig.lppeControlPlaneMask;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_LPPE_USER_PLANE_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_LPPE_USER_PLANE_VALID_BIT;
-            mPendingConfig.lppeUserPlaneMask = gnssConfig.lppeUserPlaneMask;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT;
-            mPendingConfig.aGlonassPositionProtocolMask = gnssConfig.aGlonassPositionProtocolMask;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_EM_PDN_FOR_EM_SUPL_VALID_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_EM_PDN_FOR_EM_SUPL_VALID_BIT;
-            mPendingConfig.emergencyPdnForEmergencySupl = gnssConfig.emergencyPdnForEmergencySupl;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_SUPL_EM_SERVICES_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_SUPL_EM_SERVICES_BIT;
-            mPendingConfig.suplEmergencyServices = gnssConfig.suplEmergencyServices;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_SUPL_MODE_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_SUPL_MODE_BIT;
-            mPendingConfig.suplModeMask = gnssConfig.suplModeMask;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT;
-            mPendingConfig.blacklistedSvIds = gnssConfig.blacklistedSvIds;
-        }
-        if (gnssConfig.flags & GNSS_CONFIG_FLAGS_EMERGENCY_EXTENSION_SECONDS_BIT) {
-            mPendingConfig.flags |= GNSS_CONFIG_FLAGS_EMERGENCY_EXTENSION_SECONDS_BIT;
-            mPendingConfig.emergencyExtensionSeconds = gnssConfig.emergencyExtensionSeconds;
-        }
-    }
+    mApi.gnssConfigurationUpdate(gnssConfig);
     return ScopedAStatus::ok();
 }
 
@@ -288,51 +225,33 @@ ScopedAStatus Gnss::getExtensionGnssVisibilityControl(
 }
 ScopedAStatus Gnss::start() {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->gnssStart();
-    }
+    mApi.gnssStart();
     return ScopedAStatus::ok();
 }
 
 ScopedAStatus Gnss::stop()  {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->gnssStop();
-    }
+    mApi.gnssStop();
     return ScopedAStatus::ok();
  }
 ScopedAStatus Gnss::startSvStatus() {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->configSvStatus(true);
-    }
+    mApi.configSvStatus(true);
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::stopSvStatus() {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->configSvStatus(false);
-    }
+    mApi.configSvStatus(false);
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::startNmea() {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->configNmea(true);
-    }
+    mApi.configNmea(true);
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::stopNmea() {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->configNmea(false);
-    }
+    mApi.configNmea(false);
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::injectTime(int64_t timeMs, int64_t timeReferenceMs,
@@ -361,10 +280,7 @@ ScopedAStatus Gnss::injectBestLocation(const GnssLocation& gnssLocation) {
 }
 ScopedAStatus Gnss::deleteAidingData(IGnss::GnssAidingData aidingDataFlags) {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        api->gnssDeleteAidingData(aidingDataFlags);
-    }
+    mApi.gnssDeleteAidingData(aidingDataFlags);
     return ScopedAStatus::ok();
 }
 void Gnss::odcpiRequestCb(const OdcpiRequestInfo& request) {
@@ -394,13 +310,10 @@ void Gnss::odcpiRequestCb(const OdcpiRequestInfo& request) {
 }
 ScopedAStatus Gnss::setPositionMode(const IGnss::PositionModeOptions& options) {
     ENTRY_LOG_CALLFLOW();
-    GnssAPIClient* api = getApi();
-    if (api) {
-        GnssPowerMode powerMode = options.lowPowerMode? GNSS_POWER_MODE_M4 : GNSS_POWER_MODE_M2;
-        api->gnssSetPositionMode(options.mode, options.recurrence, options.minIntervalMs,
-                options.preferredAccuracyMeters, options.preferredTimeMs, powerMode,
-                options.minIntervalMs);
-    }
+    GnssPowerMode powerMode = options.lowPowerMode? GNSS_POWER_MODE_M4 : GNSS_POWER_MODE_M2;
+    mApi.gnssSetPositionMode(options.mode, options.recurrence, options.minIntervalMs,
+            options.preferredAccuracyMeters, options.preferredTimeMs, powerMode,
+            options.minIntervalMs);
     return ScopedAStatus::ok();
 }
 ScopedAStatus Gnss::getExtensionGnssAntennaInfo(shared_ptr<IGnssAntennaInfo>* _aidl_return) {
@@ -447,31 +360,6 @@ ScopedAStatus Gnss::getExtensionGnssMeasurement(
     }
     *_aidl_return = mGnssMeasurementInterface;
     return ScopedAStatus::ok();
-}
-
-GnssAPIClient* Gnss::getApi() {
-    if (mApi != nullptr) {
-        return mApi;
-    }
-
-    if (mGnssCallback != nullptr) {
-        mApi = new GnssAPIClient(mGnssCallback);
-    } else {
-        LOC_LOGw("] GnssAPIClient is not ready");
-        return mApi;
-    }
-
-    if (mPendingConfig.size == sizeof(GnssConfig)) {
-        // we have pending GnssConfig
-        mApi->gnssConfigurationUpdate(mPendingConfig);
-        // clear size to invalid mPendingConfig
-        mPendingConfig.size = 0;
-        if (mPendingConfig.assistanceServer.hostName != nullptr) {
-            free((void*)mPendingConfig.assistanceServer.hostName);
-        }
-    }
-
-    return mApi;
 }
 
 }  // namespace implementation

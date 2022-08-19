@@ -43,6 +43,7 @@ void gnssGeofenceDied(void* cookie) {
     LOC_LOGe("IGnssGeofence AIDL service died");
     GnssGeofence* iface = static_cast<GnssGeofence*>(cookie);
     if (iface != nullptr) {
+        iface->removeAllGeofences();
         iface->setCallback(nullptr);
         iface = nullptr;
     }

@@ -59,7 +59,7 @@ GnssDebug::GnssDebug(Gnss* gnss) : mGnss(gnss) {}
 
     IGnssDebug::DebugData data = { };
 
-    if ((nullptr == mGnss) || (nullptr == mGnss->getApi())) {
+    if (nullptr == mGnss) {
         LOC_LOGe("GnssDebug - Null GNSS interface");
         *_aidl_return = data;
         return ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
@@ -67,7 +67,7 @@ GnssDebug::GnssDebug(Gnss* gnss) : mGnss(gnss) {}
 
     // get debug report snapshot via hal interface
     GnssDebugReport reports = { };
-    mGnss->getApi()->locAPIGetDebugReport(reports);
+    mGnss->getApi().locAPIGetDebugReport(reports);
 
     // location block
     if (reports.mLocation.mValid) {
