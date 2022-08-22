@@ -3060,6 +3060,7 @@ GnssAdapter::saveTrackingSession(LocationAPI* client, uint32_t sessionId,
     reportPowerStateIfChanged();
     // notify SystemStatus the engine tracking status
     getSystemStatus()->setTracking(isInSession());
+    mXtraObserver.notifySessionStart();
 }
 
 void
