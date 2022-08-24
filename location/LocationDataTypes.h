@@ -76,7 +76,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GNSS_NI_MESSAGE_ID_MAX (2048)
 #define GNSS_SV_MAX            (144)
 #define GNSS_MEASUREMENTS_MAX  (144)
-#define GNSS_BANDS_MAX          (32)
+#define GNSS_BANDS_MAX         (32)
+#define DGNSS_STATION_ID_MAX   (3)
 #define GNSS_UTC_TIME_OFFSET   (3657)
 
 #define GNSS_BUGREPORT_GPS_MIN    (1)
@@ -90,6 +91,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GNSS_MAX_NAME_LENGTH    (8)
 #define XTRA_STATS_DL_REASON_CODE_MAX_LEN (64)
 
+#define UNKNOWN_GPS_WEEK_NUM    (65535)
+#define REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC (20.0f)
+
 typedef enum {
     LOCATION_ERROR_SUCCESS = 0,
     LOCATION_ERROR_GENERAL_FAILURE,
@@ -102,6 +106,8 @@ typedef enum {
     LOCATION_ERROR_NOT_SUPPORTED,
     LOCATION_ERROR_TIMEOUT,
     LOCATION_ERROR_SYSTEM_NOT_READY,
+    LOCATION_ERROR_EXCLUSIVE_SESSION_IN_PROGRESS,
+    LOCATION_ERROR_TZ_LOCKED,
 } LocationError;
 
 // Flags to indicate which values are valid in a Location
@@ -260,6 +266,7 @@ typedef enum {
     GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<34), // along-track protection level
     GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<35), // Cross-track protection level
     GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<36), // vertical protection level
+    GNSS_LOCATION_INFO_DGNSS_STATION_ID_BIT       = (1ULL<<37), // dgnss station id
 } GnssLocationInfoFlagBits;
 
 typedef enum {
@@ -366,7 +373,9 @@ typedef enum {
     // This mask indicates engine debug data enabled.
     LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28),
     // This mask indicates Antenna info is enabled.
-    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29)
+    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29),
+    // This mask indicates qppe or qfe library is presented.
+    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT                  = (1<<30)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -481,7 +490,8 @@ typedef uint16_t GnssConfigLppeControlPlaneMask;
 typedef enum {
     GNSS_CONFIG_LPPE_CONTROL_PLANE_DBH_BIT                  = (1<<0), // DBH
     GNSS_CONFIG_LPPE_CONTROL_PLANE_WLAN_AP_MEASUREMENTS_BIT = (1<<1), // WLAN_AP_MEASUREMENTS
-    GNSS_CONFIG_LPPE_CONTROL_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2), // SRN_AP_MEASUREMENTS
+    GNSS_CONFIG_LPPE_CONTROL_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2),
+                                                            // SRN_AP_MEASUREMENTS, Not Supported
     GNSS_CONFIG_LPPE_CONTROL_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                              // SENSOR_BARO_MEASUREMENTS
     GNSS_CONFIG_LPPE_CONTROL_PLANE_NON_E911_BIT = (1<<4), // NON_E911
@@ -493,7 +503,8 @@ typedef uint16_t GnssConfigLppeUserPlaneMask;
 typedef enum {
     GNSS_CONFIG_LPPE_USER_PLANE_DBH_BIT                  = (1<<0), // DBH
     GNSS_CONFIG_LPPE_USER_PLANE_WLAN_AP_MEASUREMENTS_BIT = (1<<1), // WLAN_AP_MEASUREMENTS
-    GNSS_CONFIG_LPPE_USER_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2), // SRN_AP_MEASUREMENTS
+    GNSS_CONFIG_LPPE_USER_PLANE_SRN_AP_MEASUREMENTS_BIT = (1<<2),
+                                                            // SRN_AP_MEASUREMENTS, Not Supported
     GNSS_CONFIG_LPPE_USER_PLANE_SENSOR_BARO_MEASUREMENTS_BIT = (1<<3),
                                                             // SENSOR_BARO_MEASUREMENTS
     GNSS_CONFIG_LPPE_USER_PLANE_NON_E911_BIT = (1<<4), // NON_E911
@@ -1287,6 +1298,23 @@ typedef struct {
     uint32_t refFCount;
     /** Number of clock resets/discontinuities detected, affecting the local hardware counter value. */
     uint32_t numClockResets;
+
+    inline bool hasAccurateTime() const {
+        bool retVal = false;
+        if ((validityMask & GNSS_SYSTEM_TIME_WEEK_VALID) &&
+                // 65535 GPS week from modem means unknown
+                (systemWeek != UNKNOWN_GPS_WEEK_NUM) &&
+                (validityMask & GNSS_SYSTEM_TIME_WEEK_MS_VALID) &&
+                (validityMask & GNSS_SYSTEM_CLK_TIME_BIAS_VALID) &&
+                (systemClkTimeBias != 0.0f) &&
+                (systemClkTimeBias < REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC) &&
+                (validityMask & GNSS_SYSTEM_CLK_TIME_BIAS_UNC_VALID) &&
+                (systemClkTimeUncMs != 0.0f) &&
+                (systemClkTimeUncMs < REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC)) {
+            retVal = true;
+        }
+        return retVal;
+    }
 } GnssSystemTimeStructType;
 
 typedef struct {
@@ -1328,6 +1356,7 @@ typedef union {
     GnssGloTimeStructType    gloSystemTime;
     GnssSystemTimeStructType navicSystemTime;
 } SystemTimeStructUnion;
+
     /** Time applicability of PVT report */
 typedef struct {
     /** Specifies GNSS system time reported. Mandatory field */
@@ -1338,6 +1367,16 @@ typedef struct {
       Mandatory field
      */
     SystemTimeStructUnion u;
+
+    inline bool hasAccurateGpsTime() const {
+        bool retVal = false;
+        if ((gnssSystemTimeSrc == GNSS_LOC_SV_SYSTEM_GPS) &&
+                (u.gpsSystemTime.hasAccurateTime() == true)) {
+            retVal = true;
+        }
+        return retVal;
+    }
+
 } GnssSystemTime;
 
 typedef uint32_t DrSolutionStatusMask;
@@ -1428,6 +1467,14 @@ typedef struct {
     float    protectCrossTrack;
     // vertical component protection level
     float    protectVertical;
+    // number of dgnss station id that is valid in dgnssStationId array
+    uint32_t  numOfDgnssStationId;
+    // List of DGNSS station IDs providing corrections.
+    //   Range:
+    //   - SBAS --  120 to 158 and 183 to 191.
+    //   - Monitoring station -- 1000-2023 (Station ID biased by 1000).
+    //   - Other values reserved.
+    uint16_t dgnssStationId[DGNSS_STATION_ID_MAX];
 } GnssLocationInfoNotification;
 
 // Indicate the API that is called to generate the location report
@@ -1848,6 +1895,13 @@ struct GnssSvTypeConfig{
                 (inConfig.enabledSvTypesMask == enabledSvTypesMask) &&
                 (inConfig.blacklistedSvTypesMask == blacklistedSvTypesMask));
     }
+};
+
+// Specify the caller who set SV Type config
+enum GnssSvTypeConfigSource {
+    SV_TYPE_CONFIG_FROM_API = 0,
+    SV_TYPE_CONFIG_FROM_XTRA,
+    SV_TYPE_CONFIG_MAX_SOURCE
 };
 
 /** Specify the XTRA assistance data status. */

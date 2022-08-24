@@ -78,7 +78,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace loc_core {
 
 #define MSEC_IN_ONE_WEEK 604800000LL
-#define REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC 20.0f
 
 #define TO_ALL_LOCADAPTERS(call) TO_ALL_ADAPTERS(mLocAdapters, (call))
 #define TO_1ST_HANDLING_LOCADAPTERS(call) TO_1ST_HANDLING_ADAPTER(mLocAdapters, (call))
@@ -374,7 +373,7 @@ void LocApiBase::reportPosition(UlpLocation& location,
     LOC_LOGD("flags: 0x%x\n  source: %d\n  latitude: %f\n  longitude: %f\n  "
              "altitude: %f\n  speed: %f\n  bearing: %f\n  accuracy: %f\n  "
              "timestamp: %" PRId64 "\n"
-             "Session status: %d\n Technology mask: 0x%x\n "
+             "Session status: %d\n Technology mask: 0x%x, time bias unc %f msec\n "
              "SV used in fix (gps/glo/bds/gal/qzss/navic) : \
              (0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
              location.gpsLocation.flags, location.position_source,
@@ -382,6 +381,7 @@ void LocApiBase::reportPosition(UlpLocation& location,
              location.gpsLocation.altitude, location.gpsLocation.speed,
              location.gpsLocation.bearing, location.gpsLocation.accuracy,
              location.gpsLocation.timestamp, status, loc_technology_mask,
+             locationExtended.gnssSystemTime.u.gpsSystemTime.systemClkTimeUncMs,
              locationExtended.gnss_sv_used_ids.gps_sv_used_ids_mask,
              locationExtended.gnss_sv_used_ids.glo_sv_used_ids_mask,
              locationExtended.gnss_sv_used_ids.bds_sv_used_ids_mask,
@@ -1099,21 +1099,21 @@ void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInPvtReport(
         const GpsLocationExtended& locationExtended) {
 
     // Use GPS timestamp and qtimer tick for 1Hz PVT report for association
-    if ((locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GPS_TIME) &&
-            (locationExtended.gpsTime.gpsTimeOfWeekMs % 1000 == 0) &&
-            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_TIME_UNC) &&
-            (locationExtended.timeUncMs < REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC) &&
+    if ((locationExtended.gnssSystemTime.hasAccurateGpsTime() == true) &&
+            (locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec % 1000 == 0) &&
             (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK) &&
-            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC)) {
-        mTimePairPVTReport.gpsTime.gpsWeek = locationExtended.gpsTime.gpsWeek;
+            (locationExtended.systemTick != 0) &&
+            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC) &&
+            (locationExtended.systemTickUnc != 0.0f)) {
+        LOC_LOGv("save time association from PVT report with gps time %u %u",
+                 locationExtended.gnssSystemTime.u.gpsSystemTime.systemWeek,
+                 locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec);
+        mTimePairPVTReport.gpsTime.gpsWeek =
+                locationExtended.gnssSystemTime.u.gpsSystemTime.systemWeek;
         mTimePairPVTReport.gpsTime.gpsTimeOfWeekMs =
-                locationExtended.gpsTime.gpsTimeOfWeekMs;
+                locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec;
         mTimePairPVTReport.qtimerTick = locationExtended.systemTick;
         mTimePairPVTReport.timeUncMsec = locationExtended.systemTickUnc;
-
-        LOC_LOGv("gps time (%d, %d), qtimer tick %" PRIi64 ", qtime unc %f",
-                 mTimePairPVTReport.gpsTime.gpsWeek, mTimePairPVTReport.gpsTime.gpsTimeOfWeekMs,
-                 mTimePairPVTReport.qtimerTick, mTimePairPVTReport.timeUncMsec);
     }
 }
 
@@ -1121,33 +1121,28 @@ void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInMeasReport(
         const GnssSvMeasurementSet& svMeasurementSet) {
 
     const GnssSvMeasurementHeader& svMeasSetHeader = svMeasurementSet.svMeasSetHeader;
+
     // Use 1Hz measurement report timestamp and qtimer tick for association
     if ((svMeasurementSet.isNhz == false) &&
-            (svMeasSetHeader.gpsSystemTime.validityMask & GNSS_SYSTEM_TIME_WEEK_VALID) &&
-            (svMeasSetHeader.gpsSystemTime.validityMask & GNSS_SYSTEM_TIME_WEEK_MS_VALID) &&
-            (svMeasSetHeader.gpsSystemTime.validityMask & GNSS_SYSTEM_CLK_TIME_BIAS_UNC_VALID) &&
-            (svMeasSetHeader.gpsSystemTime.systemClkTimeUncMs <
-                REAL_TIME_ESTIMATOR_TIME_UNC_THRESHOLD_MSEC)) {
-
-        LOC_LOGv("gps time %d %d, meas unc %f, ref cnt tick %" PRIi64 ","
-                 "system rtc ms %" PRIi64 "",
-                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemWeek,
-                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemMsec,
-                 svMeasurementSet.svMeasSetHeader.gpsSystemTime.systemClkTimeUncMs,
-                 svMeasurementSet.svMeasSetHeader.refCountTicks,
-                 svMeasurementSet.svMeasSetHeader.gpsSystemTimeExt.systemRtcMs);
-        if ((svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS) &&
-                (svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS_UNC)) {
+            (svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_GPS_SYSTEM_TIME) &&
+            (svMeasSetHeader.gpsSystemTime.hasAccurateTime() == true) &&
+            (svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS) &&
+            (svMeasurementSet.svMeasSetHeader.refCountTicks != 0) &&
+            (svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS_UNC) &&
+            (svMeasurementSet.svMeasSetHeader.refCountTicksUnc != 0.0f)) {
+        LOC_LOGv("save time association from meas report with gps time %u %u",
+                 svMeasSetHeader.gpsSystemTime.systemWeek,
+                 svMeasSetHeader.gpsSystemTime.systemMsec);
             mTimePairMeasReport.gpsTime.gpsWeek = svMeasSetHeader.gpsSystemTime.systemWeek;
             mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs = svMeasSetHeader.gpsSystemTime.systemMsec;
             mTimePairMeasReport.qtimerTick = svMeasurementSet.svMeasSetHeader.refCountTicks;
             mTimePairMeasReport.timeUncMsec = svMeasurementSet.svMeasSetHeader.refCountTicksUnc;
         }
     }
-}
 
 bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
-        const GPSTimeStruct& gpsTimeAtOrigin, int64_t &bootTimeNsAtOrigin, float & bootTimeUnc) {
+        const GpsLocationExtended& locationExtended,
+        int64_t &bootTimeNsAtOrigin, float & bootTimeUnc) {
     struct timespec curBootTime = {};
     int64_t curBootTimeNs = 0;
     int64_t curQTimerNSec = 0;
@@ -1166,6 +1161,14 @@ bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
         return false;
     }
 
+    if (locationExtended.gnssSystemTime.hasAccurateGpsTime() == false ||
+            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GPS_TIME) == 0 ||
+            // 65535 GPS week from modem means unknown
+            locationExtended.gpsTime.gpsWeek == UNKNOWN_GPS_WEEK_NUM) {
+          return false;
+    }
+
+    const GPSTimeStruct& gpsTimeAtOrigin = locationExtended.gpsTime;
     int64_t originMsec = (int64_t)gpsTimeAtOrigin.gpsWeek * (int64_t)MSEC_IN_ONE_WEEK +
                          (int64_t)gpsTimeAtOrigin.gpsTimeOfWeekMs;
     int64_t timePairMsec = (int64_t)timePair.gpsTime.gpsWeek * (int64_t)MSEC_IN_ONE_WEEK +
@@ -1190,9 +1193,12 @@ bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
              timePair.qtimerTick * 100000 / 192,
              curQTimerNSec, qtimerNsecAtOrigin, curBootTimeNs, bootTimeNsAtOrigin, bootTimeUnc);
 
-    return true;
+    if (bootTimeNsAtOrigin > 0) {
+        return true;
+    } else {
+        return false;
+    }
 }
-
 
 bool ElapsedRealtimeEstimator::getCurrentTime(
         struct timespec& currentTime, int64_t& sinceBootTimeNanos)

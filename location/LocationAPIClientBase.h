@@ -451,7 +451,7 @@ private:
     public:
         StartTrackingRequest(LocationAPIClientBase& API) : mAPI(API) {}
         inline void onResponse(LocationError error, uint32_t id) {
-            if (error != LOCATION_ERROR_SUCCESS) {
+            if ((error != LOCATION_ERROR_SUCCESS) && (error != LOCATION_ERROR_TZ_LOCKED)) {
                 mAPI.removeSession(id);
             }
             mAPI.onStartTrackingCb(error);
@@ -484,7 +484,7 @@ private:
     public:
         StartBatchingRequest(LocationAPIClientBase& API) : mAPI(API) {}
         inline void onResponse(LocationError error, uint32_t id) {
-            if (error != LOCATION_ERROR_SUCCESS) {
+            if ((error != LOCATION_ERROR_SUCCESS) && (error != LOCATION_ERROR_TZ_LOCKED)) {
                 mAPI.removeSession(id);
             }
             mAPI.onStartBatchingCb(error);

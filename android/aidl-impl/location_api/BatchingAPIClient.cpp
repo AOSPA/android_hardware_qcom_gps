@@ -221,9 +221,13 @@ void BatchingAPIClient::onBatchingCb(size_t count, Location* location,
             if (!r.isOk()) {
                 LOC_LOGe("] Error from gnssLocationBatchCb");
             }
+        } else {
+            mMutex.unlock();
         }
         mMutex.lock();
         mBatchedLocationInCache.clear();
+        mMutex.unlock();
+    } else {
         mMutex.unlock();
     }
 }

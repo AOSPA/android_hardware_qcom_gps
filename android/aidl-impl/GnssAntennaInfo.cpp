@@ -144,7 +144,7 @@ ScopedAStatus GnssAntennaInfo::setCallback(
     }
     mMutex.unlock();
 
-    mGnss->getApi()->locAPIGetAntennaInfo(&mAntennaInfoCb);
+    mGnss->getApi().locAPIGetAntennaInfo(&mAntennaInfoCb);
     return ScopedAStatus::ok();
 }
 ScopedAStatus GnssAntennaInfo::close() {

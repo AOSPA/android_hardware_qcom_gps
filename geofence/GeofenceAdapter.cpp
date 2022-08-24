@@ -157,46 +157,6 @@ GeofenceAdapter::getGeofenceKeyFromHwId(uint32_t hwId, GeofenceKey& key)
 }
 
 void
-GeofenceAdapter::handleEngineLockStatusEvent(EngineLockState engineLockState) {
-
-    LOC_LOGD("%s]: Old Engine state %d, New Engine state : %d,", __func__,
-        mLocApi->getEngineLockState(), engineLockState);
-
-    struct MsgEngineLockStateEvent : public LocMsg {
-        GeofenceAdapter& mAdapter;
-        EngineLockState mEngineLockState;
-
-        inline MsgEngineLockStateEvent(GeofenceAdapter& adapter, EngineLockState engineLockState) :
-            LocMsg(),
-            mAdapter(adapter),
-            mEngineLockState(engineLockState){}
-
-        virtual void proc() const {
-            mAdapter.mPendingMsgs.clear();
-            mAdapter.handleEngineLockStatus(mEngineLockState);
-        }
-    };
-
-    sendMsg(new MsgEngineLockStateEvent(*this, engineLockState));
-}
-
-void
-GeofenceAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
-
-    if (ENGINE_LOCK_STATE_ENABLED == engineLockState) {
-        for (auto msg: mPendingMsgs) {
-            sendMsg(msg);
-        }
-        mPendingMsgs.clear();
-
-        if ((POWER_STATE_SUSPEND != mSystemPowerState) &&
-            POWER_STATE_SHUTDOWN != mSystemPowerState) {
-            restartGeofences();
-        }
-    }
-}
-
-void
 GeofenceAdapter::handleEngineUpEvent()
 {
     struct MsgSSREvent : public LocMsg {

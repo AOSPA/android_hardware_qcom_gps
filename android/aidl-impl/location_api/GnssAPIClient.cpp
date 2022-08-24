@@ -184,10 +184,6 @@ void GnssAPIClient::setCallbacks() {
 
 // for GpsInterface
 void GnssAPIClient::gnssUpdateCallbacks(const shared_ptr<IGnssCallback>& gpsCb) {
-    mMutex.lock();
-    mGnssCbIface = gpsCb;
-    mMutex.unlock();
-
     if (gpsCb != nullptr) {
         setCallbacks();
     }
@@ -241,6 +237,11 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
             (int)mode, recurrence, minIntervalMs, preferredAccuracyMeters,
             preferredTimeMs, (int)powerMode, timeBetweenMeasurement);
     bool retVal = true;
+
+    if (0 == minIntervalMs) {
+        minIntervalMs = 1000;
+    }
+
     memset(&mTrackingOptions, 0, sizeof(TrackingOptions));
     mTrackingOptions.size = sizeof(TrackingOptions);
     mTrackingOptions.minInterval = minIntervalMs;

@@ -189,6 +189,11 @@ typedef struct {
     LeverArmConfigInfo  leverArmConfigInfo;
 } LocIntegrationConfigInfo;
 
+typedef struct {
+    bool isValid;
+    GnssSvTypeConfig gnssSvTypeConfig;
+} GnssConstellationConfig;
+
 using namespace loc_core;
 
 namespace loc_core {
@@ -257,8 +262,8 @@ class GnssAdapter : public LocAdapterBase {
     uint64_t mPrevNmeaRptTimeNsec;
     GnssSvIdConfig mGnssSvIdConfig;
     GnssSvTypeConfig mGnssSeconaryBandConfig;
-    GnssSvTypeConfig mGnssSvTypeConfig;
     GnssSvTypeConfigCallback mGnssSvTypeConfigCb;
+    GnssConstellationConfig mGnssSvTypeConfigs[SV_TYPE_CONFIG_MAX_SOURCE];
     bool mSupportNfwControl;
     LocIntegrationConfigInfo mLocConfigInfo;
 
@@ -367,6 +372,9 @@ class GnssAdapter : public LocAdapterBase {
     { mLocApi->injectPositionAndCivicAddress(location, addr);}
     void fillElapsedRealTime(const GpsLocationExtended& locationExtended,
                              Location& out);
+    void combineBlacklistSvs(const GnssSvIdConfig& blacklistSvs,
+            const GnssSvTypeConfig& constellationConfig,
+            GnssSvIdConfig& combinedBlacklistSvs);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
@@ -485,7 +493,8 @@ public:
     /* ==== GNSS SV TYPE CONFIG ============================================================ */
     /* ==== COMMANDS ====(Called from Client Thread)======================================== */
     /* ==== These commands are received directly from client bypassing Location API ======== */
-    void gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config);
+    void gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config,
+            GnssSvTypeConfigSource source);
     void gnssGetSvTypeConfigCommand(GnssSvTypeConfigCallback callback);
     void gnssResetSvTypeConfigCommand();
 
@@ -494,10 +503,11 @@ public:
     LocationError gnssSvIdConfigUpdateSync();
     void gnssSvIdConfigUpdate(const std::vector<GnssSvIdSource>& blacklistedSvIds);
     void gnssSvIdConfigUpdate();
-    void gnssSvTypeConfigUpdate(const GnssSvTypeConfig& config);
-    void gnssSvTypeConfigUpdate(bool sendReset = false);
-    inline void gnssSetSvTypeConfig(const GnssSvTypeConfig& config)
-    { mGnssSvTypeConfig = config; }
+    void gnssSvTypeConfigUpdate(const GnssSvTypeConfig& currentConfig,
+                                const GnssSvTypeConfig& newConfig);
+    void gnssSvTypeConfigUpdate();
+    bool gnssSetSvTypeConfig(const GnssSvTypeConfig& config, GnssSvTypeConfigSource source);
+    GnssSvTypeConfig gnssCombineSvTypeConfigs();
     inline void gnssSetSvTypeConfigCallback(GnssSvTypeConfigCallback callback)
     { mGnssSvTypeConfigCb = callback; }
     inline GnssSvTypeConfigCallback gnssGetSvTypeConfigCallback()

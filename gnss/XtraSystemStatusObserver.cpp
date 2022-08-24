@@ -166,6 +166,14 @@ public:
             mXSSO.mAdapter->reportGnssConfigEvent(sessionId, gnssConfig);
         } else if (!STRNCMP(data, "xtraMpDisabled")) {
             mXSSO.mAdapter->reportXtraMpDisabledEvent();
+        } else if (!STRNCMP(data, "setConstellation")) {
+            GnssSvTypeConfig constellationsConfig;
+            constellationsConfig.size = sizeof(GnssSvTypeConfig);
+
+            sscanf(data, "%*s %" PRIu64 " %" PRIu64, &constellationsConfig.enabledSvTypesMask,
+                    &constellationsConfig.blacklistedSvTypesMask);
+            mXSSO.mAdapter->gnssUpdateSvTypeConfigCommand(constellationsConfig,
+                    SV_TYPE_CONFIG_FROM_XTRA);
         } else {
             LOC_LOGw("unknown event: %s", data);
         }
