@@ -70,6 +70,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <LocContext.h>
 #include <IOsObserver.h>
 #include <EngineHubProxyBase.h>
+#include <LocGlinkBase.h>
 #include <ILocationAPI.h>
 #include <Agps.h>
 #include <SystemStatus.h>
@@ -123,7 +124,6 @@ private:
     GnssAdapter* mAdapter;
     bool mActive;
 };
-
 typedef struct {
     pthread_t               thread;        /* NI thread */
     uint32_t                respTimeLeft;  /* examine time for NI response */
@@ -240,6 +240,7 @@ private:
 
 class GnssAdapter : public LocAdapterBase {
 
+    LocGlinkBase* mLocGlinkProxy;
     /* ==== Engine Hub ===================================================================== */
     EngineHubProxyBase* mEngHubProxy;
     bool mNHzNeeded;
@@ -478,6 +479,7 @@ public:
     void readConfigCommand();
     void requestUlpCommand();
     void initEngHubProxyCommand();
+    void initLocGlinkCommand();
     uint32_t* gnssUpdateConfigCommand(const GnssConfig& config);
     uint32_t* gnssGetConfigCommand(GnssConfigFlagsMask mask);
     uint32_t gnssDeleteAidingDataCommand(GnssAidingData& data);
@@ -599,6 +601,7 @@ public:
     }
     bool isStandAloneCDParserPELib();
     bool isEngineServiceEnable();
+    bool initLocGlinkProxy();
     void initCDFWService();
 
     void odcpiTimerExpireEvent();
@@ -615,6 +618,7 @@ public:
                                      int msInWeek = -1);
     void reportEnginePositionsEvent(unsigned int count,
                                     EngineLocationInfo* locationArr);
+    virtual void reportPropogatedPuncEvent(LocGpsLocation gpsLocation);
 
     virtual void reportSvEvent(const GnssSvNotification& svNotify);
     virtual void reportNmeaEvent(const char* nmea, size_t length);

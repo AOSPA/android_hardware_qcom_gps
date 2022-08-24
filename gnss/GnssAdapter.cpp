@@ -76,6 +76,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <netinet/in.h>
 #include <netdb.h>
 #include <GnssAdapter.h>
+#include <LocGlinkBase.h>
 #include <string>
 #include <sstream>
 #include <loc_log.h>
@@ -105,14 +106,20 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NMEA_MAX_THRESHOLD_MSEC (975)
 
 #define DGNSS_RANGE_UPDATE_TIME_10MIN_IN_SEC  600
+#define GPS_LOCATION_DESIRED_FLAGS (LOC_GPS_LOCATION_HAS_LAT_LONG | LOC_GPS_LOCATION_HAS_ACCURACY)
 
 using namespace loc_core;
 
 static int loadEngHubForExternalEngine = 0;
+static int loadLocSlatePUNCModel = 0;
 static int sUseZppInDBH = 0;
 static loc_param_s_type izatConfParamTable[] = {
     {"LOAD_ENGHUB_FOR_EXTERNAL_ENGINE", &loadEngHubForExternalEngine, nullptr, 'n'},
     {"USE_ZPP_IN_DBH", &sUseZppInDBH, nullptr,'n'}
+};
+
+static loc_param_s_type izatConfLocGlinkParamTable[] = {
+    {"LOAD_LOC_SLATE_PUNC_MODEL", &loadLocSlatePUNCModel, nullptr, 'n'}
 };
 
 /* Method to fetch status cb from loc_net_iface library */
@@ -159,6 +166,7 @@ GnssAdapter::GnssAdapter() :
                    LocContext::getLocContext(LocContext::mLocationHalName),
                    true, nullptr, true),
     mEngHubProxy(new EngineHubProxyBase()),
+    mLocGlinkProxy(new LocGlinkBase()),
     mNHzNeeded(false),
     mSPEAlreadyRunningAtHighestInterval(false),
     mLocPositionMode(),
@@ -256,6 +264,7 @@ GnssAdapter::GnssAdapter() :
     initDefaultAgpsCommand();
     initCDFWServiceCommand();
     initEngHubProxyCommand();
+    initLocGlinkCommand();
     testLaunchQppeBringUp();
     // at last step, let us inform adapater base that we are done
     // with initialization, e.g.: ready to process handleEngineUpEvent
@@ -1770,7 +1779,6 @@ GnssAdapter::gnssSvIdConfigUpdateSync(const std::vector<GnssSvIdSource>& blackli
 
     // Convert the sv id lists to masks
     convertToGnssSvIdConfig(blacklistedSvIds, mGnssSvIdConfig);
-
     // Now send to Modem
     return gnssSvIdConfigUpdateSync();
 }
@@ -2815,6 +2823,10 @@ GnssAdapter::updateSystemPowerState(PowerStateType systemPowerState) {
             case POWER_STATE_DEEP_SLEEP_EXIT:
                 LOC_LOGd("Re-starting all active sessions -- powerState: %d", systemPowerState);
                 restartSessions(false);
+                if (loadLocSlatePUNCModel && mLocGlinkProxy)
+                {
+                    mLocGlinkProxy->getPropogatedPuncFromSlate();
+                }
                 break;
             default:
                 break;
@@ -4286,6 +4298,18 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
                 }
             }
 
+            if (GPS_LOCATION_DESIRED_FLAGS ==
+                (mUlpLocation.gpsLocation.flags &
+                 (GPS_LOCATION_DESIRED_FLAGS))
+                && ((int)mUlpLocation.gpsLocation.accuracy < 15000))
+            {
+                if (loadLocSlatePUNCModel && mAdapter.mLocGlinkProxy)
+                {
+                    LOC_LOGd("reportPositionEvent, inject location to slate");
+                    mAdapter.mLocGlinkProxy->injectLocation(mUlpLocation.gpsLocation);
+                }
+            }
+
             if (!mAdapter.reportSpeAsEnginePosition(mUlpLocation, mLocationExtended, mStatus)){
                 // extract bug report info - this returns true if consumed by systemstatus
                 SystemStatus* s = mAdapter.getSystemStatus();
@@ -4336,6 +4360,33 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
                 locationExtended, status, techMask, dataNotifyCopy, msInWeek);
         sendMsg((const LocMsg*)pLocMsg, (uint32_t)pvtReportTimeDelta);
     }
+}
+void
+GnssAdapter::reportPropogatedPuncEvent(LocGpsLocation location)
+{
+    struct MsgReportPropogatedPuncEvent : public LocMsg {
+        LocApiBase& mApi;
+        ContextBase& mContext;
+        LocGpsLocation mLocation;
+        inline MsgReportPropogatedPuncEvent(LocApiBase& api,
+                                            ContextBase& context,
+                                            LocGpsLocation location) :
+            LocMsg(),
+            mApi(api),
+            mContext(context),
+            mLocation(location) {
+        }
+
+        inline virtual void proc() const {
+        LOC_LOGv("inject propogated SLATE punc:%lf %lf %f",
+                 mLocation.latitude,
+                 mLocation.longitude,
+                 mLocation.accuracy);
+        mApi.injectPosition(mLocation.latitude, mLocation.longitude, mLocation.accuracy, false);
+        }
+    };
+
+    sendMsg(new MsgReportPropogatedPuncEvent(*mLocApi, *mContext, location));
 }
 
 void
@@ -5944,7 +5995,6 @@ void OdcpiTimer::timeOutCallback()
         mAdapter->odcpiTimerExpireEvent();
     }
 }
-
 // Called in the context of LocTimer thread
 void GnssAdapter::odcpiTimerExpireEvent()
 {
@@ -7972,6 +8022,79 @@ void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gn
     };
 
     sendMsg(new MsgReportGnssConfig(*this, sessionId, gnssConfig));
+}
+
+void
+GnssAdapter::initLocGlinkCommand() {
+
+    UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izatConfLocGlinkParamTable);
+    LOC_LOGd("LOAD_LOC_SLATE_PUNC_MODEL %d", loadLocSlatePUNCModel);
+    struct MsgInitLocGlink: public LocMsg {
+        GnssAdapter* mAdapter;
+        inline MsgInitLocGlink(GnssAdapter* adapter) :
+            LocMsg(),
+            mAdapter(adapter) {}
+        inline virtual void proc() const {
+            mAdapter->initLocGlinkProxy();
+        }
+    };
+    if (loadLocSlatePUNCModel)
+    {
+        LOC_LOGv("slate punc model enabled in conf");
+        sendMsg(new MsgInitLocGlink(this));
+    }
+}
+bool
+GnssAdapter::initLocGlinkProxy() {
+    static bool firstTime = true;
+    static bool locGlinkLoadSuccessful = false;
+
+    const char *error = nullptr;
+
+    LOC_LOGd("entered");
+    do {
+        // load loc glink only once
+        if (firstTime == false) {
+            break;
+        }
+        // load the location glink .so, if the .so is not present
+        // all location link calls will turn into no-op.
+        void *handle = nullptr;
+        if ((handle = dlopen("libloc_glink.so", RTLD_NOW)) == nullptr) {
+            if ((error = dlerror()) != nullptr) {
+                LOC_LOGe("libloc_glink.so not found %s !", error);
+            }
+            break;
+        }
+        loc_core::LocGlinkBase::GnssAdapterReportPuncEventCb reportPuncEventCb =
+            [this](LocGpsLocation location) {
+                // propogated punc reported from slate
+                reportPropogatedPuncEvent(location);
+            };
+
+        loc_core::LocGlinkBase::getLocGlinkProxyFn* getter =
+            (loc_core::LocGlinkBase::getLocGlinkProxyFn*) dlsym(handle, "getLocGlink");
+        if (getter != nullptr) {
+            LocGlinkBase* glinkProxy = (*getter) (mMsgTask, reportPuncEventCb);
+            if (glinkProxy != nullptr) {
+                delete mLocGlinkProxy;
+                mLocGlinkProxy == nullptr;
+                mLocGlinkProxy = glinkProxy;
+                locGlinkLoadSuccessful = true;
+            }
+        }
+        else {
+            LOC_LOGe("entered, did not find function");
+        }
+
+        LOC_LOGe("first time initialization %d, returned %d",
+                 firstTime, locGlinkLoadSuccessful);
+
+    } while (0);
+
+
+    firstTime = false;
+    return locGlinkLoadSuccessful;
 }
 
 /* ==== Eng Hub Proxy ================================================================= */

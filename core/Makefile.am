@@ -20,6 +20,7 @@ libloc_core_la_h_sources = \
            loc_core_log.h \
            LocAdapterProxyBase.h \
            EngineHubProxyBase.h \
+           LocGlinkBase.h \
            data-items/DataItemId.h \
            data-items/IDataItemCore.h \
            data-items/DataItemConcreteTypes.h \
