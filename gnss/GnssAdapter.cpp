@@ -3138,17 +3138,15 @@ GnssAdapter::getCapabilities()
     if (ContextBase::gnssConstellationConfig()) {
         mask |= LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT;
     }
-    if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02)) {
-        mask |= LOCATION_CAPABILITIES_DEBUG_NMEA_BIT;
+    if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02) ||
+        ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
+        mask |= LOCATION_CAPABILITIES_DEBUG_DATA_BIT;
     }
     if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
         mask |= LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT;
     }
     if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_AGPM_V02)) {
         mask |= LOCATION_CAPABILITIES_AGPM_BIT;
-    }
-    if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA)) {
-        mask |= LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT;
     }
     if (ContextBase::isAntennaInfoAvailable()) {
         mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
