@@ -318,7 +318,7 @@ void LocationAPIClientBase::locAPISetCallbacks(LocationCallbacks& locationCallba
                 LocationCapabilitiesMask locIviSupportedMask =
                     LOCATION_CAPABILITIES_TIME_BASED_TRACKING_BIT |
                     LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT |
-                    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT |
+                    LOCATION_CAPABILITIES_DEBUG_DATA_BIT |
                     LOCATION_CAPABILITIES_ANTENNA_INFO;
 
                 capabilitiesMask &= locIviSupportedMask;
