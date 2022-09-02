@@ -3002,7 +3002,7 @@ GnssAdapter::handleEngineLockStatusEvent(EngineLockState engineLockState) {
 void
 GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
 
-    GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_NONE;
+    GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
     if (ENGINE_LOCK_STATE_ENABLED == engineLockState) {
         for (auto msg: mPendingMsgs) {
             sendMsg(msg);
@@ -3013,8 +3013,13 @@ GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
             POWER_STATE_SHUTDOWN != mSystemPowerState) {
             restartSessions(false);
         }
-        gpsLock = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
+        // Send gps lock enabled only in case
+        // when TZ is unlocked and AFW location is enabled
+        if (0 != getAfwControlId()) {
+            gpsLock = gpsLock & ~(GNSS_CONFIG_GPS_LOCK_MO);
+        }
     }
+    LOC_LOGv("send gps lock state: 0x%X", gpsLock);
     mXtraObserver.updateLockStatus(gpsLock);
 }
 
@@ -4039,7 +4044,12 @@ GnssAdapter::enableCommand(LocationTechnologyType techType)
                 mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
                     mApi.setGpsLockSync(gpsLock);
                 }));
-                mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+                // check TZ lock status
+                if (ENGINE_LOCK_STATE_DISABLED == mApi.getEngineLockState()) {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock | GNSS_CONFIG_GPS_LOCK_MO);
+                } else {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+                }
             }
             mAdapter.reportResponse(err, mSessionId);
         }
@@ -4090,7 +4100,13 @@ GnssAdapter::disableCommand(uint32_t id)
                 mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
                     mApi.setGpsLockSync(gpsLock);
                 }));
-                mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+
+                // check the TZ lock
+                if (ENGINE_LOCK_STATE_DISABLED == mApi.getEngineLockState()) {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock | GNSS_CONFIG_GPS_LOCK_MO);
+                } else {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+                }
             }
             mAdapter.reportResponse(err, mSessionId);
         }
