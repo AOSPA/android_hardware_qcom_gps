@@ -2333,6 +2333,13 @@ typedef enum {
     AGPS_ATL_TYPE_WWAN    = 1 << 2,
 }  AGpsTypeBits;
 
+typedef enum {
+    AGPS_CB_PRIORITY_NONE = 0,
+    AGPS_CB_PRIORITY_LOW = 1,
+    AGPS_CB_PRIORITY_MED = 2,
+    AGPS_CB_PRIORITY_HIGH = 3,
+} AgpsCbPriority;
+
 /** AGPS status event values. */
 typedef enum {
     AGPS_REQUEST_AGPS_DATA_CONN  = 1,
