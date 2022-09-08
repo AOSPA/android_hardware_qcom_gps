@@ -189,6 +189,11 @@ typedef struct {
     LeverArmConfigInfo  leverArmConfigInfo;
 } LocIntegrationConfigInfo;
 
+typedef struct {
+    bool isValid;
+    GnssSvTypeConfig gnssSvTypeConfig;
+} GnssConstellationConfig;
+
 using namespace loc_core;
 
 namespace loc_core {
@@ -217,10 +222,13 @@ typedef uint16_t  DGnssStateBitMask;
 #define DGNSS_STATE_NO_NMEA_PENDING           0X02
 #define DGNSS_STATE_NTRIP_SESSION_STARTED     0X04
 
-typedef uint16_t QPPEFeatureStatusMask;
-#define QPPE_FEATURE_STATUS_LIRBARY_PRESENT   0X01
-#define QPPE_FEATURE_ENABLED_BY_DEFAULT       0X02
-#define QPPE_FEATURE_ENABLED_BY_QESDK         0X04
+typedef uint16_t DlpFeatureStatusMask;
+#define DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT   0X01
+#define DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT    0X02
+#define DLP_FEATURE_ENABLED_BY_DEFAULT            0X04
+#define DLP_FEATURE_ENABLED_BY_QESDK              0X08
+#define DLP_FEATURE_STATUS_LIRBARY_PRESENT   (DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT | \
+                                              DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT)
 
 class GnssReportLoggerUtil {
 public:
@@ -257,8 +265,8 @@ class GnssAdapter : public LocAdapterBase {
     uint64_t mPrevNmeaRptTimeNsec;
     GnssSvIdConfig mGnssSvIdConfig;
     GnssSvTypeConfig mGnssSeconaryBandConfig;
-    GnssSvTypeConfig mGnssSvTypeConfig;
     GnssSvTypeConfigCallback mGnssSvTypeConfigCb;
+    GnssConstellationConfig mGnssSvTypeConfigs[SV_TYPE_CONFIG_MAX_SOURCE];
     bool mSupportNfwControl;
     LocIntegrationConfigInfo mLocConfigInfo;
 
@@ -346,7 +354,7 @@ class GnssAdapter : public LocAdapterBase {
     std::function<void(bool)> mPowerStateCb;
 
     /* === QESDK RTK feature status =================================================== */
-    QPPEFeatureStatusMask mQppeFeatureStatusMask;
+    DlpFeatureStatusMask mDlpFeatureStatusMask;
 
     /*==== CONVERSION ===================================================================*/
     static void convertOptions(LocPosMode& out, const TrackingOptions& trackingOptions);
@@ -367,6 +375,9 @@ class GnssAdapter : public LocAdapterBase {
     { mLocApi->injectPositionAndCivicAddress(location, addr);}
     void fillElapsedRealTime(const GpsLocationExtended& locationExtended,
                              Location& out);
+    void combineBlacklistSvs(const GnssSvIdConfig& blacklistSvs,
+            const GnssSvTypeConfig& constellationConfig,
+            GnssSvIdConfig& combinedBlacklistSvs);
 
     /*==== DGnss Ntrip Source ==========================================================*/
     StartDgnssNtripParams   mStartDgnssNtripParams;
@@ -485,7 +496,8 @@ public:
     /* ==== GNSS SV TYPE CONFIG ============================================================ */
     /* ==== COMMANDS ====(Called from Client Thread)======================================== */
     /* ==== These commands are received directly from client bypassing Location API ======== */
-    void gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config);
+    void gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config,
+            GnssSvTypeConfigSource source);
     void gnssGetSvTypeConfigCommand(GnssSvTypeConfigCallback callback);
     void gnssResetSvTypeConfigCommand();
 
@@ -494,10 +506,11 @@ public:
     LocationError gnssSvIdConfigUpdateSync();
     void gnssSvIdConfigUpdate(const std::vector<GnssSvIdSource>& blacklistedSvIds);
     void gnssSvIdConfigUpdate();
-    void gnssSvTypeConfigUpdate(const GnssSvTypeConfig& config);
-    void gnssSvTypeConfigUpdate(bool sendReset = false);
-    inline void gnssSetSvTypeConfig(const GnssSvTypeConfig& config)
-    { mGnssSvTypeConfig = config; }
+    void gnssSvTypeConfigUpdate(const GnssSvTypeConfig& currentConfig,
+                                const GnssSvTypeConfig& newConfig);
+    void gnssSvTypeConfigUpdate();
+    bool gnssSetSvTypeConfig(const GnssSvTypeConfig& config, GnssSvTypeConfigSource source);
+    GnssSvTypeConfig gnssCombineSvTypeConfigs();
     inline void gnssSetSvTypeConfigCallback(GnssSvTypeConfigCallback callback)
     { mGnssSvTypeConfigCb = callback; }
     inline GnssSvTypeConfigCallback gnssGetSvTypeConfigCallback()
@@ -564,10 +577,16 @@ public:
     virtual bool isInSession() { return !mTimeBasedTrackingSessions.empty(); }
     void initDefaultAgps();
     bool initEngHubProxy();
-    inline bool isPreciseEnabled() {
-        return (mQppeFeatureStatusMask & QPPE_FEATURE_STATUS_LIRBARY_PRESENT) &&
-                (mQppeFeatureStatusMask &
-                (QPPE_FEATURE_ENABLED_BY_DEFAULT | QPPE_FEATURE_ENABLED_BY_QESDK));
+    inline bool isPreciseEnabled(DlpFeatureStatusMask bits = DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
+        return (mDlpFeatureStatusMask & bits) &&
+                (mDlpFeatureStatusMask &
+                (DLP_FEATURE_ENABLED_BY_DEFAULT | DLP_FEATURE_ENABLED_BY_QESDK));
+    }
+    inline bool isQppeEnabled() {
+        return isPreciseEnabled(DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT);
+    }
+    inline bool isQfeEnabled() {
+        return isPreciseEnabled(DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT);
     }
     void initCDFWService();
     void odcpiTimerExpireEvent();

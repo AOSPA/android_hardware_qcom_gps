@@ -115,6 +115,7 @@ ScopedAStatus Gnss::setCallback(const shared_ptr<IGnssCallback>& callback) {
 }
 
 ScopedAStatus Gnss::close() {
+    mApi.gnssStop();
     mApi.gnssDisable();
     return ScopedAStatus::ok();
 }

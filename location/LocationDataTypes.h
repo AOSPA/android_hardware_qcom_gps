@@ -76,7 +76,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GNSS_NI_MESSAGE_ID_MAX (2048)
 #define GNSS_SV_MAX            (144)
 #define GNSS_MEASUREMENTS_MAX  (144)
-#define GNSS_BANDS_MAX          (32)
+#define GNSS_BANDS_MAX         (32)
+#define DGNSS_STATION_ID_MAX   (3)
 #define GNSS_UTC_TIME_OFFSET   (3657)
 
 #define GNSS_BUGREPORT_GPS_MIN    (1)
@@ -265,6 +266,7 @@ typedef enum {
     GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<34), // along-track protection level
     GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<35), // Cross-track protection level
     GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<36), // vertical protection level
+    GNSS_LOCATION_INFO_DGNSS_STATION_ID_BIT       = (1ULL<<37), // dgnss station id
 } GnssLocationInfoFlagBits;
 
 typedef enum {
@@ -1465,6 +1467,14 @@ typedef struct {
     float    protectCrossTrack;
     // vertical component protection level
     float    protectVertical;
+    // number of dgnss station id that is valid in dgnssStationId array
+    uint32_t  numOfDgnssStationId;
+    // List of DGNSS station IDs providing corrections.
+    //   Range:
+    //   - SBAS --  120 to 158 and 183 to 191.
+    //   - Monitoring station -- 1000-2023 (Station ID biased by 1000).
+    //   - Other values reserved.
+    uint16_t dgnssStationId[DGNSS_STATION_ID_MAX];
 } GnssLocationInfoNotification;
 
 // Indicate the API that is called to generate the location report
@@ -1885,6 +1895,13 @@ struct GnssSvTypeConfig{
                 (inConfig.enabledSvTypesMask == enabledSvTypesMask) &&
                 (inConfig.blacklistedSvTypesMask == blacklistedSvTypesMask));
     }
+};
+
+// Specify the caller who set SV Type config
+enum GnssSvTypeConfigSource {
+    SV_TYPE_CONFIG_FROM_API = 0,
+    SV_TYPE_CONFIG_FROM_XTRA,
+    SV_TYPE_CONFIG_MAX_SOURCE
 };
 
 /** Specify the XTRA assistance data status. */
