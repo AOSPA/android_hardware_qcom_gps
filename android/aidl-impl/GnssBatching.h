@@ -60,7 +60,7 @@ public:
   virtual ScopedAStatus stop() override;
   virtual ScopedAStatus cleanup() override;
 private:
-  BatchingAPIClient* mApi;
+  BatchingAPIClient* mApi = nullptr;
   shared_ptr<IGnssBatchingCallback> mGnssBatchingCbIface = nullptr;
   AIBinder_DeathRecipient *mDeathRecipient = nullptr;
   int mBatchSize;
