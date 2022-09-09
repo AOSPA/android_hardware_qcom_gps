@@ -107,7 +107,7 @@ Sock::Sock(int sid, const uint32_t maxTxSize) :
         srand48(time(NULL));
         sRandSeeded = true;
     }
-    snprintf(LOC_IPC_HEAD, sizeof(LOC_IPC_HEAD), "$MSG_CONCAT_HDR$%16.16X$%8.8X$", lrand48(), 0);
+    snprintf(LOC_IPC_HEAD, sizeof(LOC_IPC_HEAD), "$MSG_CONCAT_HDR$%16.16lX$$%8.8X$", lrand48(), 0);
 }
 
 ssize_t Sock::send(const void *buf, uint32_t len, int flags, const struct sockaddr *destAddr,

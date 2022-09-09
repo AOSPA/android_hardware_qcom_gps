@@ -640,7 +640,7 @@ void GnssMeasurementInterface::convertElapsedRealtimeNanos(
         elapsedRealtime.flags |= elapsedRealtime.HAS_TIME_UNCERTAINTY_NS;
         elapsedRealtime.timeUncertaintyNs = in.clock.elapsedRealTimeUnc;
         LOC_LOGd("elapsedRealtime.timestampNs=%" PRIi64 ""
-                 " elapsedRealtime.timeUncertaintyNs=%" PRIi64 " elapsedRealtime.flags=0x%X",
+                 " elapsedRealtime.timeUncertaintyNs=%lf elapsedRealtime.flags=0x%X",
                  elapsedRealtime.timestampNs,
                  elapsedRealtime.timeUncertaintyNs, elapsedRealtime.flags);
     }
@@ -717,9 +717,9 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  " satellitePvt.satClockInfo.satClkDriftMps: %.2f,"
                  " satellitePvt.ionoDelayMeters: %.2f,"
                  " satellitePvt.tropoDelayMeters: %.2f"
-                 " satellitePvt.timeOfClockSeconds: %d"
+                 " satellitePvt.timeOfClockSeconds: %" PRIi64 ""
                  " satellitePvt.issueOfDataClock: %d"
-                 " satellitePvt.timeOfEphemerisSeconds: %d"
+                 " satellitePvt.timeOfEphemerisSeconds: %" PRIi64 ""
                  " satellitePvt.issueOfDataEphemeris: %d"
                  " satellitePvt.ephemerisSource: %d",
                  data.measurements[i].satellitePvt.flags,

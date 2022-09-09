@@ -174,7 +174,7 @@ void GeofenceAPIClient::onGeofenceBreachCb(GeofenceBreachNotification geofenceBr
                     geofenceBreachNotification.ids[i], gnssLocation, transition,
                     static_cast<long>(geofenceBreachNotification.timestamp));
             if (!r.isOk()) {
-                LOC_LOGE("%s] Error from gnssGeofenceTransitionCb");
+                LOC_LOGe("Error from gnssGeofenceTransitionCb");
             }
         }
     }
@@ -195,7 +195,7 @@ void GeofenceAPIClient::onGeofenceStatusCb(GeofenceStatusNotification geofenceSt
         memset(&gnssLocation, 0, sizeof(GnssLocation));
         auto r = cbIface->gnssGeofenceStatusCb(status, gnssLocation);
         if (!r.isOk()) {
-            LOC_LOGE("Error from gnssGeofenceStatusCb");
+            LOC_LOGe("Error from gnssGeofenceStatusCb");
         }
     }
 }
@@ -215,7 +215,7 @@ void GeofenceAPIClient::onAddGeofencesCb(size_t count, LocationError* errors, ui
                 status = IGnssGeofenceCallback::ERROR_ID_EXISTS;
             auto r = cbIface->gnssGeofenceAddCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE("Error from gnssGeofenceAddCb");
+                LOC_LOGe("Error from gnssGeofenceAddCb");
             }
         }
     }
@@ -236,7 +236,7 @@ void GeofenceAPIClient::onRemoveGeofencesCb(size_t count, LocationError* errors,
                 status = IGnssGeofenceCallback::ERROR_ID_UNKNOWN;
             auto r = cbIface->gnssGeofenceRemoveCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE(" Error from gnssGeofenceRemoveCb");
+                LOC_LOGe("Error from gnssGeofenceRemoveCb");
             }
         }
     }
@@ -257,7 +257,7 @@ void GeofenceAPIClient::onPauseGeofencesCb(size_t count, LocationError* errors, 
                 status = IGnssGeofenceCallback::ERROR_ID_UNKNOWN;
             auto r = cbIface->gnssGeofencePauseCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE(" Error from gnssGeofencePauseCb");
+                LOC_LOGe("Error from gnssGeofencePauseCb");
             }
         }
     }
@@ -278,7 +278,7 @@ void GeofenceAPIClient::onResumeGeofencesCb(size_t count, LocationError* errors,
                 status = IGnssGeofenceCallback::ERROR_ID_UNKNOWN;
             auto r = cbIface->gnssGeofenceResumeCb(ids[i], status);
             if (!r.isOk()) {
-                LOC_LOGE(" Error from gnssGeofenceResumeCb");
+                LOC_LOGe("Error from gnssGeofenceResumeCb");
             }
         }
     }

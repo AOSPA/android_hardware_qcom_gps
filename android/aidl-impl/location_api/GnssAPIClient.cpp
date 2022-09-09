@@ -293,7 +293,7 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
 
 void GnssAPIClient::gnssDeleteAidingData(IGnss::GnssAidingData aidingDataFlags)
 {
-    LOC_LOGd("]: (%02hx)", aidingDataFlags);
+    LOC_LOGd("]: (%02x)", aidingDataFlags);
     if (mControlClient == nullptr) {
         return;
     }
@@ -384,7 +384,7 @@ void GnssAPIClient::gnssConfigurationUpdate(const GnssConfig& gnssConfig) {
 
 // callbacks
 void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) {
-    LOC_LOGd("]: (%02x)", capabilitiesMask);
+    LOC_LOGd("]: (0x%" PRIx64 ")", capabilitiesMask);
     mLocationCapabilitiesMask = capabilitiesMask;
     mLocationCapabilitiesCached = true;
     mMutex.lock();
