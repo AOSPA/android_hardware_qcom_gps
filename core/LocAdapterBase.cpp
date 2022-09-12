@@ -337,7 +337,7 @@ LocAdapterBase::getCapabilities()
             mask |= LOCATION_CAPABILITIES_GNSS_MSA_BIT;
         }
         if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_DEBUG_NMEA_V02)) {
-            mask |= LOCATION_CAPABILITIES_DEBUG_NMEA_BIT;
+            mask |= LOCATION_CAPABILITIES_DEBUG_DATA_BIT;
         }
         if (ContextBase::isFeatureSupported(LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
             mask |= LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT;

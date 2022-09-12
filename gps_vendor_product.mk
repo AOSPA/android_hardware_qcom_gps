@@ -6,6 +6,7 @@ PRODUCT_PACKAGES += batching.conf
 PRODUCT_PACKAGES += gnss_antenna_info.conf
 PRODUCT_PACKAGES += gnss@2.0-base.policy
 PRODUCT_PACKAGES += gnss@2.0-xtra-daemon.policy
+PRODUCT_PACKAGES += gnss@2.0-qsap-location.policy
 PRODUCT_PACKAGES += gnss@2.0-xtwifi-client.policy
 PRODUCT_PACKAGES += gnss@2.0-xtwifi-inet-agent.policy
 PRODUCT_PACKAGES += libloc_pla_headers
