@@ -138,7 +138,8 @@ struct Gnss : public BnGnss {
     void onCtrlCollectiveResponseCb(size_t count, LocationError* errors, uint32_t* ids) {}
     // Callback for ODCPI request
     void odcpiRequestCb(const OdcpiRequestInfo& request);
-
+    void updateFlpCallbacksIfOpen();
+    void notifyGnssStatus();
 private:
     GnssAPIClient mApi;
     shared_ptr<IGnssConfiguration> mGnssConfiguration = nullptr;
@@ -159,6 +160,8 @@ private:
     std::mutex mMutex;
 };
 
+typedef std::function<void(bool)> gnssStatusCb;
+extern "C" void registerGnssStatusCallback(gnssStatusCb in);
 }  // namespace implementation
 }  // namespace aidl
 }  // namespace gnss
