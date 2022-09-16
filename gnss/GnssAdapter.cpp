@@ -4413,7 +4413,10 @@ bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
     return retVal;
 }
 
-void GnssAdapter::notifyPreciseLocation(bool enable) {
+void GnssAdapter::notifyPreciseLocation() {
+    bool enable = (mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT) &&
+            ((mDlpFeatureStatusMask & DLP_FEATURE_ENABLED_BY_QESDK) ||
+             (mDlpFeatureStatusMask & DLP_FEATURE_ENABLED_BY_DEFAULT));
      getSystemStatus()->eventPreciseLocation(enable);
      updateClientsEventMask();
 }
@@ -5567,11 +5570,11 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
                 if ((ppeInFeatureMap != mFeatureMap.end() && ppeInFeatureMap->second) ||
                         (qfeInFeatureMap != mFeatureMap.end() && qfeInFeatureMap->second)) {
                     mAdapter.mDlpFeatureStatusMask |= DLP_FEATURE_ENABLED_BY_DEFAULT;
-                    mAdapter.notifyPreciseLocation(true);
+                    mAdapter.notifyPreciseLocation();
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit true");
                 } else {
                     mAdapter.mDlpFeatureStatusMask &= (~DLP_FEATURE_ENABLED_BY_DEFAULT);
-                    mAdapter.notifyPreciseLocation(false);
+                    mAdapter.notifyPreciseLocation();
                     LOC_LOGd("ReportQwesFeatureStatus, set device feature bit false");
                 }
                 mAdapter.mQppeResp = true;
@@ -5582,7 +5585,7 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
                     //Send enable precise location data item to loclauncher to inform
                     //it QPPE engine-service need to launch
                     if (mAdapter.mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
-                        mAdapter.notifyPreciseLocation(true);
+                        mAdapter.notifyPreciseLocation();
                         LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit true");
                     }
                 } else {
@@ -5590,7 +5593,7 @@ void GnssAdapter::handleQesdkQwesStatusFromEHub(
                     //Send disable precise location data item to loclauncher to inform
                     //it QPPE engine-service need to exit
                     if (mAdapter.mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
-                        mAdapter.notifyPreciseLocation(false);
+                        mAdapter.notifyPreciseLocation();
                         LOC_LOGd("ReportQwesFeatureStatus, set isv feature bit false");
                     }
                 }

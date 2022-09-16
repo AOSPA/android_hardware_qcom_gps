@@ -651,7 +651,7 @@ public:
     }
     bool needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
         const struct timespec32_t &apTimeStamp);
-    void notifyPreciseLocation(bool enable);
+    void notifyPreciseLocation();
     void reportPosition(const UlpLocation &ulpLocation,
                         const GpsLocationExtended &locationExtended,
                         enum loc_sess_status status,
