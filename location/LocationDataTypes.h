@@ -316,7 +316,7 @@ typedef enum {
     // supports startTracking/startBatching API with LocationOptions.mode of MSA (MS Assisted)
     LOCATION_CAPABILITIES_GNSS_MSA_BIT                      = (1<<7),
     // supports debug nmea sentences in the debugNmeaCallback
-    LOCATION_CAPABILITIES_DEBUG_NMEA_BIT                    = (1<<8),
+    LOCATION_CAPABILITIES_DEBUG_DATA_BIT                    = (1<<8),
     // support outdoor trip batching
     LOCATION_CAPABILITIES_OUTDOOR_TRIP_BATCHING_BIT         = (1<<9),
     // support constellation enablement
@@ -356,7 +356,7 @@ typedef enum {
     // This mask indicates support for CV2X Location premium features.
     // This bundle includes features for CV2X Location Basic features,
     // QDR3 feature, and PACE. (Position Assisted Clock Estimator.
-    LOCATION_CAPABILITIES_QWES_CV2X_LOCATION_PREMIUM         = (1<<23),
+    LOCATION_CAPABILITIES_QWES_CV2X_LOCATION_PREMIUM        = (1<<23),
     // This mask indicates that PPE (Precise Positioning Engine)
     // library is enabled or Precise Positioning Framework (PPF)
     // is available. This bundle includes features for Carrier
@@ -370,12 +370,10 @@ typedef enum {
     LOCATION_CAPABILITIES_QWES_QDR3                         = (1<<26),
     // This mask indicates DGNSS license bundle is enabled.
     LOCATION_CAPABILITIES_QWES_DGNSS                        = (1<<27),
-    // This mask indicates engine debug data enabled.
-    LOCATION_CAPABILITIES_ENGINE_DEBUG_DATA_BIT             = (1<<28),
     // This mask indicates Antenna info is enabled.
-    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<29),
+    LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<28),
     // This mask indicates qppe or qfe library is presented.
-    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT                  = (1<<30)
+    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT               = (1<<29)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;

@@ -411,7 +411,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
 
     if (capabilitiesMask & LOCATION_CAPABILITIES_GNSS_MEASUREMENTS_BIT) {
         gnssInfo.yearOfHw++; // 2016
-        if (capabilitiesMask & LOCATION_CAPABILITIES_DEBUG_NMEA_BIT) {
+        if (capabilitiesMask & LOCATION_CAPABILITIES_DEBUG_DATA_BIT) {
             gnssInfo.yearOfHw++; // 2017
             if (capabilitiesMask & LOCATION_CAPABILITIES_CONSTELLATION_ENABLEMENT_BIT ||
                 capabilitiesMask & LOCATION_CAPABILITIES_AGPM_BIT) {
