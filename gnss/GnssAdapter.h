@@ -549,7 +549,8 @@ public:
     uint32_t configDeadReckoningEngineParamsCommand(const DeadReckoningEngineConfig& dreConfig);
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
-    uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes);
+    uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes,
+                                          GnssGeodeticDatumType nmeaDatumType);
     void powerIndicationInitCommand(const powerIndicationCb powerIndicationCallback);
     void powerIndicationRequestCommand();
     uint32_t configEngineIntegrityRiskCommand(PositioningEngineMask engType,
