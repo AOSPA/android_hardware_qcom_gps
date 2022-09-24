@@ -216,11 +216,6 @@ public:
                                      LocPosTechMask loc_technology_mask,
                                      GnssDataNotification* pDataNotify = nullptr,
                                      int msInWeek = -1);
-    virtual void reportEnginePositionsEvent(unsigned int count,
-                                            EngineLocationInfo* locationArr) {
-        (void)count;
-        (void)locationArr;
-    }
     virtual void reportSvEvent(const GnssSvNotification& svNotify);
     virtual void reportDataEvent(const GnssDataNotification& dataNotify, int msInWeek);
     virtual void reportNmeaEvent(const char* nmea, size_t length);
