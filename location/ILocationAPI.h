@@ -576,12 +576,18 @@ public:
         device will generate and deliver to the location api clients
         that register to receive NMEA sentences. <br/>
 
+        @param
+        nmeaDatumType: specify the geodetic datum type to be used
+        when generating NMEA sentences. If this parameter is not
+        specified, it will default to WGS-84. <br/>
+
         @return
         A session id that will be returned in responseCallback to
         match command with response.
     */
     virtual uint32_t configOutputNmeaTypes(
-            GnssNmeaTypesMask enabledNmeaTypes) = 0;
+            GnssNmeaTypesMask enabledNmeaTypes,
+            GnssGeodeticDatumType nmeaDatumType = GEODETIC_TYPE_WGS_84) = 0;
 
   /** @brief
         This API is used to send platform power events to GNSS adapters in order

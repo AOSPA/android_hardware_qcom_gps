@@ -236,6 +236,16 @@ GnssAdapter::GnssAdapter() :
             };
     mAgpsManager.registerATLCallbacks(atlOpenStatusCb, atlCloseStatusCb);
 
+    // init default nmea setting based on gps.conf
+    uint32_t DATUM_TYPE = 0;
+    const loc_param_s_type nmea_conf_params[] = {
+        {"DATUM_TYPE", &DATUM_TYPE, NULL, 'n'},
+    };
+    UTIL_READ_CONF(LOC_PATH_GPS_CONF, nmea_conf_params);
+    GnssGeodeticDatumType nmea_datum_type =
+            (DATUM_TYPE == 1) ? GEODETIC_TYPE_PZ_90 : GEODETIC_TYPE_WGS_84;
+    loc_nmea_config_output_types(NMEA_TYPE_ALL, nmea_datum_type);
+
     readConfigCommand();
     initDefaultAgpsCommand();
     initCDFWServiceCommand();
@@ -458,11 +468,15 @@ void GnssAdapter::fillElapsedRealTime(const GpsLocationExtended& locationExtende
                  (locationExtended.gpsTime.gpsWeek != UNKNOWN_GPS_WEEK_NUM)) {
             int64_t locationTimeNanos = (int64_t)out.timestamp * 1000000;
             bool isCurDataTimeTrustable = (out.timestamp % mLocPositionMode.min_interval == 0);
-            out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
-            out.elapsedRealTime = mPositionElapsedRealTimeCal.getElapsedRealtimeEstimateNanos(
+            int64_t elapsedRealTime = mPositionElapsedRealTimeCal.getElapsedRealtimeEstimateNanos(
                     locationTimeNanos, isCurDataTimeTrustable,
                     (int64_t)mLocPositionMode.min_interval * 1000000);
-            out.elapsedRealTimeUnc = mPositionElapsedRealTimeCal.getElapsedRealtimeUncNanos();
+
+            if (elapsedRealTime != -1) {
+                out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
+                out.elapsedRealTime = elapsedRealTime;
+                out.elapsedRealTimeUnc = mPositionElapsedRealTimeCal.getElapsedRealtimeUncNanos();
+            }
         }
 #endif //FEATURE_AUTOMOTIVE
     }
@@ -1927,7 +1941,7 @@ GnssAdapter::gnssGetConfigCommand(GnssConfigFlagsMask configMask) {
                 uint32_t sessionId = *(mIds+index);
                 LocApiResponse* locApiResponse =
                         new LocApiResponse(*mAdapter.getContext(),
-                                           [this, sessionId] (LocationError err) {
+                                           [&mAdapter = mAdapter, sessionId] (LocationError err) {
                                            mAdapter.reportResponse(err, sessionId);});
                 if (!locApiResponse) {
                     LOC_LOGe("memory alloc failed");
@@ -1941,7 +1955,7 @@ GnssAdapter::gnssGetConfigCommand(GnssConfigFlagsMask configMask) {
                 uint32_t sessionId = *(mIds+index);
                 LocApiResponse* locApiResponse =
                         new LocApiResponse(*mAdapter.getContext(),
-                                           [this, sessionId] (LocationError err) {
+                                           [&mAdapter = mAdapter, sessionId] (LocationError err) {
                                            mAdapter.reportResponse(err, sessionId);});
                 if (!locApiResponse) {
                     LOC_LOGe("memory alloc failed");
@@ -1955,7 +1969,7 @@ GnssAdapter::gnssGetConfigCommand(GnssConfigFlagsMask configMask) {
                 uint32_t sessionId = *(mIds+index);
                 LocApiResponse* locApiResponse =
                         new LocApiResponse(*mAdapter.getContext(),
-                                           [this, sessionId] (LocationError err) {
+                                           [&mAdapter = mAdapter, sessionId] (LocationError err) {
                                            mAdapter.reportResponse(err, sessionId);});
                 if (!locApiResponse) {
                     LOC_LOGe("memory alloc failed");
@@ -3002,7 +3016,7 @@ GnssAdapter::handleEngineLockStatusEvent(EngineLockState engineLockState) {
 void
 GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
 
-    GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_NONE;
+    GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
     if (ENGINE_LOCK_STATE_ENABLED == engineLockState) {
         for (auto msg: mPendingMsgs) {
             sendMsg(msg);
@@ -3013,8 +3027,13 @@ GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
             POWER_STATE_SHUTDOWN != mSystemPowerState) {
             restartSessions(false);
         }
-        gpsLock = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
+        // Send gps lock enabled only in case
+        // when TZ is unlocked and AFW location is enabled
+        if (0 != getAfwControlId()) {
+            gpsLock = gpsLock & ~(GNSS_CONFIG_GPS_LOCK_MO);
+        }
     }
+    LOC_LOGv("send gps lock state: 0x%X", gpsLock);
     mXtraObserver.updateLockStatus(gpsLock);
 }
 
@@ -4039,7 +4058,12 @@ GnssAdapter::enableCommand(LocationTechnologyType techType)
                 mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
                     mApi.setGpsLockSync(gpsLock);
                 }));
-                mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+                // check TZ lock status
+                if (ENGINE_LOCK_STATE_DISABLED == mApi.getEngineLockState()) {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock | GNSS_CONFIG_GPS_LOCK_MO);
+                } else {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+                }
             }
             mAdapter.reportResponse(err, mSessionId);
         }
@@ -4090,7 +4114,13 @@ GnssAdapter::disableCommand(uint32_t id)
                 mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
                     mApi.setGpsLockSync(gpsLock);
                 }));
-                mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+
+                // check the TZ lock
+                if (ENGINE_LOCK_STATE_DISABLED == mApi.getEngineLockState()) {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock | GNSS_CONFIG_GPS_LOCK_MO);
+                } else {
+                    mAdapter.mXtraObserver.updateLockStatus(gpsLock);
+                }
             }
             mAdapter.reportResponse(err, mSessionId);
         }
@@ -7334,30 +7364,35 @@ uint32_t GnssAdapter::configEngineRunStateCommand(
     return sessionId;
 }
 
-uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes) {
+uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes,
+                                                   GnssGeodeticDatumType nmeaDatumType) {
     // generated session id will be none-zero
     uint32_t sessionId = generateSessionId();
-    LOC_LOGd("session id %u, enabled nmea = 0x%x", sessionId, enabledNmeaTypes);
+    LOC_LOGd("session id %u, enabled nmea = 0x%x, datum type = %d",
+             sessionId, enabledNmeaTypes, nmeaDatumType);
 
     struct MsgConfigOutputNmeaType : public LocMsg {
         GnssAdapter& mAdapter;
         uint32_t     mSessionId;
         GnssNmeaTypesMask mEnabledNmeaTypes;
+        GnssGeodeticDatumType mNmeaDatumType;
 
         inline MsgConfigOutputNmeaType(GnssAdapter& adapter,
                                        uint32_t sessionId,
-                                       GnssNmeaTypesMask enabledNmeaTypes) :
+                                       GnssNmeaTypesMask enabledNmeaTypes,
+                                       GnssGeodeticDatumType nmeaDatumType) :
             LocMsg(),
             mAdapter(adapter),
             mSessionId(sessionId),
-            mEnabledNmeaTypes(enabledNmeaTypes) {}
+            mEnabledNmeaTypes(enabledNmeaTypes),
+            mNmeaDatumType(nmeaDatumType) {}
         inline virtual void proc() const {
-           loc_nmea_config_output_types(mEnabledNmeaTypes);
+           loc_nmea_config_output_types(mEnabledNmeaTypes, mNmeaDatumType);
            mAdapter.reportResponse(LOCATION_ERROR_SUCCESS, mSessionId);
         }
     };
 
-    sendMsg(new MsgConfigOutputNmeaType(*this, sessionId, enabledNmeaTypes));
+    sendMsg(new MsgConfigOutputNmeaType(*this, sessionId, enabledNmeaTypes, nmeaDatumType));
 
     return sessionId;
 }

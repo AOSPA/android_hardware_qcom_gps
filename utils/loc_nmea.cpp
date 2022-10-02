@@ -191,6 +191,7 @@ typedef struct loc_sv_cache_info_s
 } loc_sv_cache_info;
 
 static GnssNmeaTypesMask mEnabledNmeaTypes = NMEA_TYPE_ALL;
+static GnssGeodeticDatumType mNmeaDatumType = GEODETIC_TYPE_WGS_84;
 
 /*===========================================================================
 FUNCTION    convert_Lla_to_Ecef
@@ -990,23 +991,19 @@ static void loc_nmea_generate_DTM(const LocLla &ref_lla,
     char* pMarker = sentence;
     int lengthRemaining = bufSize;
     int length = 0;
-    int datum_type;
     char ref_datum[4] = {'W', '8', '4', '\0'};
     char local_datum[4] = {0};
     double lla_offset[3] = {0};
     char latHem, longHem;
     double latMins, longMins;
 
-
-
-    datum_type = loc_get_datum_type();
-    switch (datum_type) {
-        case LOC_GNSS_DATUM_WGS84:
+    switch (mNmeaDatumType) {
+        case GEODETIC_TYPE_WGS_84:
             local_datum[0] = 'W';
             local_datum[1] = '8';
             local_datum[2] = '4';
             break;
-        case LOC_GNSS_DATUM_PZ90:
+        case GEODETIC_TYPE_PZ_90:
             local_datum[0] = 'P';
             local_datum[1] = '9';
             local_datum[2] = '0';
@@ -1413,7 +1410,6 @@ void loc_nmea_generate_pos(const UlpLocation &location,
     int utcMinutes = pTm->tm_min;
     int utcSeconds = pTm->tm_sec;
     int utcMSeconds = (location.gpsLocation.timestamp)%1000;
-    int datum_type = loc_get_datum_type();
     double geoidalSeparation = 0.0;
     LocEcef ecef_w84;
     LocEcef ecef_p90;
@@ -1476,13 +1472,13 @@ void loc_nmea_generate_pos(const UlpLocation &location,
         ref_lla.lon = location.gpsLocation.longitude;
         ref_lla.alt = location.gpsLocation.altitude;
 
-        switch (datum_type) {
-            case LOC_GNSS_DATUM_WGS84:
+        switch (mNmeaDatumType) {
+            case GEODETIC_TYPE_WGS_84:
                 local_lla.lat = location.gpsLocation.latitude;
                 local_lla.lon = location.gpsLocation.longitude;
                 local_lla.alt = location.gpsLocation.altitude;
                 break;
-            case LOC_GNSS_DATUM_PZ90:
+            case GEODETIC_TYPE_PZ_90:
                 local_lla.lat = lla_p90.lat / M_PI * 180.0;
                 local_lla.lon = lla_p90.lon / M_PI * 180.0;
                 local_lla.alt = lla_p90.alt;
@@ -2158,13 +2154,13 @@ void loc_nmea_generate_pos(const UlpLocation &location,
         nmeaArraystr.push_back(sentence_DTM);
         // ------$--RMC-------
         nmeaArraystr.push_back(sentence_RMC);
-        if(LOC_GNSS_DATUM_PZ90 == datum_type) {
+        if (GEODETIC_TYPE_WGS_84 == mNmeaDatumType) {
             // ------$--DTM-------
             nmeaArraystr.push_back(sentence_DTM);
         }
         // ------$--GNS-------
         nmeaArraystr.push_back(sentence_GNS);
-        if(LOC_GNSS_DATUM_PZ90 == datum_type) {
+        if (GEODETIC_TYPE_PZ_90 == mNmeaDatumType) {
             // ------$--DTM-------
             nmeaArraystr.push_back(sentence_DTM);
         }
@@ -2461,6 +2457,9 @@ SIDE EFFECTS
    N/A
 
 ===========================================================================*/
-void loc_nmea_config_output_types(GnssNmeaTypesMask enabledNmeaTypes) {
+void loc_nmea_config_output_types(GnssNmeaTypesMask enabledNmeaTypes,
+                                  GnssGeodeticDatumType nmeaDatumType) {
+    LOC_LOGd("nmea types 0x%x, datum type %d", enabledNmeaTypes, nmeaDatumType);
     mEnabledNmeaTypes = enabledNmeaTypes;
+    mNmeaDatumType = nmeaDatumType;
 }

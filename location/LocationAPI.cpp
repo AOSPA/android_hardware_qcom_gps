@@ -1065,12 +1065,15 @@ uint32_t LocationControlAPI::setOptInStatus(bool userConsent) {
 }
 
 uint32_t LocationControlAPI::configOutputNmeaTypes(
-            GnssNmeaTypesMask enabledNmeaTypes) {
+            GnssNmeaTypesMask enabledNmeaTypes,
+            GnssGeodeticDatumType nmeaDatumType) {
+
     uint32_t id = 0;
     pthread_mutex_lock(&gDataMutex);
 
     if (gData.gnssInterface != NULL) {
-        id = gData.gnssInterface->configOutputNmeaTypes(enabledNmeaTypes);
+        id = gData.gnssInterface->configOutputNmeaTypes(enabledNmeaTypes,
+                                                        nmeaDatumType);
     } else {
         LOC_LOGe("No gnss interface available for Location Control API");
     }
