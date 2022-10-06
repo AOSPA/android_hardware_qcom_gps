@@ -89,6 +89,7 @@ public:
 
     // for GpsInterface
     void gnssUpdateCallbacks(const shared_ptr<IGnssCallback>& gpsCb);
+    void gnssUpdateFlpCallbacks();
     bool gnssStart();
     bool gnssStop();
     void configSvStatus(bool enable);
@@ -122,6 +123,7 @@ public:
 
 private:
     void setCallbacks();
+    void setFlpCallbacks();
     void initLocationOptions();
 
     std::mutex mMutex;
