@@ -151,6 +151,12 @@ typedef struct {
     uint32_t svIdOffset;
 } NmeaSvMeta;
 
+enum PowerConnectState {
+    POWER_CONNECT_UNKNOWN = -1,
+    POWER_CONNECT_NO = 0,
+    POWER_CONNECT_YES = 1,
+};
+
 typedef struct {
     double latitude;
     double longitude;
@@ -330,6 +336,7 @@ class GnssAdapter : public LocAdapterBase {
     LocationSystemInfo mLocSystemInfo;
     std::vector<GnssSvIdSource> mBlacklistedSvIds;
     PowerStateType mSystemPowerState;
+    PowerConnectState mPowerConnectState;
 
     /* === Misc ===================================================================== */
     BlockCPIInfo mBlockCPIInfo;
@@ -758,6 +765,7 @@ public:
                                                 const LocationCallbacks& callbacks);
     LocationCapabilitiesMask getCapabilities();
     void updateSystemPowerStateCommand(PowerStateType systemPowerState);
+    void updatePowerConnectStateCommand(bool connected);
     void setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb);
     inline void setEsStatusCallback (std::function<void(bool)> esStatusCb) {
             mEsStatusCb = esStatusCb; }

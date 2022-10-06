@@ -186,6 +186,7 @@ GnssAdapter::GnssAdapter() :
     mMpXtraEnabled(true),
     mLocSystemInfo{},
     mSystemPowerState(POWER_STATE_UNKNOWN),
+    mPowerConnectState(POWER_CONNECT_UNKNOWN),
     mBlockCPIInfo{},
     mEsStatusCb(nullptr),
     mEngServiceInfo{},
@@ -2829,6 +2830,30 @@ GnssAdapter::updateSystemPowerStateCommand(PowerStateType systemPowerState) {
 }
 
 void
+GnssAdapter::updatePowerConnectStateCommand(bool connected) {
+    LOC_LOGd("power connected %d", connected);
+
+    struct MsgUpdatePowerConnectState : public LocMsg {
+        GnssAdapter& mAdapter;
+        bool mConnected;
+
+        inline MsgUpdatePowerConnectState(GnssAdapter& adapter,
+                                          bool connected) :
+            LocMsg(),
+            mAdapter(adapter),
+            mConnected(connected) {}
+        inline virtual void proc() const {
+            mAdapter.mPowerConnectState =
+                    (mConnected == true)? POWER_CONNECT_YES : POWER_CONNECT_NO;
+            mAdapter.mLocApi->updatePowerConnectState(mConnected);
+            mAdapter.mSystemStatus->updatePowerConnectState(mConnected);
+        }
+    };
+
+    sendMsg(new MsgUpdatePowerConnectState(*this, connected));
+}
+
+void
 GnssAdapter::addClientCommand(LocationAPI* client, const LocationCallbacks& callbacks)
 {
     LOC_LOGD("%s]: client %p", __func__, client);
@@ -3056,6 +3081,10 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSvIdConfigUpdate();
             mAdapter.gnssSvTypeConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
+            if (mAdapter.mPowerConnectState != POWER_CONNECT_UNKNOWN) {
+                mAdapter.mLocApi->updatePowerConnectState(
+                   mAdapter.mPowerConnectState == POWER_CONNECT_YES);
+            }
             mAdapter.gnssSecondaryBandConfigUpdate();
             // restart sessions only when Lock state is enabled and in power state resume
             mAdapter.initGnssPowerStatistics();
