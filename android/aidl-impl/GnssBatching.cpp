@@ -87,7 +87,7 @@ ScopedAStatus GnssBatching::getBatchSize(int32_t* _aidl_return) {
     } else {
         mBatchSize = mApi->getBatchSize();
     }
-    _aidl_return = &mBatchSize;
+    *_aidl_return = mBatchSize;
     return ScopedAStatus::ok();
 }
 ScopedAStatus GnssBatching::start(const IGnssBatching::Options& options) {
