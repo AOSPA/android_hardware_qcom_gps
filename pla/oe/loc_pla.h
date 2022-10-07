@@ -111,7 +111,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 #define MAX_COMMAND_STR_LEN (255)
-#define BOOT_KPI_FILE "/sys/kernel/debug/bootkpi/kpi_values"
+#define BOOT_KPI_FILE "/sys/kernel/boot_kpi/kpi_values"
 
 // OpenWrt Musl C library supports strlcpy/strlcat
 #if !defined(OPENWRT_BUILD) && !defined(OFF_TARGET)
