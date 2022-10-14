@@ -44,7 +44,6 @@ epoll_create1: 1
 epoll_pwait: 1
 epoll_ctl: 1
 
-sched_getaffinity: 1
 gettid: 1
 fchown: 1
 fchmod: 1
