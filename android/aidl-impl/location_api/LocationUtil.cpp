@@ -88,7 +88,7 @@ void convertGnssLocation(Location& in, GnssLocation& out)
         out.elapsedRealtime.flags |= ElapsedRealtime::HAS_TIME_UNCERTAINTY_NS;
         out.elapsedRealtime.timeUncertaintyNs = in.elapsedRealTimeUnc;
         LOC_LOGd("out.elapsedRealtime.timestampNs=%" PRIi64 ""
-                 " out.elapsedRealtime.timeUncertaintyNs=%" PRIi64 ""
+                 " out.elapsedRealtime.timeUncertaintyNs=%lf"
                  " out.elapsedRealtime.flags=0x%X",
                  out.elapsedRealtime.timestampNs,
                  out.elapsedRealtime.timeUncertaintyNs, out.elapsedRealtime.flags);

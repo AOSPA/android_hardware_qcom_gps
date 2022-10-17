@@ -128,6 +128,18 @@ GnssAPIClient::~GnssAPIClient() {
     }
 }
 
+void GnssAPIClient::setFlpCallbacks() {
+    LOC_LOGd("Going to set Flp Callbacks...");
+    LocationCallbacks locationCallbacks;
+    memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
+    locationCallbacks.size = sizeof(LocationCallbacks);
+
+    locationCallbacks.trackingCb = [this](Location location) {
+        onTrackingCb(location);
+    };
+    locAPISetCallbacks(locationCallbacks);
+}
+
 void GnssAPIClient::setCallbacks() {
     LocationCallbacks locationCallbacks;
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
@@ -146,7 +158,6 @@ void GnssAPIClient::setCallbacks() {
      * When config is set to 0, register with trackingCb, this is the call back
      * which will report aggregated PVT to Android GNSS API*/
     if (0 == mReportSpeOnly) {
-        locationCallbacks.trackingCb = nullptr;
         locationCallbacks.trackingCb = [this](Location location) {
             onTrackingCb(location);
         };
@@ -186,6 +197,12 @@ void GnssAPIClient::setCallbacks() {
 void GnssAPIClient::gnssUpdateCallbacks(const shared_ptr<IGnssCallback>& gpsCb) {
     if (gpsCb != nullptr) {
         setCallbacks();
+    }
+}
+
+void GnssAPIClient::gnssUpdateFlpCallbacks() {
+    if (mGnssCbIface != nullptr) {
+        setFlpCallbacks();
     }
 }
 
@@ -276,7 +293,7 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
 
 void GnssAPIClient::gnssDeleteAidingData(IGnss::GnssAidingData aidingDataFlags)
 {
-    LOC_LOGd("]: (%02hx)", aidingDataFlags);
+    LOC_LOGd("]: (%02x)", aidingDataFlags);
     if (mControlClient == nullptr) {
         return;
     }
@@ -367,7 +384,7 @@ void GnssAPIClient::gnssConfigurationUpdate(const GnssConfig& gnssConfig) {
 
 // callbacks
 void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) {
-    LOC_LOGd("]: (%02x)", capabilitiesMask);
+    LOC_LOGd("]: (0x%" PRIx64 ")", capabilitiesMask);
     mLocationCapabilitiesMask = capabilitiesMask;
     mLocationCapabilitiesCached = true;
     mMutex.lock();
