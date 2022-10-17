@@ -627,12 +627,6 @@ enum loc_api_adapter_err LocApiBase::
     close()
 DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
 
-void LocApiBase::startFix(const LocPosMode& /*posMode*/, LocApiResponse* /*adapterResponse*/)
-DEFAULT_IMPL()
-
-void LocApiBase::stopFix(LocApiResponse* /*adapterResponse*/)
-DEFAULT_IMPL()
-
 void LocApiBase::
     deleteAidingData(const GnssAidingData& /*data*/, LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
