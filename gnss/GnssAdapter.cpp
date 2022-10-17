@@ -186,6 +186,7 @@ GnssAdapter::GnssAdapter() :
     mMpXtraEnabled(true),
     mLocSystemInfo{},
     mSystemPowerState(POWER_STATE_UNKNOWN),
+    mPowerConnectState(POWER_CONNECT_UNKNOWN),
     mBlockCPIInfo{},
     mEsStatusCb(nullptr),
     mEngServiceInfo{},
@@ -1261,7 +1262,6 @@ GnssAdapter::setConfig()
 std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldMoServerUrl,
         const std::string& moServerUrl, const std::string& serverUrl,
         GnssConfig& gnssConfigRequested, GnssConfig& gnssConfigNeedEngineUpdate, size_t count) {
-    loc_gps_cfg_s gpsConf = ContextBase::mGps_conf;
     size_t index = 0;
     LocationError err = LOCATION_ERROR_SUCCESS;
     std::vector<LocationError> errsList = {err};
@@ -2830,6 +2830,30 @@ GnssAdapter::updateSystemPowerStateCommand(PowerStateType systemPowerState) {
 }
 
 void
+GnssAdapter::updatePowerConnectStateCommand(bool connected) {
+    LOC_LOGd("power connected %d", connected);
+
+    struct MsgUpdatePowerConnectState : public LocMsg {
+        GnssAdapter& mAdapter;
+        bool mConnected;
+
+        inline MsgUpdatePowerConnectState(GnssAdapter& adapter,
+                                          bool connected) :
+            LocMsg(),
+            mAdapter(adapter),
+            mConnected(connected) {}
+        inline virtual void proc() const {
+            mAdapter.mPowerConnectState =
+                    (mConnected == true)? POWER_CONNECT_YES : POWER_CONNECT_NO;
+            mAdapter.mLocApi->updatePowerConnectState(mConnected);
+            mAdapter.mSystemStatus->updatePowerConnectState(mConnected);
+        }
+    };
+
+    sendMsg(new MsgUpdatePowerConnectState(*this, connected));
+}
+
+void
 GnssAdapter::addClientCommand(LocationAPI* client, const LocationCallbacks& callbacks)
 {
     LOC_LOGD("%s]: client %p", __func__, client);
@@ -3057,6 +3081,10 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSvIdConfigUpdate();
             mAdapter.gnssSvTypeConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
+            if (mAdapter.mPowerConnectState != POWER_CONNECT_UNKNOWN) {
+                mAdapter.mLocApi->updatePowerConnectState(
+                   mAdapter.mPowerConnectState == POWER_CONNECT_YES);
+            }
             mAdapter.gnssSecondaryBandConfigUpdate();
             // restart sessions only when Lock state is enabled and in power state resume
             mAdapter.initGnssPowerStatistics();
@@ -4235,7 +4263,7 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
                 return;
             }
 
-            if (false == mUlpLocation.unpropagatedPosition && mDataNotify.size != 0) {
+            if (mDataNotify.size != 0) {
                 if (mMsInWeek >= 0) {
                     mAdapter.getDataInformation((GnssDataNotification&)mDataNotify,
                                                 mMsInWeek);
@@ -4247,51 +4275,28 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
             mAdapter.mPositionElapsedRealTimeCal
                     .saveGpsTimeAndQtimerPairInPvtReport(mLocationExtended);
 
-            if (!mUlpLocation.unpropagatedPosition) {
-                // save sv used in fix and mb sv used in fix info from propagated report
-                mAdapter.mGnssSvIdUsedInPosAvail = false;
-                mAdapter.mGnssMbSvIdUsedInPosAvail = false;
-                if (mLocationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
-                    mAdapter.mGnssSvIdUsedInPosAvail = true;
-                    mAdapter.mGnssSvIdUsedInPosition = mLocationExtended.gnss_sv_used_ids;
-                    if (mLocationExtended.flags & GPS_LOCATION_EXTENDED_HAS_MULTIBAND) {
-                        mAdapter.mGnssMbSvIdUsedInPosAvail = true;
-                        mAdapter.mGnssMbSvIdUsedInPosition = mLocationExtended.gnss_mb_sv_used_ids;
-                    }
+            // save sv used in fix and mb sv used in fix info from propagated report
+            mAdapter.mGnssSvIdUsedInPosAvail = false;
+            mAdapter.mGnssMbSvIdUsedInPosAvail = false;
+            if (mLocationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
+                mAdapter.mGnssSvIdUsedInPosAvail = true;
+                mAdapter.mGnssSvIdUsedInPosition = mLocationExtended.gnss_sv_used_ids;
+                if (mLocationExtended.flags & GPS_LOCATION_EXTENDED_HAS_MULTIBAND) {
+                    mAdapter.mGnssMbSvIdUsedInPosAvail = true;
+                    mAdapter.mGnssMbSvIdUsedInPosition = mLocationExtended.gnss_mb_sv_used_ids;
                 }
             }
 
-            if (true == mAdapter.isPreciseEnabled()){
-                // report out all SPE fix if it is not propagated, even for failed fix
-                if (false == mUlpLocation.unpropagatedPosition) {
-                    EngineLocationInfo engLocationInfo = {};
-                    engLocationInfo.location = mUlpLocation;
-                    engLocationInfo.locationExtended = mLocationExtended;
-                    engLocationInfo.sessionStatus = mStatus;
-
-                    // obtain the VRP based latitude/longitude/altitude for SPE fix
-                    computeVRPBasedLla(engLocationInfo.location,
-                                       engLocationInfo.locationExtended,
-                                       mAdapter.mLocConfigInfo.leverArmConfigInfo);
-                    mAdapter.reportEnginePositions(1, &engLocationInfo);
-                }
-                return;
-            }
-
-            // unpropagated report: is only for engine hub to consume and no need
-            // to send out to the clients
-            if (true == mUlpLocation.unpropagatedPosition) {
-                return;
-            }
-
-            // extract bug report info - this returns true if consumed by systemstatus
-            SystemStatus* s = mAdapter.getSystemStatus();
-            if ((nullptr != s) &&
+            if (!mAdapter.reportSpeAsEnginePosition(mUlpLocation, mLocationExtended, mStatus)){
+                // extract bug report info - this returns true if consumed by systemstatus
+                SystemStatus* s = mAdapter.getSystemStatus();
+                if ((nullptr != s) &&
                     ((LOC_SESS_SUCCESS == mStatus) || (LOC_SESS_INTERMEDIATE == mStatus))){
-                s->eventPosition(mUlpLocation, mLocationExtended);
-            }
+                    s->eventPosition(mUlpLocation, mLocationExtended);
+                }
 
-            mAdapter.reportPosition(mUlpLocation, mLocationExtended, mStatus, mTechMask);
+                mAdapter.reportPosition(mUlpLocation, mLocationExtended, mStatus, mTechMask);
+            }
         }
     };
 
@@ -4300,7 +4305,9 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
     // directly to engine hub
     mEngHubProxy->gnssReportPosition(ulpLocation, locationExtended, status);
 
-    if (mContext != NULL) {
+    // unpropagated report: is only for engine hub to consume and no need
+    // to send out to the clients
+    if (!ulpLocation.unpropagatedPosition) {
         GnssDataNotification dataNotifyCopy = {};
         if (pDataNotify) {
             dataNotifyCopy = *pDataNotify;
@@ -4337,7 +4344,9 @@ GnssAdapter::reportEnginePositionsEvent(unsigned int count,
         }
     };
 
-    sendMsg(new MsgReportEnginePositions(*this, count, locationArr));
+    if (isPreciseEnabled()) {
+        sendMsg(new MsgReportEnginePositions(*this, count, locationArr));
+    }
 }
 
 bool
@@ -4623,8 +4632,7 @@ void GnssAdapter::reportEngDebugDataInfoEvent(GnssEngineDebugDataInfo& gnssEngin
 }
 
 void
-GnssAdapter::reportLatencyInfoEvent(const GnssLatencyInfo& gnssLatencyInfo)
-{
+GnssAdapter::reportLatencyInfoEvent(const GnssLatencyInfo& gnssLatencyInfo) {
     struct MsgReportLatencyInfo : public LocMsg {
         GnssAdapter& mAdapter;
         GnssLatencyInfo mGnssLatencyInfo;
@@ -4641,65 +4649,88 @@ GnssAdapter::reportLatencyInfoEvent(const GnssLatencyInfo& gnssLatencyInfo)
     sendMsg(new MsgReportLatencyInfo(*this, gnssLatencyInfo));
 }
 
-void
+bool
+GnssAdapter::reportSpeAsEnginePosition(const UlpLocation& ulpLocation,
+                                   const GpsLocationExtended& locationExtended,
+                                   enum loc_sess_status status) {
+    bool enginePositionReported = isPreciseEnabled();
+    if (enginePositionReported) {
+        EngineLocationInfo engLocationInfo = {};
+        engLocationInfo.location = ulpLocation;
+        engLocationInfo.locationExtended = locationExtended;
+        engLocationInfo.sessionStatus = status;
+
+        // obtain the VRP based latitude/longitude/altitude for SPE fix
+        computeVRPBasedLla(engLocationInfo.location,
+                           engLocationInfo.locationExtended,
+                           mLocConfigInfo.leverArmConfigInfo);
+        enginePositionReported = reportEnginePositions(1, &engLocationInfo);
+    }
+    return enginePositionReported;
+}
+
+bool
 GnssAdapter::reportEnginePositions(unsigned int count,
-                                   const EngineLocationInfo* locationArr)
-{
-    bool needReportEnginePositions = false;
-    for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-        if (nullptr != it->second.engineLocationsInfoCb) {
-            needReportEnginePositions = true;
-            break;
-        }
-    }
-
-    GnssLocationInfoNotification locationInfo[LOC_OUTPUT_ENGINE_COUNT] = {};
-    for (unsigned int i = 0; i < count; i++) {
-        const EngineLocationInfo* engLocation = (locationArr+i);
-        // if it is fused/default location, call reportPosition maintain legacy behavior
-        if ((GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE & engLocation->locationExtended.flags) &&
-            (LOC_OUTPUT_ENGINE_FUSED == engLocation->locationExtended.locOutputEngType)) {
-            reportPosition(engLocation->location,
-                           engLocation->locationExtended,
-                           engLocation->sessionStatus,
-                           engLocation->location.tech_mask);
-        }
-
-        if (needReportEnginePositions) {
-            convertLocationInfo(locationInfo[i], engLocation->locationExtended,
-                                engLocation->sessionStatus);
-            convertLocation(locationInfo[i].location,
-                            engLocation->location,
-                            engLocation->locationExtended);
-            fillElapsedRealTime(engLocation->locationExtended,
-                                locationInfo[i].location);
-        }
-    }
-
-    const EngineLocationInfo* engLocation = locationArr;
-    LOC_LOGv("engLocation->locationExtended.locOutputEngType=%d",
-             engLocation->locationExtended.locOutputEngType);
-
-    if (0 != mGnssLatencyInfoQueue.size()) {
-        if ((GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE & engLocation->locationExtended.flags) &&
-            (LOC_OUTPUT_ENGINE_SPE == engLocation->locationExtended.locOutputEngType)) {
-            mGnssLatencyInfoQueue.front().hlosQtimer3 = getQTimerTickCount();
-            LOC_LOGv("SPE hlosQtimer3=%" PRIi64 " ", mGnssLatencyInfoQueue.front().hlosQtimer3);
-        }
-        if ((GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE & engLocation->locationExtended.flags) &&
-            (LOC_OUTPUT_ENGINE_PPE == engLocation->locationExtended.locOutputEngType)) {
-            mGnssLatencyInfoQueue.front().hlosQtimer4 = getQTimerTickCount();
-            LOC_LOGv("PPE hlosQtimer4=%" PRIi64 " ", mGnssLatencyInfoQueue.front().hlosQtimer4);
-        }
-    }
-    if (needReportEnginePositions) {
+                                   const EngineLocationInfo* locationArr) {
+    bool isPrecisePositioningEnabled = isPreciseEnabled();
+    if (isPrecisePositioningEnabled) {
+        bool needReportEnginePositions = false;
         for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if ((nullptr != it->second.engineLocationsInfoCb) &&
-                (needReportForClient(it->first, engLocation->sessionStatus))) {
-                it->second.engineLocationsInfoCb(count, locationInfo);
+            if (nullptr != it->second.engineLocationsInfoCb) {
+                needReportEnginePositions = true;
+                break;
+            }
+        }
+
+        GnssLocationInfoNotification locationInfo[LOC_OUTPUT_ENGINE_COUNT] = {};
+        for (unsigned int i = 0; i < count; i++) {
+            const EngineLocationInfo* engLocation = (locationArr+i);
+            // if it is fused/default location, call reportPosition maintain legacy behavior
+            if ((GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE & engLocation->locationExtended.flags) &&
+                (LOC_OUTPUT_ENGINE_FUSED == engLocation->locationExtended.locOutputEngType)) {
+                reportPosition(engLocation->location,
+                               engLocation->locationExtended,
+                               engLocation->sessionStatus,
+                               engLocation->location.tech_mask);
+            }
+
+            if (needReportEnginePositions) {
+                convertLocationInfo(locationInfo[i], engLocation->locationExtended,
+                                    engLocation->sessionStatus);
+                convertLocation(locationInfo[i].location,
+                                engLocation->location,
+                                engLocation->locationExtended);
+                fillElapsedRealTime(engLocation->locationExtended,
+                                    locationInfo[i].location);
+            }
+        }
+
+        const EngineLocationInfo* engLocation = locationArr;
+        LOC_LOGv("engLocation->locationExtended.locOutputEngType=%d",
+                 engLocation->locationExtended.locOutputEngType);
+
+        if (0 != mGnssLatencyInfoQueue.size()) {
+            if ((GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE & engLocation->locationExtended.flags) &&
+                (LOC_OUTPUT_ENGINE_SPE == engLocation->locationExtended.locOutputEngType)) {
+                mGnssLatencyInfoQueue.front().hlosQtimer3 = getQTimerTickCount();
+                LOC_LOGv("SPE hlosQtimer3=%" PRIi64 " ", mGnssLatencyInfoQueue.front().hlosQtimer3);
+            }
+            if ((GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE & engLocation->locationExtended.flags) &&
+                (LOC_OUTPUT_ENGINE_PPE == engLocation->locationExtended.locOutputEngType)) {
+                mGnssLatencyInfoQueue.front().hlosQtimer4 = getQTimerTickCount();
+                LOC_LOGv("PPE hlosQtimer4=%" PRIi64 " ", mGnssLatencyInfoQueue.front().hlosQtimer4);
+            }
+        }
+        if (needReportEnginePositions) {
+            for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
+                if ((nullptr != it->second.engineLocationsInfoCb) &&
+                    (needReportForClient(it->first, engLocation->sessionStatus))) {
+                    it->second.engineLocationsInfoCb(count, locationInfo);
+                }
             }
         }
     }
+    return isPrecisePositioningEnabled;
 }
 
 void

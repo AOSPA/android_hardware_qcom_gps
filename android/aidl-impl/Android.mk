@@ -43,18 +43,24 @@ LOCAL_SHARED_LIBRARIES := \
     libbase \
     libbinder_ndk \
     android.hardware.gnss-V2-ndk \
+    android.hardware.health-V1-ndk \
     android.hardware.health@1.0 \
     android.hardware.health@2.0 \
     android.hardware.health@2.1 \
     libhidlbase \
     liblog \
     libcutils \
-    libqti_vndfwk_detect_vendor \
     libutils \
     libloc_core \
     libgps.utils \
     libdl \
     liblocation_api
+
+ifneq ($(TARGET_SUPPORTS_WEARABLES),true)
+    LOCAL_SHARED_LIBRARIES += libqti_vndfwk_detect_vendor
+else
+    LOCAL_SHARED_LIBRARIES += libqti_vndfwk_detect
+endif
 
 LOCAL_CFLAGS += $(GNSS_CFLAGS)
 
@@ -83,8 +89,13 @@ LOCAL_SHARED_LIBRARIES := \
     libutils \
     libgps.utils \
     liblocation_api \
-    libqti_vndfwk_detect_vendor \
     libbinder_ndk
+
+ifneq ($(TARGET_SUPPORTS_WEARABLES),true)
+    LOCAL_SHARED_LIBRARIES += libqti_vndfwk_detect_vendor
+else
+    LOCAL_SHARED_LIBRARIES += libqti_vndfwk_detect
+endif
 
 LOCAL_SHARED_LIBRARIES += \
     libhidlbase \

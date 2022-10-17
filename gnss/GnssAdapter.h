@@ -151,6 +151,12 @@ typedef struct {
     uint32_t svIdOffset;
 } NmeaSvMeta;
 
+enum PowerConnectState {
+    POWER_CONNECT_UNKNOWN = -1,
+    POWER_CONNECT_NO = 0,
+    POWER_CONNECT_YES = 1,
+};
+
 typedef struct {
     double latitude;
     double longitude;
@@ -330,6 +336,7 @@ class GnssAdapter : public LocAdapterBase {
     LocationSystemInfo mLocSystemInfo;
     std::vector<GnssSvIdSource> mBlacklistedSvIds;
     PowerStateType mSystemPowerState;
+    PowerConnectState mPowerConnectState;
 
     /* === Misc ===================================================================== */
     BlockCPIInfo mBlockCPIInfo;
@@ -602,8 +609,8 @@ public:
                                      LocPosTechMask techMask,
                                      GnssDataNotification* pDataNotify = nullptr,
                                      int msInWeek = -1);
-    virtual void reportEnginePositionsEvent(unsigned int count,
-                                            EngineLocationInfo* locationArr);
+    void reportEnginePositionsEvent(unsigned int count,
+                                    EngineLocationInfo* locationArr);
 
     virtual void reportSvEvent(const GnssSvNotification& svNotify);
     virtual void reportNmeaEvent(const char* nmea, size_t length);
@@ -656,8 +663,11 @@ public:
                         const GpsLocationExtended &locationExtended,
                         enum loc_sess_status status,
                         LocPosTechMask techMask);
-    void reportEnginePositions(unsigned int count,
+    bool reportEnginePositions(unsigned int count,
                                const EngineLocationInfo* locationArr);
+    bool reportSpeAsEnginePosition(const UlpLocation& ulpLocation,
+                                   const GpsLocationExtended& locationExtended,
+                                   enum loc_sess_status status);
     void reportSv(GnssSvNotification& svNotify);
     void reportNmea(const char* nmea, size_t length);
     void reportData(GnssDataNotification& dataNotify);
@@ -755,6 +765,7 @@ public:
                                                 const LocationCallbacks& callbacks);
     LocationCapabilitiesMask getCapabilities();
     void updateSystemPowerStateCommand(PowerStateType systemPowerState);
+    void updatePowerConnectStateCommand(bool connected);
     void setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb);
     inline void setEsStatusCallback (std::function<void(bool)> esStatusCb) {
             mEsStatusCb = esStatusCb; }

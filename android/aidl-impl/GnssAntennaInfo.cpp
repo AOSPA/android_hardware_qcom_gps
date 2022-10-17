@@ -127,7 +127,6 @@ GnssAntennaInfo::GnssAntennaInfo(Gnss* gnss) : mGnss(gnss),
 
 ScopedAStatus GnssAntennaInfo::setCallback(
         const shared_ptr<IGnssAntennaInfoCallback>& callback) {
-    int32_t retVal;
     if (mGnss == nullptr) {
         LOC_LOGe("]: mGnss is nullptr");
         return ScopedAStatus::fromExceptionCode(IGnss::ERROR_GENERIC);
