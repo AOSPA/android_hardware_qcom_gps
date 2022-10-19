@@ -1111,7 +1111,8 @@ uint32_t LocationControlAPI::updateCallbacks(LocationControlCallbacks& callbacks
     if (callbacks.odcpiReqCb) {
         gData.gnssInterface->odcpiInit(callbacks.odcpiReqCb, ODCPI_HANDLER_PRIORITY_DEFAULT);
     } else if (callbacks.agpsStatusIpV4Cb) {
-        AgpsCbInfo cbInfo {callbacks.agpsStatusIpV4Cb, AGPS_ATL_TYPE_SUPL | AGPS_ATL_TYPE_SUPL_ES};
+        AgpsCbInfo cbInfo {callbacks.agpsStatusIpV4Cb,
+                           AGPS_ATL_TYPE_SUPL | AGPS_ATL_TYPE_SUPL_ES, AGPS_CB_PRIORITY_LOW};
         gData.gnssInterface->agpsInit(cbInfo);
     } else if (callbacks.measCorrSetCapabilitiesCb) {
         retVal = gData.gnssInterface->measCorrInit(callbacks.measCorrSetCapabilitiesCb);

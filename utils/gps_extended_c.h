@@ -255,6 +255,7 @@ typedef uint32_t LocApnTypeMask;
 typedef struct {
     agnssStatusIpV4Callback statusV4Cb;
     AGpsTypeMask atlType;
+    AgpsCbPriority cbPriority;
 } AgpsCbInfo;
 
 typedef struct {
