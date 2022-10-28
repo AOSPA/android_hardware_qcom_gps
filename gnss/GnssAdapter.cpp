@@ -5873,8 +5873,16 @@ GnssAdapter::invokeGnssEnergyConsumedCallback(uint64_t energyConsumedSinceFirstB
         GnssPowerStatistics gnssPowerStatistics = {};
         gnssPowerStatistics.size = sizeof(GnssPowerStatistics);
 
-        gnssPowerStatistics.totalEnergyMilliJoule =
-                (double)(energyConsumedSinceFirstBoot - mBootReferenceEnergy) / 10.0;
+        if (energyConsumedSinceFirstBoot >= mBootReferenceEnergy) {
+            gnssPowerStatistics.totalEnergyMilliJoule =
+                    (double)(energyConsumedSinceFirstBoot - mBootReferenceEnergy) / 10.0;
+        } else {
+            LOC_LOGe("energyConsumedSinceFirstBoot %" PRIu64 " is smaller than"
+                     "mBootReferenceEnergy %" PRIu64 ","
+                     "Set totalEnergyMilliJoule to 0",
+                     energyConsumedSinceFirstBoot, mBootReferenceEnergy);
+            gnssPowerStatistics.totalEnergyMilliJoule = 0;
+        }
 
         LOC_LOGv("energyConsumedSinceFirstBoot: %" PRId64", "
                  " mBootReferenceEnergy: %" PRId64", "
