@@ -35,10 +35,12 @@ LOCAL_HEADER_LIBRARIES := \
 LOCAL_SHARED_LIBRARIES := \
     liblog \
     libhidlbase \
+    libbinder_ndk \
     libcutils \
     libutils \
     android.hardware.gnss@1.0 \
     android.hardware.gnss@1.1 \
+    android.hardware.health-V1-ndk \
     android.hardware.health@1.0 \
     android.hardware.health@2.0 \
     android.hardware.health@2.1 \

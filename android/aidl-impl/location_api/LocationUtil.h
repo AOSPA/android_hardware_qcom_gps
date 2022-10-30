@@ -56,14 +56,15 @@ using ::aidl::android::hardware::gnss::GnssConstellationType;
 using ::aidl::android::hardware::gnss::SatellitePvt;
 
 void convertGnssLocation(const GnssLocation& in, Location& out);
-void convertGnssLocation(Location& in, GnssLocation& out);
-void convertGnssConstellationType(GnssSvType& in, GnssConstellationType& out);
-void convertGnssSvid(GnssSv& in, int& out);
-void convertGnssSvid(GnssMeasurementsData& in, int16_t& out);
-void convertGnssEphemerisType(GnssEphemerisType& in, IGnssDebug::SatelliteEphemerisType& out);
-void convertGnssEphemerisSource(GnssEphemerisSource& in,
+void convertGnssLocation(const Location& in, GnssLocation& out);
+void convertGnssConstellationType(const GnssSvType& in, GnssConstellationType& out);
+void convertGnssSvid(const GnssSv& in, int& out);
+void convertGnssSvid(const GnssMeasurementsData& in, int16_t& out);
+void convertGnssEphemerisType(const GnssEphemerisType& in, IGnssDebug::SatelliteEphemerisType& out);
+void convertGnssEphemerisSource(const GnssEphemerisSource& in,
         SatellitePvt::SatelliteEphemerisSource& out);
-void convertGnssEphemerisHealth(GnssEphemerisHealth& in, IGnssDebug::SatelliteEphemerisHealth& out);
+void convertGnssEphemerisHealth(const GnssEphemerisHealth& in,
+        IGnssDebug::SatelliteEphemerisHealth& out);
 void convertSingleSatCorrections(const SingleSatCorrection& in, GnssSingleSatCorrection& out);
 void convertMeasurementCorrections(const MeasurementCorrections& in,
                                    GnssMeasurementCorrections& out);

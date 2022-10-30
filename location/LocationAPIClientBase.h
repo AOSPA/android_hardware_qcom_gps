@@ -25,7 +25,6 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
@@ -277,19 +276,19 @@ public:
 
     inline virtual void onCapabilitiesCb(LocationCapabilitiesMask /*capabilitiesMask*/) {}
     inline virtual void onGnssNmeaCb(GnssNmeaNotification /*gnssNmeaNotification*/) {}
-    inline virtual void onGnssDataCb(GnssDataNotification /*gnssDataNotification*/) {}
+    inline virtual void onGnssDataCb(const GnssDataNotification &/*gnssDataNotification*/) {}
     inline virtual void onGnssMeasurementsCb(
-            GnssMeasurementsNotification /*gnssMeasurementsNotification*/) {}
+            const GnssMeasurementsNotification &/*gnssMeasurementsNotification*/) {}
     inline virtual void onGnssNHzMeasurementsCb(
-            GnssMeasurementsNotification /*gnssMeasurementsNotification*/) {}
-    inline virtual void onTrackingCb(Location /*location*/) {}
-    inline virtual void onGnssSvCb(GnssSvNotification /*gnssSvNotification*/) {}
+            const GnssMeasurementsNotification &/*gnssMeasurementsNotification*/) {}
+    inline virtual void onTrackingCb(const Location &/*location*/) {}
+    inline virtual void onGnssSvCb(const GnssSvNotification& /*gnssSvNotification*/) {}
     inline virtual void onStartTrackingCb(LocationError /*error*/) {}
     inline virtual void onStopTrackingCb(LocationError /*error*/) {}
     inline virtual void onUpdateTrackingOptionsCb(LocationError /*error*/) {}
 
     inline virtual void onGnssLocationInfoCb(
-            GnssLocationInfoNotification /*gnssLocationInfoNotification*/) {}
+            const GnssLocationInfoNotification &/*gnssLocationInfoNotification*/) {}
 
     inline virtual void onBatchingCb(size_t /*count*/, Location* /*location*/,
             BatchingOptions /*batchingOptions*/) {}
@@ -303,7 +302,7 @@ public:
     inline virtual void onGetBatchedLocationsCb(LocationError /*error*/) {}
 
     inline virtual void onGeofenceBreachCb(
-            GeofenceBreachNotification /*geofenceBreachNotification*/) {}
+            const GeofenceBreachNotification& /*geofenceBreachNotification*/) {}
     inline virtual void onGeofenceStatusCb(
             GeofenceStatusNotification /*geofenceStatusNotification*/) {}
     inline virtual void onAddGeofencesCb(
@@ -317,7 +316,8 @@ public:
     inline virtual void onResumeGeofencesCb(
             size_t /*count*/, LocationError* /*errors*/, uint32_t* /*ids*/) {}
 
-    inline virtual void onGnssNiCb(uint32_t /*id*/, GnssNiNotification /*gnssNiNotification*/) {}
+    inline virtual void onGnssNiCb(uint32_t /*id*/,
+            const GnssNiNotification &/*gnssNiNotification*/) {}
     inline virtual void onGnssNiResponseCb(LocationError /*error*/) {}
 
     inline virtual void onLocationSystemInfoCb(LocationSystemInfo /*locationSystemInfo*/) {}

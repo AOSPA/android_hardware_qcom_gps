@@ -2625,7 +2625,7 @@ typedef std::function<void(
    trackingCallback is called when delivering a location in a tracking session
    broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    Location location
+    const Location& location
 )> trackingCallback;
 
 /* Used for startBatching API, optional can be NULL
@@ -2646,7 +2646,7 @@ typedef std::function<void(
     gnssLocationInfoCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssLocationInfoNotification gnssLocationInfoNotification
+    const GnssLocationInfoNotification& gnssLocationInfoNotification
 )> gnssLocationInfoCallback;
 
 /* Gives default combined location information from all engines and
@@ -2666,7 +2666,7 @@ typedef std::function<void(
 /* Used for addGeofences API, optional can be NULL
    geofenceBreachCallback is called when any number of geofences have a state change */
 typedef std::function<void(
-    GeofenceBreachNotification geofenceBreachNotification
+    const GeofenceBreachNotification& geofenceBreachNotification
 )> geofenceBreachCallback;
 
 /* Used for addGeofences API, optional can be NULL
@@ -2679,14 +2679,14 @@ typedef std::function<void(
    This callback should be responded to by calling gnssNiResponse */
 typedef std::function<void(
     uint32_t id, // id that should be used to respond by calling gnssNiResponse
-    GnssNiNotification gnssNiNotification
+    const GnssNiNotification& gnssNiNotification
 )> gnssNiCallback;
 
 /* Gives GNSS SV information, optional can be NULL
     gnssSvCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssSvNotification gnssSvNotification
+    const GnssSvNotification& gnssSvNotification
 )> gnssSvCallback;
 
 /* Gives GNSS NMEA data, optional can be NULL
@@ -2700,14 +2700,14 @@ typedef std::function<void(
     gnssDataCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssDataNotification gnssDataNotification
+    const GnssDataNotification& gnssDataNotification
 )> gnssDataCallback;
 
 /* Gives GNSS Measurements information, optional can be NULL
     gnssMeasurementsCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssMeasurementsNotification gnssMeasurementsNotification
+    const GnssMeasurementsNotification& gnssMeasurementsNotification
 )> gnssMeasurementsCallback;
 
 /* Provides the current GNSS configuration to the client */
