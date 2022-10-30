@@ -1998,7 +1998,21 @@ bool SystemStatus::updatePowerConnectState(bool charging)
 ******************************************************************************/
 bool SystemStatus::eventOptInStatus(bool userConsent)
 {
-    SystemStatusENH s(userConsent);
+    SystemStatusENH s(userConsent, ENHDataItem::FIELD_CONSENT);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
+/******************************************************************************
+@brief      API to update Region
+
+@param[In]  region
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventRegionStatus(bool region)
+{
+    SystemStatusENH s(region, ENHDataItem::FIELD_REGION);
     mSysStatusObsvr.notify({&s.mDataItem});
     return true;
 }
