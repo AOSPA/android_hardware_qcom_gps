@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -463,10 +463,16 @@ public:
 class SystemStatusENH : public SystemStatusItemBase {
 public:
     ENHDataItem mDataItem;
-    inline SystemStatusENH(bool enabled=false): mDataItem(enabled) {}
+    inline SystemStatusENH(bool enabled, ENHDataItem::Fields updateBit = ENHDataItem::FIELD_MAX):
+            mDataItem(enabled, updateBit) {}
     inline SystemStatusENH(const ENHDataItem& itemBase): mDataItem(itemBase) {}
+    inline virtual SystemStatusItemBase& collate(SystemStatusItemBase& peer) {
+        mDataItem.mEnhFields = ((const SystemStatusENH&)peer).mDataItem.mEnhFields;
+        mDataItem.updateFields();
+        return *this;
+    }
     inline bool equals(const SystemStatusItemBase& peer) override {
-        return mDataItem.mEnabled == ((const SystemStatusENH&)peer).mDataItem.mEnabled;
+        return mDataItem.mEnhFields == ((const SystemStatusENH&)peer).mDataItem.mEnhFields;
     }
 };
 
@@ -936,6 +942,7 @@ public:
     bool updatePowerConnectState(bool charging);
     void resetNetworkInfo();
     bool eventOptInStatus(bool userConsent);
+    bool eventRegionStatus(bool region);
     bool eventInEmergencyCall(bool isEmergency);
     void setTracking(bool tracking);
 };
