@@ -73,15 +73,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/time.h>
 #include <time.h>
 
-#if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if __GNUC_PREREQ(6,0)
-    #pragma message "GNU C version is above 6"
-#else
-    #pragma message "GNU C version is less than 6"
-    #define NO_UNORDERED_SET_OR_MAP
-#endif
-#endif
-
 inline int64_t sysTimeMillis(int clock)
 {
     struct timespec ts = {};

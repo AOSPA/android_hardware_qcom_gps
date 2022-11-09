@@ -73,15 +73,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "loc_target.h"
 #include "loc_misc_utils.h"
 
-#ifdef NO_UNORDERED_SET_OR_MAP
-#include <map>
-using std::map;
-#define unordered_map map
-#else
 #include <unordered_map>
-using std::unordered_map;
-#endif
 
+using std::unordered_map;
 using std::string;
 
 typedef unordered_map<int64_t, string> NameValTbl;
