@@ -101,8 +101,13 @@ const string gUnknownStr = "UNKNOWN";
 loc_logger_s_type loc_logger;
 
 /* tag base logging control map*/
-static std::unordered_map<std::string, uint8_t> tag_level_map;
-static bool tag_map_inited = false;
+static std::unordered_map<std::string, uint8_t> sTagLevelMap;
+static bool sTagMapIinited = false;
+static bool sAboutToExit = false;
+
+static void setAboutToExit() {
+    sAboutToExit = true;
+}
 
 /* returns the least signification bit that is set in the mask
    Param
@@ -133,6 +138,22 @@ string loc_get_bit_defs(uint64_t mask, const NameValTbl& tbl) {
         }
     }
     return out;
+}
+
+/* get from a table of strings with index */
+/* tbl - map of <int, string> entries
+   key - key to the matching entry
+   defalt - default pointer in case of incorrect parameters
+ */
+const string& loc_get_name_from_tbl(const NameValTbl& tbl, int64_t key,
+                                    const string& defalt) {
+    if (!sAboutToExit) {
+        auto item = tbl.find(key);
+        if (item != tbl.end()) {
+            return item->second;
+        }
+    }
+    return defalt;
 }
 
 //Target names
@@ -250,9 +271,11 @@ void log_buffer_insert(char *str, unsigned long buf_size, int level)
 
 void log_tag_level_map_init()
 {
-    if (tag_map_inited) {
+    if (sTagMapIinited) {
         return;
     }
+    sTagMapIinited = true;
+    atexit(setAboutToExit);
 
     std::string filename = LOG_TAG_LEVEL_CONF_FILE_PATH;
 
@@ -274,15 +297,14 @@ void log_tag_level_map_init()
                 ALOGE("wrong format in gps.prop");
                 continue;
             }
-            tag_level_map[tag] = (uint8_t)std::stoul(level);
+            sTagLevelMap[tag] = (uint8_t)std::stoul(level);
         }
     }
-    tag_map_inited = true;
 }
 
 int get_tag_log_level(const char* tag)
 {
-    if (!tag_map_inited) {
+    if (!sTagMapIinited) {
         return -1;
     }
 
@@ -291,8 +313,8 @@ int get_tag_log_level(const char* tag)
         return loc_logger.DEBUG_LEVEL;
     }
     int log_level;
-    auto search = tag_level_map.find(std::string(tag));
-    if (tag_level_map.end() != search) {
+    auto search = sTagLevelMap.find(std::string(tag));
+    if (sTagLevelMap.end() != search) {
         log_level = search->second;
     } else {
         log_level = loc_logger.DEBUG_LEVEL;
