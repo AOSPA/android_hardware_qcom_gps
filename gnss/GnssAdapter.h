@@ -228,14 +228,6 @@ typedef uint16_t  DGnssStateBitMask;
 #define DGNSS_STATE_NO_NMEA_PENDING           0X02
 #define DGNSS_STATE_NTRIP_SESSION_STARTED     0X04
 
-typedef uint16_t DlpFeatureStatusMask;
-#define DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT   0X01
-#define DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT    0X02
-#define DLP_FEATURE_ENABLED_BY_DEFAULT            0X04
-#define DLP_FEATURE_ENABLED_BY_QESDK              0X08
-#define DLP_FEATURE_STATUS_LIRBARY_PRESENT   (DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT | \
-                                              DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT)
-
 class GnssReportLoggerUtil {
 public:
     typedef void (*LogGnssLatency)(const GnssLatencyInfo& gnssLatencyMeasInfo);
@@ -359,9 +351,6 @@ class GnssAdapter : public LocAdapterBase {
     /* === Misc callback from QMI LOC API ============================================== */
     GnssEnergyConsumedCallback mGnssEnergyConsumedCb;
     std::function<void(bool)> mPowerStateCb;
-
-    /* === QESDK RTK feature status =================================================== */
-    DlpFeatureStatusMask mDlpFeatureStatusMask;
 
     /*==== CONVERSION ===================================================================*/
     static void convertOptions(LocPosMode& out, const TrackingOptions& trackingOptions);
@@ -585,16 +574,16 @@ public:
     virtual bool isInSession() { return !mTimeBasedTrackingSessions.empty(); }
     void initDefaultAgps();
     bool initEngHubProxy();
-    inline bool isPreciseEnabled(DlpFeatureStatusMask bits = DLP_FEATURE_STATUS_LIRBARY_PRESENT) {
+    inline bool isPreciseEnabled(DlpFeatureStatusMask bits = DLP_FEATURE_STATUS_LIBRARY_PRESENT) {
         return (mDlpFeatureStatusMask & bits) &&
                 (mDlpFeatureStatusMask &
                 (DLP_FEATURE_ENABLED_BY_DEFAULT | DLP_FEATURE_ENABLED_BY_QESDK));
     }
     inline bool isQppeEnabled() {
-        return isPreciseEnabled(DLP_FEATURE_STATUS_QPPE_LIRBARY_PRESENT);
+        return isPreciseEnabled(DLP_FEATURE_STATUS_QPPE_LIBRARY_PRESENT);
     }
     inline bool isQfeEnabled() {
-        return isPreciseEnabled(DLP_FEATURE_STATUS_QFE_LIRBARY_PRESENT);
+        return isPreciseEnabled(DLP_FEATURE_STATUS_QFE_LIBRARY_PRESENT);
     }
     void initCDFWService();
     void odcpiTimerExpireEvent();
@@ -763,7 +752,6 @@ public:
     void setSuplHostServer(const char* server, int port, LocServerType type);
     void notifyClientOfCachedLocationSystemInfo(LocationAPI* client,
                                                 const LocationCallbacks& callbacks);
-    LocationCapabilitiesMask getCapabilities();
     void updateSystemPowerStateCommand(PowerStateType systemPowerState);
     void updatePowerConnectStateCommand(bool connected);
     void setEsStatusCallbackCommand(std::function<void(bool)> esStatusCb);
