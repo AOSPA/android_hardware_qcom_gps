@@ -4428,6 +4428,7 @@ void GnssAdapter::notifyPreciseLocation() {
              (mDlpFeatureStatusMask & DLP_FEATURE_ENABLED_BY_DEFAULT));
      getSystemStatus()->eventPreciseLocation(enable);
      updateClientsEventMask();
+     setTribandState();
 }
 void
 GnssAdapter::logLatencyInfo()
