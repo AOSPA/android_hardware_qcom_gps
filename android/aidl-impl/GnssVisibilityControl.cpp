@@ -41,7 +41,6 @@ namespace gnss {
 namespace visibility_control {
 namespace aidl {
 namespace implementation {
-static GnssVisibilityControl* spGnssVisibilityControl = nullptr;
 static void convertGnssNfwNotification(GnssNfwNotification& in,
     IGnssVisibilityControlCallback::NfwNotification& out);
 
@@ -56,23 +55,19 @@ void gnssVisibilityControlServiceDied(void* cookie) {
 
 GnssVisibilityControl::GnssVisibilityControl(Gnss* gnss) : mGnss(gnss),
     mDeathRecipient(AIBinder_DeathRecipient_new(&gnssVisibilityControlServiceDied)) {
-    spGnssVisibilityControl = this;
-}
-GnssVisibilityControl::~GnssVisibilityControl() {
-    spGnssVisibilityControl = nullptr;
-}
+    LocationControlCallbacks locCtrlCbs;
+    memset(&locCtrlCbs, 0, sizeof(locCtrlCbs));
+    locCtrlCbs.size = sizeof(LocationControlCallbacks);
 
-void GnssVisibilityControl::nfwStatusCb(GnssNfwNotification notification) {
-    if (nullptr != spGnssVisibilityControl) {
-        spGnssVisibilityControl->statusCb(notification);
-    }
-}
+    locCtrlCbs.nfwStatusCb = [this](GnssNfwNotification notification) {
+        statusCb(notification);
+    };
 
-bool GnssVisibilityControl::isInEmergencySession() {
-    if (nullptr != spGnssVisibilityControl) {
-        return spGnssVisibilityControl->isE911Session();
-    }
-    return false;
+    locCtrlCbs.isInEmergencyStatusCb = [this] () {
+        return isE911Session();
+    };
+
+    mGnss->getLocationControlApi()->updateCallbacks(locCtrlCbs);
 }
 
 ScopedAStatus GnssVisibilityControl::enableNfwLocationAccess(
