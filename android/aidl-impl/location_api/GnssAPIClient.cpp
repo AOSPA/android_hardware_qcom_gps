@@ -102,6 +102,7 @@ static void convertGnssSvStatus(const GnssSvNotification& in,
         out[i].basebandCN0DbHz = in.gnssSvs[i].basebandCarrierToNoiseDbHz;
     }
 }
+
 GnssAPIClient::GnssAPIClient(const shared_ptr<IGnssCallback>& gpsCb) :
     LocationAPIClientBase(),
     mControlClient(new LocationAPIControlClient()),
@@ -350,11 +351,14 @@ void GnssAPIClient::gnssDeleteAidingData(IGnss::GnssAidingData aidingDataFlags)
     }
     mControlClient->locAPIGnssDeleteAidingData(data);
 }
+
 void GnssAPIClient::requestCapabilities() {
     // only send capablities if it's already cached, otherwise the first time LocationAPI
     // is initialized, capabilities will be sent by LocationAPI
+    // we need to send capabilities if setCallback was called, that is why we force
+    // this by calling updateCapabilities with 2nd parameter being true
     if (mLocationCapabilitiesCached) {
-        onCapabilitiesCb(mLocationCapabilitiesMask);
+        updateCapabilities(mLocationCapabilitiesMask, true);
     }
 }
 
@@ -384,7 +388,25 @@ void GnssAPIClient::gnssConfigurationUpdate(const GnssConfig& gnssConfig) {
 
 // callbacks
 void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) {
-    LOC_LOGd("]: (0x%" PRIx64 ")", capabilitiesMask);
+    LOC_LOGd("mLocationCapabilitiesMask=%02x capabilitiesMask=%02x",
+             mLocationCapabilitiesMask, capabilitiesMask);
+
+    updateCapabilities(capabilitiesMask, false);
+}
+
+void GnssAPIClient::updateCapabilities(LocationCapabilitiesMask capabilitiesMask,
+                                       bool forceSendCapabilities) {
+
+    // we need to send capabilities if setCallback was called no matter what
+    // (forceSendCapabilities is true)
+    // but we need to NOT send capabilities if they are not changed
+
+    if (!forceSendCapabilities) {
+        if (capabilitiesMask == mLocationCapabilitiesMask) {
+            LOC_LOGd("New capabilities are the same as existing ones, just return");
+            return;
+        }
+    }
     mLocationCapabilitiesMask = capabilitiesMask;
     mLocationCapabilitiesCached = true;
     mMutex.lock();
@@ -435,8 +457,8 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
                 gnssInfo.yearOfHw++; // 2018
                 if (capabilitiesMask & LOCATION_CAPABILITIES_PRIVACY_BIT) {
                     gnssInfo.yearOfHw++; // 2019
-                    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
-                        gnssInfo.yearOfHw++; // 2020
+                    if (capabilitiesMask & LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT) {
+                        gnssInfo.yearOfHw += 3; // 2022
                     }
                 }
             }
