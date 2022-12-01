@@ -93,7 +93,8 @@ public:
     ScopedAStatus setCallbackWithOptions(const shared_ptr<IGnssMeasurementCallback>& callback,
             const IGnssMeasurementInterface::Options& options) override;
     // callbacks we are interested in
-    void onGnssMeasurementsCb(GnssMeasurementsNotification gnssMeasurementsNotification) final;
+    void onGnssMeasurementsCb(
+            const GnssMeasurementsNotification &gnssMeasurementsNotification) final;
 
 private:
     shared_ptr<IGnssMeasurementCallback> mGnssMeasurementCbIface = nullptr;
@@ -105,21 +106,22 @@ private:
     static void gnssMeasurementDied(void* cookie);
     void startTracking(GnssPowerMode powerMode = GNSS_POWER_MODE_INVALID,
                        uint32_t timeBetweenMeasurement = GPS_DEFAULT_FIX_INTERVAL_MS);
-    void convertGnssData(GnssMeasurementsNotification& in, GnssData& out);
-    void convertGnssMeasurement(GnssMeasurementsData& in, GnssMeasurement& out);
-    void convertGnssFlags(GnssMeasurementsData& in, GnssMeasurement& out);
-    static void convertGnssSvId(GnssMeasurementsData& in, int& out);
-    void convertGnssSignalType(GnssMeasurementsData& in, GnssSignalType& out);
-    static void convertGnssConstellationType(GnssSvType& in, GnssConstellationType& out);
-    void convertGnssMeasurementsCodeType(GnssMeasurementsCodeType& inCodeType,
-                                         char* inOtherCodeTypeName, GnssSignalType& out);
-    void convertGnssState(GnssMeasurementsData& in, GnssMeasurement& out);
-    void convertGnssAccumulatedDeltaRangeState(GnssMeasurementsData& in, GnssMeasurement& out);
-    void convertGnssMultipathIndicator(GnssMeasurementsData& in, GnssMeasurement& out);
-    void convertGnssSatellitePvtFlags(GnssMeasurementsData& in, GnssMeasurement& out);
-    void convertGnssSatellitePvt(GnssMeasurementsData& in, GnssMeasurement& out);
-    void convertGnssClock(GnssMeasurementsClock& in, GnssClock& out);
-    void convertElapsedRealtimeNanos(GnssMeasurementsNotification& in,
+    void convertGnssData(const GnssMeasurementsNotification& in, GnssData& out);
+    void convertGnssMeasurement(const GnssMeasurementsData& in, GnssMeasurement& out);
+    void convertGnssFlags(const GnssMeasurementsData& in, GnssMeasurement& out);
+    static void convertGnssSvId(const GnssMeasurementsData& in, int& out);
+    void convertGnssSignalType(const GnssMeasurementsData& in, GnssSignalType& out);
+    static void convertGnssConstellationType(const GnssSvType& in, GnssConstellationType& out);
+    void convertGnssMeasurementsCodeType(const GnssMeasurementsCodeType& inCodeType,
+                                         const char* inOtherCodeTypeName, GnssSignalType& out);
+    void convertGnssState(const GnssMeasurementsData& in, GnssMeasurement& out);
+    void convertGnssAccumulatedDeltaRangeState(const GnssMeasurementsData& in,
+                                               GnssMeasurement& out);
+    void convertGnssMultipathIndicator(const GnssMeasurementsData& in, GnssMeasurement& out);
+    void convertGnssSatellitePvtFlags(const GnssMeasurementsData& in, GnssMeasurement& out);
+    void convertGnssSatellitePvt(const GnssMeasurementsData& in, GnssMeasurement& out);
+    void convertGnssClock(const GnssMeasurementsClock& in, GnssClock& out);
+    void convertElapsedRealtimeNanos(const GnssMeasurementsNotification& in,
                                      ElapsedRealtime& elapsedRealtime);
     void printGnssData(GnssData& data);
 };

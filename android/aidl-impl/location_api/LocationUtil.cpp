@@ -46,7 +46,7 @@ namespace implementation {
 
 using ::aidl::android::hardware::gnss::ElapsedRealtime;
 
-void convertGnssLocation(Location& in, GnssLocation& out)
+void convertGnssLocation(const Location& in, GnssLocation& out)
 {
     memset(&out, 0, sizeof(GnssLocation));
     if (in.flags & LOCATION_HAS_LAT_LONG_BIT) {
@@ -137,7 +137,7 @@ void convertGnssLocation(const GnssLocation& in, Location& out)
     out.timestamp = static_cast<uint64_t>(in.timestampMillis);
 }
 
-void convertGnssConstellationType(GnssSvType& in, GnssConstellationType& out)
+void convertGnssConstellationType(const GnssSvType& in, GnssConstellationType& out)
 {
     switch (in) {
         case GNSS_SV_TYPE_GPS:
@@ -168,7 +168,7 @@ void convertGnssConstellationType(GnssSvType& in, GnssConstellationType& out)
     }
 }
 
-void convertGnssSvid(GnssSv& in, int& out)
+void convertGnssSvid(const GnssSv& in, int& out)
 {
     switch (in.type) {
         case GNSS_SV_TYPE_GPS:
@@ -202,7 +202,7 @@ void convertGnssSvid(GnssSv& in, int& out)
     }
 }
 
-void convertGnssSvid(GnssMeasurementsData& in, int16_t& out)
+void convertGnssSvid(const GnssMeasurementsData& in, int16_t& out)
 {
     switch (in.svType) {
         case GNSS_SV_TYPE_GPS:
@@ -236,7 +236,7 @@ void convertGnssSvid(GnssMeasurementsData& in, int16_t& out)
     }
 }
 
-void convertGnssEphemerisType(GnssEphemerisType& in, IGnssDebug::SatelliteEphemerisType& out)
+void convertGnssEphemerisType(const GnssEphemerisType& in, IGnssDebug::SatelliteEphemerisType& out)
 {
     switch (in) {
         case GNSS_EPH_TYPE_EPHEMERIS:
@@ -252,7 +252,7 @@ void convertGnssEphemerisType(GnssEphemerisType& in, IGnssDebug::SatelliteEpheme
     }
 }
 
-void convertGnssEphemerisSource(GnssEphemerisSource& in,
+void convertGnssEphemerisSource(const GnssEphemerisSource& in,
         SatellitePvt::SatelliteEphemerisSource& out)
 {
     switch (in) {
@@ -273,7 +273,8 @@ void convertGnssEphemerisSource(GnssEphemerisSource& in,
     }
 }
 
-void convertGnssEphemerisHealth(GnssEphemerisHealth& in, IGnssDebug::SatelliteEphemerisHealth& out)
+void convertGnssEphemerisHealth(const GnssEphemerisHealth& in,
+        IGnssDebug::SatelliteEphemerisHealth& out)
 {
     switch (in) {
         case GNSS_EPH_HEALTH_GOOD:

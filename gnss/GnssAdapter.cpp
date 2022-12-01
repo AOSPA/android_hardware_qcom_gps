@@ -4582,7 +4582,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
         bool blank_fix = ((0 == ulpLocation.gpsLocation.latitude) &&
                           (0 == ulpLocation.gpsLocation.longitude) &&
                           (LOC_RELIABILITY_NOT_SET == locationExtended.horizontal_reliability));
-        uint8_t generate_nmea = (reportToAllClients && status != LOC_SESS_FAILURE && !blank_fix);
+        uint8_t generate_nmea = (reportToAllClients && LOC_SESS_SUCCESS == status  && !blank_fix);
         bool custom_nmea_gga = (1 == ContextBase::mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED);
         bool isTagBlockGroupingEnabled =
                 (1 == ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED);
@@ -5873,8 +5873,16 @@ GnssAdapter::invokeGnssEnergyConsumedCallback(uint64_t energyConsumedSinceFirstB
         GnssPowerStatistics gnssPowerStatistics = {};
         gnssPowerStatistics.size = sizeof(GnssPowerStatistics);
 
-        gnssPowerStatistics.totalEnergyMilliJoule =
-                (double)(energyConsumedSinceFirstBoot - mBootReferenceEnergy) / 10.0;
+        if (energyConsumedSinceFirstBoot >= mBootReferenceEnergy) {
+            gnssPowerStatistics.totalEnergyMilliJoule =
+                    (double)(energyConsumedSinceFirstBoot - mBootReferenceEnergy) / 10.0;
+        } else {
+            LOC_LOGe("energyConsumedSinceFirstBoot %" PRIu64 " is smaller than"
+                     "mBootReferenceEnergy %" PRIu64 ","
+                     "Set totalEnergyMilliJoule to 0",
+                     energyConsumedSinceFirstBoot, mBootReferenceEnergy);
+            gnssPowerStatistics.totalEnergyMilliJoule = 0;
+        }
 
         LOC_LOGv("energyConsumedSinceFirstBoot: %" PRId64", "
                  " mBootReferenceEnergy: %" PRId64", "

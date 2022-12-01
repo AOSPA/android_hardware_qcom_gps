@@ -78,7 +78,7 @@ namespace gnss {
 namespace aidl {
 namespace implementation {
 
-static void convertGnssSvStatus(GnssSvNotification& in,
+static void convertGnssSvStatus(const GnssSvNotification& in,
         std::vector<IGnssCallback::GnssSvInfo>& out) {
     out.resize(in.count);
     for (size_t i = 0; i < in.count; i++) {
@@ -134,7 +134,7 @@ void GnssAPIClient::setFlpCallbacks() {
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
     locationCallbacks.size = sizeof(LocationCallbacks);
 
-    locationCallbacks.trackingCb = [this](Location location) {
+    locationCallbacks.trackingCb = [this](const Location& location) {
         onTrackingCb(location);
     };
     locAPISetCallbacks(locationCallbacks);
@@ -176,7 +176,7 @@ void GnssAPIClient::setCallbacks() {
 
     locationCallbacks.gnssSvCb = nullptr;
     if (mSvStatusEnabled) {
-        locationCallbacks.gnssSvCb = [this](GnssSvNotification gnssSvNotification) {
+        locationCallbacks.gnssSvCb = [this](const GnssSvNotification& gnssSvNotification) {
             onGnssSvCb(gnssSvNotification);
         };
     }
@@ -456,7 +456,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     }
 }
 
-void GnssAPIClient::onTrackingCb(Location location) {
+void GnssAPIClient::onTrackingCb(const Location& location) {
     mMutex.lock();
     auto gnssCbIface(mGnssCbIface);
     bool isTracking = mTracking;
@@ -482,7 +482,7 @@ void GnssAPIClient::onTrackingCb(Location location) {
 
 }
 
-void GnssAPIClient::onGnssSvCb(GnssSvNotification gnssSvNotification) {
+void GnssAPIClient::onGnssSvCb(const GnssSvNotification& gnssSvNotification) {
     LOC_LOGd("]: (count: %u)", gnssSvNotification.count);
     mMutex.lock();
     auto gnssCbIface(mGnssCbIface);

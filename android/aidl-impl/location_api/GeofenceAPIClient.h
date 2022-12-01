@@ -62,7 +62,7 @@ public:
     void geofenceRemoveAll();
 
     // callbacks
-    void onGeofenceBreachCb(GeofenceBreachNotification geofenceBreachNotification) final;
+    void onGeofenceBreachCb(const GeofenceBreachNotification& geofenceBreachNotification) final;
     void onGeofenceStatusCb(GeofenceStatusNotification geofenceStatusNotification) final;
     void onAddGeofencesCb(size_t count, LocationError* errors, uint32_t* ids) final;
     void onRemoveGeofencesCb(size_t count, LocationError* errors, uint32_t* ids) final;
