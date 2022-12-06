@@ -444,7 +444,9 @@ void GnssAPIClient::updateCapabilities(LocationCapabilitiesMask capabilitiesMask
     if (capabilitiesMask & LOCATION_CAPABILITIES_ANTENNA_INFO) {
         data |= IGnssCallback::CAPABILITY_ANTENNA_INFO;
     }
-    data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_QWES_SV_POLYNOMIAL_BIT) {
+        data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
+    }
 
     IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015, "aidl-impl" };
 
