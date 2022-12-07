@@ -327,7 +327,7 @@ typedef enum {
     // support measurement corrections
     LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT       = (1<<13),
     // support Robust Location
-    LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT               = (1<<14),
+    LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT              = (1<<14),
     // support precise location edgnss
     LOCATION_CAPABILITIES_EDGNSS_BIT                        = (1<<15),
     // Modem supports Carrier Phase for Precise Positioning
@@ -338,7 +338,7 @@ typedef enum {
     LOCATION_CAPABILITIES_QWES_SV_POLYNOMIAL_BIT            = (1<<17),
     // Modem supports SV Ephemeris for tightly coupled external
     // PPE engines. This is a Standalone Feature.
-    LOCATION_CAPABILITIES_QWES_SV_EPHEMERIS_BIT            = (1<<18),
+    LOCATION_CAPABILITIES_QWES_SV_EPHEMERIS_BIT             = (1<<18),
     // Modem supports GNSS Single Frequency feature. This is a
     // Standalone Feature.
     LOCATION_CAPABILITIES_QWES_GNSS_SINGLE_FREQUENCY        = (1<<19),
@@ -374,7 +374,9 @@ typedef enum {
     // This mask indicates qppe or qfe library is presented.
     LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT               = (1<<29),
     // This mask indicates modem 3GPP source is available.
-    LOCATION_CAPABILITIES_MODEM_3GPP_AVAIL                  = (1<<30)
+    LOCATION_CAPABILITIES_MODEM_3GPP_AVAIL                  = (1<<30),
+    // support GNSS bands
+    LOCATION_CAPABILITIES_GNSS_BANDS_BIT                    = (1ULL<<34)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -1828,9 +1830,16 @@ typedef struct {
     uint32_t count;        // number of items in GnssMeasurements array
     GnssMeasurementsData measurements[GNSS_MEASUREMENTS_MAX];
     GnssMeasurementsClock clock; // clock
+    bool isFullTracking;
     uint32_t agcCount;     // number of items in GnssMeasurementsAgc array
     GnssMeasurementsAgc gnssAgc[GNSS_BANDS_MAX];
 } GnssMeasurementsNotification;
+
+typedef struct {
+    uint32_t size;              // set to sizeof(GnssCapabilitiesNotification)
+    uint32_t count;             // number of SVs in the gnssSignalType array
+    GnssMeasurementsSignalType  gnssSignalType[GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES];
+} GnssCapabNotification;
 
 typedef uint32_t GnssSvId;
 
@@ -2798,6 +2807,13 @@ typedef std::function<void(
    const GnssDcReportInfo& dcReportInfo
 )> gnssDcReportCallback;
 
+/* Informs the framework of the list of GnssSignalTypes the GNSS HAL implementation
+   supports, optional can be NULL
+ */
+typedef std::function<void(
+    const GnssCapabNotification& gnssCapabNotification
+)> gnssSignalTypesCallback;
+
 typedef std::function<void(
 )> locationApiDestroyCompleteCallback;
 
@@ -2874,6 +2890,7 @@ typedef struct {
     engineLocationsInfoCallback engineLocationsInfoCb; // optional
     gnssDcReportCallback gnssDcReportCb;               // optional
     gnssNmeaCallback engineNmeaCb; // optional
+    gnssSignalTypesCallback gnssSignalTypesCb;          // optional
 } LocationCallbacks;
 
 typedef struct {

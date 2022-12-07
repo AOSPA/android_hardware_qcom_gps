@@ -632,6 +632,8 @@ public:
     virtual void reportLocationSystemInfoEvent(const LocationSystemInfo& locationSystemInfo);
     virtual void reportDcMessage(const GnssDcReportInfo& dcReport);
     virtual void reportModemGnssQesdkFeatureStatus(const ModemGnssQesdkFeatureMask& mask);
+    virtual void reportSignalTypeCapabilities(const GnssCapabNotification& gnssCapabNotification);
+
     virtual bool requestATL(int connHandle, LocAGpsType agps_type,
                             LocApnTypeMask apn_type_mask,
                             SubId sub_id=DEFAULT_SUB);
