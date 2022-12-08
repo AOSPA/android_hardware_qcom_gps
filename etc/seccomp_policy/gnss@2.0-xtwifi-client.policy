@@ -70,3 +70,6 @@ creat: 1
 chmod: 1
 lseek: 1
 geteuid32: 1
+getrlimit: 1
+shutdown: 1
+
