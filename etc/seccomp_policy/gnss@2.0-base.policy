@@ -120,3 +120,4 @@ epoll_create1: 1
 epoll_pwait: 1
 epoll_ctl: 1
 process_vm_readv: 1
+sched_getaffinity: 1
