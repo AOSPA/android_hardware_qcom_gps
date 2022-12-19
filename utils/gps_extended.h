@@ -172,14 +172,6 @@ struct BackhaulContext {
 #define GNSS_MAX_SV_INFO_LIST_SIZE 176
 
 typedef struct {
-    int32_t jammerInd;
-    // Jammer Indication
-    int32_t agc;
-    // Automatic gain control
-} GnssJammerData;
-
-
-typedef struct {
     uint16_t gnssSvId;
     /**<   GNSS SV ID. Range:
       - GPS --     1 to 32
@@ -257,7 +249,7 @@ typedef struct {
     Gnss_LeapSecondInfoStructType leapSecondInfo;
     /**<   Leap second information. */
 
-    std::vector<GnssJammerData> jammerData;
+    std::vector<int32_t> jammerInd;
     /**<   Jammer indicator of each signal. */
 
     uint64_t jammedSignalsMask;
