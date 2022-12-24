@@ -198,10 +198,6 @@ public:
     uint32_t mJammerGlo;
     uint32_t mJammerBds;
     uint32_t mJammerGal;
-    uint32_t   mAgcGps;
-    uint32_t   mAgcGlo;
-    uint32_t   mAgcBds;
-    uint32_t   mAgcGal;
     uint32_t mGloBpAmpI;
     uint32_t mGloBpAmpQ;
     uint32_t mBdsBpAmpI;
@@ -209,7 +205,7 @@ public:
     uint32_t mGalBpAmpI;
     uint32_t mGalBpAmpQ;
     uint32_t mJammedSignalsMask;
-    std::vector<GnssJammerData> mJammerData;
+    std::vector<int32_t> mJammerInd;
     inline SystemStatusRfAndParams() :
         mPgaGain(0),
         mGpsBpAmpI(0),
@@ -220,10 +216,6 @@ public:
         mJammerGlo(0),
         mJammerBds(0),
         mJammerGal(0),
-        mAgcGps(0),
-        mAgcGlo(0),
-        mAgcBds(0),
-        mAgcGal(0),
         mGloBpAmpI(0),
         mGloBpAmpQ(0),
         mBdsBpAmpI(0),
