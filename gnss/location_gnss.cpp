@@ -150,6 +150,8 @@ static void injectLocationAndAddr(const Location& location, const GnssCivicAddre
 static uint32_t setOptInStatus(bool userConsent);
 static uint32_t configEngineIntegrityRisk(PositioningEngineMask engType, uint32_t integrityRisk);
 static uint32_t configXtraParams(bool enable, const XtraConfigParams& configParams);
+static uint32_t configMerkleTree(const char * merkleTreeConfigBuffer, int bufferLength);
+static uint32_t configOsnmaEnablement(bool enable);
 static uint32_t getXtraStatus();
 static uint32_t registerXtraStatusUpdate(bool registerUpdate);
 static void configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash);
@@ -223,6 +225,8 @@ static const GnssInterface gGnssInterface = {
     getXtraStatus,
     registerXtraStatusUpdate,
     configPrecisePositioning,
+    configMerkleTree,
+    configOsnmaEnablement,
 };
 
 #ifndef DEBUG_X86
@@ -758,5 +762,29 @@ static uint32_t registerXtraStatusUpdate(bool registerUpdate) {
 static void configPrecisePositioning(uint32_t featureId, bool enable, std::string appHash) {
     if (NULL != gGnssAdapter) {
         gGnssAdapter->configPrecisePositioningCommand(featureId, enable, appHash);
+    }
+}
+
+static uint32_t configMerkleTree(const char * merkleTreeConfigBuffer, int bufferLength) {
+    if (NULL != gGnssAdapter) {
+#ifdef USE_GLIB
+        return gGnssAdapter->configMerkleTreeCommand(merkleTreeConfigBuffer, bufferLength);
+#else
+        return 1;
+#endif
+    } else {
+        return 0;
+    }
+}
+
+static uint32_t configOsnmaEnablement(bool enable) {
+    if (NULL != gGnssAdapter) {
+#ifdef USE_GLIB
+        return gGnssAdapter->configOsnmaEnablementCommand(enable);
+#else
+        return 1;
+#endif
+    } else {
+        return 0;
     }
 }

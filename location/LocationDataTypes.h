@@ -2907,4 +2907,56 @@ typedef uint64_t NetworkHandle;
 #define NETWORK_HANDLE_UNKNOWN  ~0
 #define MAX_NETWORK_HANDLES 10
 
+/* enum OSNMA New Public Key Type (NPKT) */
+typedef enum {
+    MGP_OSNMA_NPKT_RESERVED0    = 0, /* reserved 0 */
+    MGP_OSNMA_NPKT_ECDSA_P_256  = 1, /* 1: ECDSA P-256, key length shall be 264 */
+    MGP_OSNMA_NPKT_RESERVED2    = 2, /* reserved 2 */
+    MGP_OSNMA_NPKT_ECDSA_P_521  = 3, /* 3: ECDSA P-521, key length shall be 536 */
+    MGP_OSNMA_NPKT_ALERT        = 4  /* OSNMA Alert Message (OAM) */
+} mgpOsnmaNpktEnumTypeVal;
+typedef uint8_t mgpOsnmaNpktEnumType;
+
+/* Tree Node structure */
+typedef struct {
+    uint8_t uj; /* the height of the node in the Merkle Tree */
+    uint8_t ui; /* the position of the node in the Merkle Tree level */
+    uint16_t wLengthInBits; /*  the length in bits of the hash in the x_ji element;
+                         shall be 256 */
+    uint8_t uHash[32]; /* Hash of Merkle tree nodes */
+} mgpOsnmaTreeNodeT;
+
+/* public key structure */
+typedef struct {
+    uint8_t uFlag; /* 1: valid, 0: invalid */
+    mgpOsnmaNpktEnumType eNpkt; /* Public key type */
+    uint8_t  uNpkId; /* public key ID */
+    uint16_t wKeyLen; /* in bits */
+    uint8_t  uKey[67]; /* max key length is 536 = 8 * 67 */
+    mgpOsnmaTreeNodeT zNodes[4]; /* required Merkle tree nodes at level 0, 1, 2, 3
+                                 zNodes[0] is at level 0;
+                                 zNodes[3] is at level 3 */
+} mgpOsnmaPublicKeyT;
+
+/* Hash Function (HF) */
+typedef enum {
+    MGP_OSNMA_HF_SHA_256   = 0, /* 0: SHA-256 */
+    MGP_OSNMA_HF_RESERVED1 = 1, /* 1: reserved */
+    MGP_OSNMA_HF_SHA3_256  = 2, /* 2: SHA3-256 */
+    MGP_OSNMA_HF_RESERVED3 = 3, /* 3: reserved */
+} mgpOsnmaHfEnumTypeVal;
+typedef uint8_t mgpOsnmaHfEnumType;
+
+/* Merkle Tree Nodes */
+typedef struct {
+    uint8_t uFlag; /* 1: valid; 0: invalid */
+    mgpOsnmaHfEnumType eHfType;
+    mgpOsnmaTreeNodeT zRootNode; /* Root Node */
+} mgpOsnmaMerkleTreeT;
+
+typedef struct {
+    mgpOsnmaPublicKeyT   zPublicKey;  /* public key */
+    mgpOsnmaMerkleTreeT  zMerkleTree; /* Merkle Tree Nodes */
+} mgpOsnmaPublicKeyAndMerkleTreeStruct;
+
 #endif /* LOCATIONDATATYPES_H */

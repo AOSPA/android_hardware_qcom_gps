@@ -87,6 +87,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gps_extended_c.h>
 #include <sys/stat.h>
 #include <thread>
+#ifdef USE_GLIB
+#include "XmlFileParser.h"
+#endif
 
 #define RAD2DEG    (180.0 / M_PI)
 #define DEG2RAD    (M_PI / 180.0)
@@ -7683,6 +7686,116 @@ void GnssAdapter::configPrecisePositioningCommand(
     };
     sendMsg(new MsgConfigPrecisePositioning(*this, enable, appHash, featureId));
 }
+
+#ifdef USE_GLIB
+uint32_t GnssAdapter::configMerkleTreeCommand(const char * merkleTreeConfigBuffer, int bufLen) {
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, merkle tree buffer length %d", sessionId, bufLen);
+    struct MsgConfigMerkleTreeParams : public LocMsg {
+        GnssAdapter&     mAdapter;
+        LocApiBase&      mApi;
+        uint32_t         mSessionId;
+        char*            mMerkleTreeConfigBuffer;
+        int              mBufferLen;
+        mutable int      mKeyNum;
+
+        inline MsgConfigMerkleTreeParams(GnssAdapter& adapter, LocApiBase& api,
+                uint32_t sessionId, const char* merkleTreeBuf, int bufLen) :
+                LocMsg(), mAdapter(adapter), mApi(api), mSessionId(sessionId), mBufferLen(bufLen),
+                mKeyNum(0) {
+            mMerkleTreeConfigBuffer = new char[bufLen+1];
+            strlcpy(mMerkleTreeConfigBuffer, merkleTreeBuf, bufLen+1);
+        }
+        inline ~MsgConfigMerkleTreeParams() {
+            if (mMerkleTreeConfigBuffer) {
+                delete[] mMerkleTreeConfigBuffer;
+            }
+        }
+        inline virtual void proc() const {
+            mgpOsnmaPublicKeyAndMerkleTreeStruct* treeParam =
+                    new mgpOsnmaPublicKeyAndMerkleTreeStruct[2];
+            if (nullptr == treeParam) {
+                LOC_LOGe("Merkle tree struct malloc failed");
+                return;
+            }
+            memset(treeParam, 0, sizeof(mgpOsnmaPublicKeyAndMerkleTreeStruct)*2);
+            int retVal = loc_read_conf_xml(mMerkleTreeConfigBuffer, mBufferLen, treeParam);
+            if (retVal != 0) {
+                mAdapter.reportResponse(LOCATION_ERROR_INVALID_PARAMETER, mSessionId);
+                LOC_LOGe("Merkle tree config file parse failed");
+                if (treeParam != nullptr) {
+                    delete treeParam;
+                }
+                return;
+            }
+            //inject Merkle tree Parameter into PE
+            LocationError err = LOCATION_ERROR_SUCCESS;
+            int keyNum = (treeParam[1].zPublicKey.uFlag == 1)? 2: 1;
+            LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
+                    [&mAdapter = mAdapter, this, treeParam, keyNum] (LocationError err) mutable {
+                mAdapter.reportResponse(err, mSessionId);
+                ++mKeyNum;
+                // clean treeParam when response for the last public key reports
+                if (treeParam != nullptr && mKeyNum == keyNum) {
+                    delete treeParam;
+                    treeParam = nullptr;
+                }
+            });
+            if (!locApiResponse) {
+                LOC_LOGe("memory alloc failed");
+                mAdapter.reportResponse(LOCATION_ERROR_GENERAL_FAILURE, mSessionId);
+                if (treeParam != nullptr) {
+                    delete treeParam;
+                    treeParam = nullptr;
+                }
+            } else {
+                for (int i=0; i<keyNum; ++i) {
+                    mApi.configMerkleTree(treeParam + i, locApiResponse);
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgConfigMerkleTreeParams(*this, *mLocApi, sessionId,
+            merkleTreeConfigBuffer, bufLen));
+    return sessionId;
+}
+
+uint32_t GnssAdapter::configOsnmaEnablementCommand(bool enable) {
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, osnma enablement %d", sessionId, enable);
+    struct MsgConfigOsnmaEnablementParams : public LocMsg {
+        GnssAdapter&     mAdapter;
+        LocApiBase&      mApi;
+        uint32_t         mSessionId;
+        bool             mEnable;
+
+        inline MsgConfigOsnmaEnablementParams(GnssAdapter& adapter, LocApiBase& api,
+                uint32_t sessionId, bool enable) :
+                LocMsg(), mAdapter(adapter), mApi(api), mSessionId(sessionId), mEnable(enable) {}
+        inline ~MsgConfigOsnmaEnablementParams() {}
+        inline virtual void proc() const {
+            //inject Merkle tree Parameter into PE
+            LocationError err = LOCATION_ERROR_SUCCESS;
+            LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
+                    [&mAdapter = mAdapter, this] (LocationError err) mutable {
+                mAdapter.reportResponse(err, mSessionId);
+            });
+            if (!locApiResponse) {
+                LOC_LOGe("memory alloc failed");
+                mAdapter.reportResponse(LOCATION_ERROR_GENERAL_FAILURE, mSessionId);
+            } else {
+                mApi.configOsnmaEnablement(mEnable, locApiResponse);
+            }
+        }
+    };
+
+    sendMsg(new MsgConfigOsnmaEnablementParams(*this, *mLocApi, sessionId, enable));
+    return sessionId;
+}
+#endif
 
 void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig)
 {
