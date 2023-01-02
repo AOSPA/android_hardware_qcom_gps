@@ -112,8 +112,8 @@ public:
 
     // callbacks we are interested in
     void onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) final;
-    void onTrackingCb(Location location) final;
-    void onGnssSvCb(GnssSvNotification gnssSvNotification) final;
+    void onTrackingCb(const Location& location) final;
+    void onGnssSvCb(const GnssSvNotification& gnssSvNotification) final;
     void onGnssNmeaCb(GnssNmeaNotification gnssNmeaNotification) final;
     void onEngineLocationsInfoCb(uint32_t count,
             GnssLocationInfoNotification* engineLocationInfoNotification);
@@ -125,6 +125,8 @@ private:
     void setCallbacks();
     void setFlpCallbacks();
     void initLocationOptions();
+    void updateCapabilities(LocationCapabilitiesMask capabilitiesMask,
+                            bool forceSendCapabilities);
 
     std::mutex mMutex;
     bool mTracking;

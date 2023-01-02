@@ -78,7 +78,7 @@ namespace gnss {
 namespace aidl {
 namespace implementation {
 
-static void convertGnssSvStatus(GnssSvNotification& in,
+static void convertGnssSvStatus(const GnssSvNotification& in,
         std::vector<IGnssCallback::GnssSvInfo>& out) {
     out.resize(in.count);
     for (size_t i = 0; i < in.count; i++) {
@@ -102,6 +102,7 @@ static void convertGnssSvStatus(GnssSvNotification& in,
         out[i].basebandCN0DbHz = in.gnssSvs[i].basebandCarrierToNoiseDbHz;
     }
 }
+
 GnssAPIClient::GnssAPIClient(const shared_ptr<IGnssCallback>& gpsCb) :
     LocationAPIClientBase(),
     mControlClient(new LocationAPIControlClient()),
@@ -134,7 +135,7 @@ void GnssAPIClient::setFlpCallbacks() {
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
     locationCallbacks.size = sizeof(LocationCallbacks);
 
-    locationCallbacks.trackingCb = [this](Location location) {
+    locationCallbacks.trackingCb = [this](const Location& location) {
         onTrackingCb(location);
     };
     locAPISetCallbacks(locationCallbacks);
@@ -176,7 +177,7 @@ void GnssAPIClient::setCallbacks() {
 
     locationCallbacks.gnssSvCb = nullptr;
     if (mSvStatusEnabled) {
-        locationCallbacks.gnssSvCb = [this](GnssSvNotification gnssSvNotification) {
+        locationCallbacks.gnssSvCb = [this](const GnssSvNotification& gnssSvNotification) {
             onGnssSvCb(gnssSvNotification);
         };
     }
@@ -350,11 +351,14 @@ void GnssAPIClient::gnssDeleteAidingData(IGnss::GnssAidingData aidingDataFlags)
     }
     mControlClient->locAPIGnssDeleteAidingData(data);
 }
+
 void GnssAPIClient::requestCapabilities() {
     // only send capablities if it's already cached, otherwise the first time LocationAPI
     // is initialized, capabilities will be sent by LocationAPI
+    // we need to send capabilities if setCallback was called, that is why we force
+    // this by calling updateCapabilities with 2nd parameter being true
     if (mLocationCapabilitiesCached) {
-        onCapabilitiesCb(mLocationCapabilitiesMask);
+        updateCapabilities(mLocationCapabilitiesMask, true);
     }
 }
 
@@ -384,7 +388,25 @@ void GnssAPIClient::gnssConfigurationUpdate(const GnssConfig& gnssConfig) {
 
 // callbacks
 void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) {
-    LOC_LOGd("]: (0x%" PRIx64 ")", capabilitiesMask);
+    LOC_LOGd("mLocationCapabilitiesMask=%02x capabilitiesMask=%02x",
+             mLocationCapabilitiesMask, capabilitiesMask);
+
+    updateCapabilities(capabilitiesMask, false);
+}
+
+void GnssAPIClient::updateCapabilities(LocationCapabilitiesMask capabilitiesMask,
+                                       bool forceSendCapabilities) {
+
+    // we need to send capabilities if setCallback was called no matter what
+    // (forceSendCapabilities is true)
+    // but we need to NOT send capabilities if they are not changed
+
+    if (!forceSendCapabilities) {
+        if (capabilitiesMask == mLocationCapabilitiesMask) {
+            LOC_LOGd("New capabilities are the same as existing ones, just return");
+            return;
+        }
+    }
     mLocationCapabilitiesMask = capabilitiesMask;
     mLocationCapabilitiesCached = true;
     mMutex.lock();
@@ -422,7 +444,9 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     if (capabilitiesMask & LOCATION_CAPABILITIES_ANTENNA_INFO) {
         data |= IGnssCallback::CAPABILITY_ANTENNA_INFO;
     }
-    data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
+    if (capabilitiesMask & LOCATION_CAPABILITIES_QWES_SV_POLYNOMIAL_BIT) {
+        data |= IGnssCallback::CAPABILITY_SATELLITE_PVT;
+    }
 
     IGnssCallback::GnssSystemInfo gnssInfo = { .yearOfHw = 2015, "aidl-impl" };
 
@@ -435,8 +459,8 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
                 gnssInfo.yearOfHw++; // 2018
                 if (capabilitiesMask & LOCATION_CAPABILITIES_PRIVACY_BIT) {
                     gnssInfo.yearOfHw++; // 2019
-                    if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
-                        gnssInfo.yearOfHw++; // 2020
+                    if (capabilitiesMask & LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT) {
+                        gnssInfo.yearOfHw += 3; // 2022
                     }
                 }
             }
@@ -456,7 +480,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask) 
     }
 }
 
-void GnssAPIClient::onTrackingCb(Location location) {
+void GnssAPIClient::onTrackingCb(const Location& location) {
     mMutex.lock();
     auto gnssCbIface(mGnssCbIface);
     bool isTracking = mTracking;
@@ -482,7 +506,7 @@ void GnssAPIClient::onTrackingCb(Location location) {
 
 }
 
-void GnssAPIClient::onGnssSvCb(GnssSvNotification gnssSvNotification) {
+void GnssAPIClient::onGnssSvCb(const GnssSvNotification& gnssSvNotification) {
     LOC_LOGd("]: (count: %u)", gnssSvNotification.count);
     mMutex.lock();
     auto gnssCbIface(mGnssCbIface);

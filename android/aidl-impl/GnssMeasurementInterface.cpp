@@ -139,7 +139,7 @@ ScopedAStatus GnssMeasurementInterface::close()  {
 }
 
 void GnssMeasurementInterface::onGnssMeasurementsCb(
-        GnssMeasurementsNotification gnssMeasurementsNotification) {
+        const GnssMeasurementsNotification &gnssMeasurementsNotification) {
 
     std::unique_lock<std::mutex> lock(mMutex);
     LOC_LOGd("(count: %u active: %d)", gnssMeasurementsNotification.count, mTracking);
@@ -184,7 +184,7 @@ void GnssMeasurementInterface::startTracking(
     locationCallbacks.gnssMeasurementsCb = nullptr;
     if (nullptr != mGnssMeasurementCbIface) {
         locationCallbacks.gnssMeasurementsCb =
-            [this](GnssMeasurementsNotification gnssMeasurementsNotification) {
+            [this](const GnssMeasurementsNotification &gnssMeasurementsNotification) {
             onGnssMeasurementsCb(gnssMeasurementsNotification);
         };
     }
@@ -208,7 +208,8 @@ void GnssMeasurementInterface::startTracking(
     locAPIStartTracking(options);
 }
 
-void GnssMeasurementInterface::convertGnssData(GnssMeasurementsNotification& in, GnssData& out) {
+void GnssMeasurementInterface::convertGnssData(
+        const GnssMeasurementsNotification& in, GnssData& out) {
 
     out.measurements.resize(in.count);
     for (size_t i = 0; i < in.count; i++) {
@@ -240,7 +241,7 @@ void GnssMeasurementInterface::convertGnssData(GnssMeasurementsNotification& in,
 }
 
 void GnssMeasurementInterface::convertGnssMeasurement(
-        GnssMeasurementsData& in, GnssMeasurement& out) {
+        const GnssMeasurementsData& in, GnssMeasurement& out) {
     // flags
     convertGnssFlags(in, out);
     // svid
@@ -295,7 +296,8 @@ void GnssMeasurementInterface::convertGnssMeasurement(
     /* This is not supported, the corresponding flag is not set */
 }
 
-void GnssMeasurementInterface::convertGnssFlags(GnssMeasurementsData& in, GnssMeasurement& out) {
+void GnssMeasurementInterface::convertGnssFlags(
+        const GnssMeasurementsData& in, GnssMeasurement& out) {
 
     if (in.flags & GNSS_MEASUREMENTS_DATA_SIGNAL_TO_NOISE_RATIO_BIT)
         out.flags |= out.HAS_SNR;
@@ -323,7 +325,7 @@ void GnssMeasurementInterface::convertGnssFlags(GnssMeasurementsData& in, GnssMe
         out.flags |= out.HAS_CORRELATION_VECTOR;
 }
 
-void GnssMeasurementInterface::convertGnssSvId(GnssMeasurementsData& in, int& out) {
+void GnssMeasurementInterface::convertGnssSvId(const GnssMeasurementsData& in, int& out) {
 
     switch (in.svType) {
     case GNSS_SV_TYPE_GPS:
@@ -358,7 +360,7 @@ void GnssMeasurementInterface::convertGnssSvId(GnssMeasurementsData& in, int& ou
 }
 
 void GnssMeasurementInterface::convertGnssSignalType(
-        GnssMeasurementsData& in, GnssSignalType& out) {
+        const GnssMeasurementsData& in, GnssSignalType& out) {
 
     convertGnssConstellationType(in.svType, out.constellation);
     out.carrierFrequencyHz = in.carrierFrequencyHz;
@@ -366,7 +368,7 @@ void GnssMeasurementInterface::convertGnssSignalType(
 }
 
 void GnssMeasurementInterface::convertGnssConstellationType(
-        GnssSvType& in, GnssConstellationType& out) {
+        const GnssSvType& in, GnssConstellationType& out) {
 
     switch (in) {
         case GNSS_SV_TYPE_GPS:
@@ -398,8 +400,8 @@ void GnssMeasurementInterface::convertGnssConstellationType(
 }
 
 void GnssMeasurementInterface::convertGnssMeasurementsCodeType(
-        GnssMeasurementsCodeType& inCodeType,
-        char* inOtherCodeTypeName, GnssSignalType& out) {
+        const GnssMeasurementsCodeType& inCodeType,
+        const char* inOtherCodeTypeName, GnssSignalType& out) {
 
     switch (inCodeType) {
     case GNSS_MEASUREMENTS_CODE_TYPE_A:
@@ -451,7 +453,8 @@ void GnssMeasurementInterface::convertGnssMeasurementsCodeType(
     }
 }
 
-void GnssMeasurementInterface::convertGnssState(GnssMeasurementsData& in, GnssMeasurement& out) {
+void GnssMeasurementInterface::convertGnssState(
+        const GnssMeasurementsData& in, GnssMeasurement& out) {
 
     if (in.stateMask & GNSS_MEASUREMENTS_STATE_CODE_LOCK_BIT)
         out.state |= out.STATE_CODE_LOCK;
@@ -490,7 +493,7 @@ void GnssMeasurementInterface::convertGnssState(GnssMeasurementsData& in, GnssMe
 }
 
 void GnssMeasurementInterface::convertGnssAccumulatedDeltaRangeState(
-        GnssMeasurementsData& in, GnssMeasurement& out) {
+        const GnssMeasurementsData& in, GnssMeasurement& out) {
 
     if (in.adrStateMask & GNSS_MEASUREMENTS_ACCUMULATED_DELTA_RANGE_STATE_VALID_BIT)
         out.accumulatedDeltaRangeState |= out.ADR_STATE_VALID;
@@ -503,7 +506,7 @@ void GnssMeasurementInterface::convertGnssAccumulatedDeltaRangeState(
 }
 
 void GnssMeasurementInterface::convertGnssMultipathIndicator(
-        GnssMeasurementsData& in, GnssMeasurement& out) {
+        const GnssMeasurementsData& in, GnssMeasurement& out) {
 
     switch (in.multipathIndicator) {
     case GNSS_MEASUREMENTS_MULTIPATH_INDICATOR_PRESENT:
@@ -519,7 +522,7 @@ void GnssMeasurementInterface::convertGnssMultipathIndicator(
     }
 }
 
-void GnssMeasurementInterface::convertGnssSatellitePvtFlags(GnssMeasurementsData& in,
+void GnssMeasurementInterface::convertGnssSatellitePvtFlags(const GnssMeasurementsData& in,
                                                             GnssMeasurement& out) {
 
     if (in.satellitePvt.flags & GNSS_SATELLITE_PVT_POSITION_VELOCITY_CLOCK_INFO_BIT)
@@ -531,7 +534,7 @@ void GnssMeasurementInterface::convertGnssSatellitePvtFlags(GnssMeasurementsData
 }
 
 void GnssMeasurementInterface::convertGnssSatellitePvt(
-        GnssMeasurementsData& in, GnssMeasurement& out) {
+        const GnssMeasurementsData& in, GnssMeasurement& out) {
 
     // flags
     convertGnssSatellitePvtFlags(in, out);
@@ -586,7 +589,7 @@ void GnssMeasurementInterface::convertGnssSatellitePvt(
 }
 
 void GnssMeasurementInterface::convertGnssClock(
-        GnssMeasurementsClock& in, GnssClock& out) {
+        const GnssMeasurementsClock& in, GnssClock& out) {
 
     // gnssClockFlags
     if (in.flags & GNSS_MEASUREMENTS_CLOCK_FLAGS_LEAP_SECOND_BIT)
@@ -632,7 +635,7 @@ void GnssMeasurementInterface::convertGnssClock(
 }
 
 void GnssMeasurementInterface::convertElapsedRealtimeNanos(
-        GnssMeasurementsNotification& in, ElapsedRealtime& elapsedRealtime) {
+        const GnssMeasurementsNotification& in, ElapsedRealtime& elapsedRealtime) {
 
     if (in.clock.flags & GNSS_MEASUREMENTS_CLOCK_FLAGS_ELAPSED_REAL_TIME_BIT) {
         elapsedRealtime.flags |= elapsedRealtime.HAS_TIMESTAMP_NS;

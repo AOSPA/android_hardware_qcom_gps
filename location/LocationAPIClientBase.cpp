@@ -307,7 +307,7 @@ void LocationAPIClientBase::locAPISetCallbacks(LocationCallbacks& locationCallba
     if (locationCallbacks.geofenceBreachCb != nullptr) {
         mGeofenceBreachCallback = locationCallbacks.geofenceBreachCb;
         locationCallbacks.geofenceBreachCb =
-            [this](GeofenceBreachNotification geofenceBreachNotification) {
+            [this](const GeofenceBreachNotification& geofenceBreachNotification) {
                 beforeGeofenceBreachCb(geofenceBreachNotification);
             };
     }
@@ -915,7 +915,6 @@ void LocationAPIClientBase::beforeGeofenceBreachCb(
         GeofenceBreachNotification geofenceBreachNotification)
 {
     uint32_t* ids = (uint32_t*)malloc(sizeof(uint32_t) * geofenceBreachNotification.count);
-    uint32_t* backup = geofenceBreachNotification.ids;
     size_t n = geofenceBreachNotification.count;
     geofenceBreachCallback genfenceCallback = nullptr;
 
@@ -955,9 +954,6 @@ void LocationAPIClientBase::beforeGeofenceBreachCb(
         genfenceCallback(geofenceBreachNotification);
     }
 
-    // restore ids
-    geofenceBreachNotification.ids = backup;
-    geofenceBreachNotification.count = n;
     free(ids);
 }
 

@@ -2155,7 +2155,7 @@ void loc_nmea_generate_pos(const UlpLocation &location,
         nmeaArraystr.push_back(sentence_DTM);
         // ------$--RMC-------
         nmeaArraystr.push_back(sentence_RMC);
-        if (GEODETIC_TYPE_WGS_84 == mNmeaDatumType) {
+        if (GEODETIC_TYPE_PZ_90 == mNmeaDatumType) {
             // ------$--DTM-------
             nmeaArraystr.push_back(sentence_DTM);
         }

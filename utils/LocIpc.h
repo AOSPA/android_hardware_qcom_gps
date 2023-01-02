@@ -75,12 +75,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <LocThread.h>
 
 using namespace std;
-#ifdef NO_UNORDERED_SET_OR_MAP
-    #include <set>
-    #define unordered_set set
-#else
-    #include <unordered_set>
-#endif
+#include <unordered_set>
 
 namespace loc_util {
 

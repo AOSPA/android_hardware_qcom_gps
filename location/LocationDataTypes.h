@@ -225,49 +225,47 @@ typedef enum {
 } GnssLocationPosDataBitsExt;
 
 typedef uint64_t GnssLocationInfoFlagMask;
-typedef enum {
-    GNSS_LOCATION_INFO_ALTITUDE_MEAN_SEA_LEVEL_BIT      = (1<<0),  // altitude mean sea level
-    GNSS_LOCATION_INFO_DOP_BIT                          = (1<<1),  // pdop, hdop, and vdop
-    GNSS_LOCATION_INFO_MAGNETIC_DEVIATION_BIT           = (1<<2),  // magnetic deviation
-    GNSS_LOCATION_INFO_HOR_RELIABILITY_BIT              = (1<<3),  // horizontal reliability
-    GNSS_LOCATION_INFO_VER_RELIABILITY_BIT              = (1<<4),  // vertical reliability
-    GNSS_LOCATION_INFO_HOR_ACCURACY_ELIP_SEMI_MAJOR_BIT = (1<<5),  // elipsode semi major
-    GNSS_LOCATION_INFO_HOR_ACCURACY_ELIP_SEMI_MINOR_BIT = (1<<6),  // elipsode semi minor
-    GNSS_LOCATION_INFO_HOR_ACCURACY_ELIP_AZIMUTH_BIT    = (1<<7),  // accuracy elipsode azimuth
-    GNSS_LOCATION_INFO_GNSS_SV_USED_DATA_BIT            = (1<<8),  // svUsedInPosition,
+#define LDT_GNSS_LOCATION_INFO_ALTITUDE_MEAN_SEA_LEVEL_BIT (1<<0)  // altitude mean sea level
+#define LDT_GNSS_LOCATION_INFO_DOP_BIT (1<<1)  // pdop, hdop and vdop
+#define LDT_GNSS_LOCATION_INFO_MAGNETIC_DEVIATION_BIT (1<<2)  // magnetic deviation
+#define LDT_GNSS_LOCATION_INFO_HOR_RELIABILITY_BIT (1<<3)  // horizontal reliability
+#define LDT_GNSS_LOCATION_INFO_VER_RELIABILITY_BIT (1<<4)  // vertical reliability
+#define LDT_GNSS_LOCATION_INFO_HOR_ACCURACY_ELIP_SEMI_MAJOR_BIT (1<<5)  // elipsode semi major
+#define LDT_GNSS_LOCATION_INFO_HOR_ACCURACY_ELIP_SEMI_MINOR_BIT (1<<6)  // elipsode semi minor
+#define LDT_GNSS_LOCATION_INFO_HOR_ACCURACY_ELIP_AZIMUTH_BIT (1<<7)  // accuracy elipsode azimuth
+#define LDT_GNSS_LOCATION_INFO_GNSS_SV_USED_DATA_BIT (1<<8)  // svUsedInPosition
                                                                    //       numOfMeasReceived
                                                                    //       and measUsageInfo
-    GNSS_LOCATION_INFO_NAV_SOLUTION_MASK_BIT            = (1<<9),  // navSolutionMask
-    GNSS_LOCATION_INFO_SV_SOURCE_INFO_BIT               = (1<<10), // LocSvInfoSource
-    GNSS_LOCATION_INFO_POS_DYNAMICS_DATA_BIT            = (1<<11), // position dynamics data &
+#define LDT_GNSS_LOCATION_INFO_NAV_SOLUTION_MASK_BIT (1<<9)  // navSolutionMask
+#define LDT_GNSS_LOCATION_INFO_SV_SOURCE_INFO_BIT (1<<10) // LocSvInfoSource
+#define LDT_GNSS_LOCATION_INFO_POS_DYNAMICS_DATA_BIT (1<<11) // position dynamics data &
                                                                    //       Position Dynamics Ext
-    GNSS_LOCATION_INFO_EXT_DOP_BIT                      = (1<<12), // gdop, tdop
-    GNSS_LOCATION_INFO_NORTH_STD_DEV_BIT                = (1<<13), // North standard deviation
-    GNSS_LOCATION_INFO_EAST_STD_DEV_BIT                 = (1<<14), // East standard deviation
-    GNSS_LOCATION_INFO_NORTH_VEL_BIT                    = (1<<15), // North Velocity
-    GNSS_LOCATION_INFO_EAST_VEL_BIT                     = (1<<16), // East Velocity
-    GNSS_LOCATION_INFO_UP_VEL_BIT                       = (1<<17), // Up Velocity
-    GNSS_LOCATION_INFO_NORTH_VEL_UNC_BIT                = (1<<18), // North Velocity Uncertainty
-    GNSS_LOCATION_INFO_EAST_VEL_UNC_BIT                 = (1<<19), // East Velocity Uncertainty
-    GNSS_LOCATION_INFO_UP_VEL_UNC_BIT                   = (1<<20), // Up Velocity Uncertainty
-    GNSS_LOCATION_INFO_LEAP_SECONDS_BIT                 = (1<<21), // leap seconds
-    GNSS_LOCATION_INFO_NUM_SV_USED_IN_POSITION_BIT      = (1<<22), // number of SV used in position
-    GNSS_LOCATION_INFO_CALIBRATION_CONFIDENCE_BIT       = (1<<23), // sensor cal confidence
-    GNSS_LOCATION_INFO_CALIBRATION_STATUS_BIT           = (1<<24), // sensor cal status
-    GNSS_LOCATION_INFO_OUTPUT_ENG_TYPE_BIT              = (1<<25), // output engine type
-    GNSS_LOCATION_INFO_OUTPUT_ENG_MASK_BIT              = (1<<26), // output engine mask
-    GNSS_LOCATION_INFO_CONFORMITY_INDEX_BIT             = (1<<27), // conformity index
-    GNSS_LOCATION_INFO_LLA_VRP_BASED_BIT                = (1<<28), // VRP-based lat/long/alt
-    GNSS_LOCATION_INFO_ENU_VELOCITY_VRP_BASED_BIT       = (1<<29), // VRP-based east/north/up vel
-    GNSS_LOCATION_INFO_DR_SOLUTION_STATUS_MASK_BIT      = (1ULL<<30), // Valid DR solution status
-    GNSS_LOCATION_INFO_ALTITUDE_ASSUMED_BIT             = (1ULL<<31), // Valid altitude assumed
-    GNSS_LOCATION_INFO_SESSION_STATUS_BIT               = (1ULL<<32), // session status
-    GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT    = (1ULL<<33), // integrity risk used
-    GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT    = (1ULL<<34), // along-track protection level
-    GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT    = (1ULL<<35), // Cross-track protection level
-    GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT       = (1ULL<<36), // vertical protection level
-    GNSS_LOCATION_INFO_DGNSS_STATION_ID_BIT       = (1ULL<<37), // dgnss station id
-} GnssLocationInfoFlagBits;
+#define LDT_GNSS_LOCATION_INFO_EXT_DOP_BIT (1<<12) // gdop tdop
+#define LDT_GNSS_LOCATION_INFO_NORTH_STD_DEV_BIT (1<<13) // North standard deviation
+#define LDT_GNSS_LOCATION_INFO_EAST_STD_DEV_BIT (1<<14) // East standard deviation
+#define LDT_GNSS_LOCATION_INFO_NORTH_VEL_BIT (1<<15) // North Velocity
+#define LDT_GNSS_LOCATION_INFO_EAST_VEL_BIT (1<<16) // East Velocity
+#define LDT_GNSS_LOCATION_INFO_UP_VEL_BIT (1<<17) // Up Velocity
+#define LDT_GNSS_LOCATION_INFO_NORTH_VEL_UNC_BIT (1<<18) // North Velocity Uncertainty
+#define LDT_GNSS_LOCATION_INFO_EAST_VEL_UNC_BIT (1<<19) // East Velocity Uncertainty
+#define LDT_GNSS_LOCATION_INFO_UP_VEL_UNC_BIT (1<<20) // Up Velocity Uncertainty
+#define LDT_GNSS_LOCATION_INFO_LEAP_SECONDS_BIT (1<<21) // leap seconds
+#define LDT_GNSS_LOCATION_INFO_NUM_SV_USED_IN_POSITION_BIT (1<<22) // number of SV used in position
+#define LDT_GNSS_LOCATION_INFO_CALIBRATION_CONFIDENCE_BIT (1<<23) // sensor cal confidence
+#define LDT_GNSS_LOCATION_INFO_CALIBRATION_STATUS_BIT (1<<24) // sensor cal status
+#define LDT_GNSS_LOCATION_INFO_OUTPUT_ENG_TYPE_BIT (1<<25) // output engine type
+#define LDT_GNSS_LOCATION_INFO_OUTPUT_ENG_MASK_BIT (1<<26) // output engine mask
+#define LDT_GNSS_LOCATION_INFO_CONFORMITY_INDEX_BIT (1<<27) // conformity index
+#define LDT_GNSS_LOCATION_INFO_LLA_VRP_BASED_BIT (1<<28) // VRP-based lat/long/alt
+#define LDT_GNSS_LOCATION_INFO_ENU_VELOCITY_VRP_BASED_BIT (1<<29) // VRP-based east/north/up vel
+#define LDT_GNSS_LOCATION_INFO_DR_SOLUTION_STATUS_MASK_BIT (1ULL<<30) // Valid DR solution status
+#define LDT_GNSS_LOCATION_INFO_ALTITUDE_ASSUMED_BIT (1ULL<<31) // Valid altitude assumed
+#define LDT_GNSS_LOCATION_INFO_SESSION_STATUS_BIT (1ULL<<32) // session status
+#define LDT_GNSS_LOCATION_INFO_INTEGRITY_RISK_USED_BIT (1ULL<<33) // integrity risk used
+#define LDT_GNSS_LOCATION_INFO_PROTECT_ALONG_TRACK_BIT (1ULL<<34) // along-track protection level
+#define LDT_GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT (1ULL<<35) // Cross-track protection level
+#define LDT_GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT (1ULL<<36) // vertical protection level
+#define LDT_GNSS_LOCATION_INFO_DGNSS_STATION_ID_BIT (1ULL<<37) // dgnss station id
 
 typedef enum {
     GEOFENCE_BREACH_ENTER = 0,
@@ -2625,7 +2623,7 @@ typedef std::function<void(
    trackingCallback is called when delivering a location in a tracking session
    broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    Location location
+    const Location& location
 )> trackingCallback;
 
 /* Used for startBatching API, optional can be NULL
@@ -2646,7 +2644,7 @@ typedef std::function<void(
     gnssLocationInfoCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssLocationInfoNotification gnssLocationInfoNotification
+    const GnssLocationInfoNotification& gnssLocationInfoNotification
 )> gnssLocationInfoCallback;
 
 /* Gives default combined location information from all engines and
@@ -2666,7 +2664,7 @@ typedef std::function<void(
 /* Used for addGeofences API, optional can be NULL
    geofenceBreachCallback is called when any number of geofences have a state change */
 typedef std::function<void(
-    GeofenceBreachNotification geofenceBreachNotification
+    const GeofenceBreachNotification& geofenceBreachNotification
 )> geofenceBreachCallback;
 
 /* Used for addGeofences API, optional can be NULL
@@ -2679,14 +2677,14 @@ typedef std::function<void(
    This callback should be responded to by calling gnssNiResponse */
 typedef std::function<void(
     uint32_t id, // id that should be used to respond by calling gnssNiResponse
-    GnssNiNotification gnssNiNotification
+    const GnssNiNotification& gnssNiNotification
 )> gnssNiCallback;
 
 /* Gives GNSS SV information, optional can be NULL
     gnssSvCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssSvNotification gnssSvNotification
+    const GnssSvNotification& gnssSvNotification
 )> gnssSvCallback;
 
 /* Gives GNSS NMEA data, optional can be NULL
@@ -2700,14 +2698,14 @@ typedef std::function<void(
     gnssDataCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssDataNotification gnssDataNotification
+    const GnssDataNotification& gnssDataNotification
 )> gnssDataCallback;
 
 /* Gives GNSS Measurements information, optional can be NULL
     gnssMeasurementsCallback is called only during a tracking session
     broadcasted to all clients, no matter if a session has started by client */
 typedef std::function<void(
-    GnssMeasurementsNotification gnssMeasurementsNotification
+    const GnssMeasurementsNotification& gnssMeasurementsNotification
 )> gnssMeasurementsCallback;
 
 /* Provides the current GNSS configuration to the client */

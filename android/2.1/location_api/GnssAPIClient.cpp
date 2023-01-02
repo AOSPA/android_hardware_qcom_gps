@@ -86,10 +86,11 @@ using ::android::hardware::gnss::V2_1::IGnssCallback;
 using ::android::hardware::gnss::V1_0::IGnssNiCallback;
 using ::android::hardware::gnss::V2_0::GnssLocation;
 
-static void convertGnssSvStatus(GnssSvNotification& in, V1_0::IGnssCallback::GnssSvStatus& out);
-static void convertGnssSvStatus(GnssSvNotification& in,
+static void convertGnssSvStatus(const GnssSvNotification& in,
+        V1_0::IGnssCallback::GnssSvStatus& out);
+static void convertGnssSvStatus(const GnssSvNotification& in,
         hidl_vec<V2_0::IGnssCallback::GnssSvInfo>& out);
-static void convertGnssSvStatus(GnssSvNotification& in,
+static void convertGnssSvStatus(const GnssSvNotification& in,
         hidl_vec<V2_1::IGnssCallback::GnssSvInfo>& out);
 
 // if ANDROID_REPORT_SPE_ONLY is not set in the izat.conf,
@@ -193,7 +194,7 @@ void GnssAPIClient::setCallbacks()
      * which will report aggregated PVT to Android GNSS API*/
     if (0 == sReportSpeOnly) {
         locationCallbacks.trackingCb = nullptr;
-        locationCallbacks.trackingCb = [this](Location location) {
+        locationCallbacks.trackingCb = [this](const Location& location) {
             onTrackingCb(location);
         };
     } else {
@@ -214,14 +215,15 @@ void GnssAPIClient::setCallbacks()
                 loc_core::LocContext::getLocContext(loc_core::LocContext::mLocationHalName);
         if (!context->hasAgpsExtendedCapabilities()) {
             LOC_LOGD("Registering NI CB");
-            locationCallbacks.gnssNiCb = [this](uint32_t id, GnssNiNotification gnssNiNotify) {
+            locationCallbacks.gnssNiCb = [this](uint32_t id,
+                    const GnssNiNotification& gnssNiNotify) {
                 onGnssNiCb(id, gnssNiNotify);
             };
         }
     }
 
     locationCallbacks.gnssSvCb = nullptr;
-    locationCallbacks.gnssSvCb = [this](GnssSvNotification gnssSvNotification) {
+    locationCallbacks.gnssSvCb = [this](const GnssSvNotification& gnssSvNotification) {
         onGnssSvCb(gnssSvNotification);
     };
 
@@ -555,7 +557,7 @@ void GnssAPIClient::onCapabilitiesCb(LocationCapabilitiesMask capabilitiesMask)
 
 }
 
-void GnssAPIClient::onTrackingCb(Location location)
+void GnssAPIClient::onTrackingCb(const Location& location)
 {
     mMutex.lock();
     auto gnssCbIface(mGnssCbIface);
@@ -600,7 +602,7 @@ void GnssAPIClient::onTrackingCb(Location location)
 
 }
 
-void GnssAPIClient::onGnssNiCb(uint32_t id, GnssNiNotification gnssNiNotification)
+void GnssAPIClient::onGnssNiCb(uint32_t id, const GnssNiNotification& gnssNiNotification)
 {
     LOC_LOGD("%s]: (id: %d)", __FUNCTION__, id);
     mMutex.lock();
@@ -675,7 +677,7 @@ void GnssAPIClient::onGnssNiCb(uint32_t id, GnssNiNotification gnssNiNotificatio
     gnssNiCbIface->niNotifyCb(notificationGnss);
 }
 
-void GnssAPIClient::onGnssSvCb(GnssSvNotification gnssSvNotification)
+void GnssAPIClient::onGnssSvCb(const GnssSvNotification& gnssSvNotification)
 {
     LOC_LOGD("%s]: (count: %u)", __FUNCTION__, gnssSvNotification.count);
     mMutex.lock();
@@ -874,7 +876,8 @@ void GnssAPIClient::onStopTrackingCb(LocationError error)
     }
 }
 
-static void convertGnssSvStatus(GnssSvNotification& in, V1_0::IGnssCallback::GnssSvStatus& out)
+static void convertGnssSvStatus(const GnssSvNotification& in,
+        V1_0::IGnssCallback::GnssSvStatus& out)
 {
     memset(&out, 0, sizeof(IGnssCallback::GnssSvStatus));
     out.numSvs = in.count;
@@ -902,7 +905,7 @@ static void convertGnssSvStatus(GnssSvNotification& in, V1_0::IGnssCallback::Gns
     }
 }
 
-static void convertGnssSvStatus(GnssSvNotification& in,
+static void convertGnssSvStatus(const GnssSvNotification& in,
         hidl_vec<V2_0::IGnssCallback::GnssSvInfo>& out)
 {
     out.resize(in.count);
@@ -926,7 +929,7 @@ static void convertGnssSvStatus(GnssSvNotification& in,
     }
 }
 
-static void convertGnssSvStatus(GnssSvNotification& in,
+static void convertGnssSvStatus(const GnssSvNotification& in,
         hidl_vec<V2_1::IGnssCallback::GnssSvInfo>& out)
 {
     out.resize(in.count);
