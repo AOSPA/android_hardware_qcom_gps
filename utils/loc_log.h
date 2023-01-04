@@ -73,15 +73,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "loc_target.h"
 #include "loc_misc_utils.h"
 
-#ifdef NO_UNORDERED_SET_OR_MAP
-#include <map>
-using std::map;
-#define unordered_map map
-#else
 #include <unordered_map>
-using std::unordered_map;
-#endif
 
+using std::unordered_map;
 using std::string;
 
 typedef unordered_map<int64_t, string> NameValTbl;
@@ -118,20 +112,8 @@ extern const string gUnknownStr;
                         to_string_hex((uint64_t)field) + " " + \
                                 loc_parenthesize(loc_get_bit_defs(field, tbl)))
 
-/* get from a table of strings with index */
-/* tbl - map of <int, string> entries
-   key - key to the matching entry
-   defalt - default pointer in case of incorrect parameters
- */
-inline static const string& loc_get_name_from_tbl(const NameValTbl& tbl, int64_t key,
-                                    const string& defalt = gEmptyStr) {
-    auto item = tbl.find(key);
-    if (item != tbl.end()) {
-        return item->second;
-    } else {
-        return defalt;
-    }
-}
+const string& loc_get_name_from_tbl(const NameValTbl& tbl, int64_t key,
+                                    const string& defalt = gEmptyStr);
 
 /* puts to string formatted "TAG: VAL" with option ending string, default to newline */
 inline string loc_put_tag_val(const string& tag, const string& val, const string& eol = "\n") {

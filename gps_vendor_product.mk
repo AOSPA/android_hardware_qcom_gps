@@ -8,6 +8,7 @@ PRODUCT_PACKAGES += gnss@2.0-base.policy
 PRODUCT_PACKAGES += gnss@2.0-xtra-daemon.policy
 PRODUCT_PACKAGES += gnss@2.0-qsap-location.policy
 PRODUCT_PACKAGES += gnss@2.0-xtwifi-client.policy
+PRODUCT_PACKAGES += gnss@2.0-edgnss-daemon.policy
 PRODUCT_PACKAGES += libloc_pla_headers
 PRODUCT_PACKAGES += liblocation_api_headers
 PRODUCT_PACKAGES += libgps.utils_headers

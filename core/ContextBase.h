@@ -72,12 +72,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <LocApiBase.h>
 #include <LBSProxyBase.h>
 #include <loc_cfg.h>
-#ifdef NO_UNORDERED_SET_OR_MAP
-    #include <map>
-    #define unordered_map map
-#else
-    #include <unordered_map>
-#endif
+#include <unordered_map>
 
 /* GPS.conf support */
 /* NOTE: the implementaiton of the parser casts number

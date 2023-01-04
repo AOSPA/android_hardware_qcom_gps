@@ -125,6 +125,8 @@ private:
     void setCallbacks();
     void setFlpCallbacks();
     void initLocationOptions();
+    void updateCapabilities(LocationCapabilitiesMask capabilitiesMask,
+                            bool forceSendCapabilities);
 
     std::mutex mMutex;
     bool mTracking;

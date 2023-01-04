@@ -93,6 +93,14 @@ namespace loc_core {
 
 class LocAdapterProxyBase;
 
+typedef uint16_t DlpFeatureStatusMask;
+#define DLP_FEATURE_STATUS_QPPE_LIBRARY_PRESENT   0X01
+#define DLP_FEATURE_STATUS_QFE_LIBRARY_PRESENT    0X02
+#define DLP_FEATURE_ENABLED_BY_DEFAULT            0X04
+#define DLP_FEATURE_ENABLED_BY_QESDK              0X08
+#define DLP_FEATURE_STATUS_LIBRARY_PRESENT   (DLP_FEATURE_STATUS_QPPE_LIBRARY_PRESENT | \
+                                              DLP_FEATURE_STATUS_QFE_LIBRARY_PRESENT)
+
 class LocAdapterBase {
 private:
     static uint32_t mSessionIdCounter;
@@ -106,6 +114,8 @@ protected:
     LocAdapterProxyBase* mLocAdapterProxyBase;
     const MsgTask* mMsgTask;
     bool mAdapterAdded;
+    /* === QESDK RTK feature status =================================================== */
+    DlpFeatureStatusMask mDlpFeatureStatusMask;
 
     inline LocAdapterBase(const MsgTask* msgTask) :
         mIsMaster(false), mEvtMask(0), mContext(NULL), mLocApi(NULL),

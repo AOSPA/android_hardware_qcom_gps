@@ -73,15 +73,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/time.h>
 #include <time.h>
 
-#if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if __GNUC_PREREQ(6,0)
-    #pragma message "GNU C version is above 6"
-#else
-    #pragma message "GNU C version is less than 6"
-    #define NO_UNORDERED_SET_OR_MAP
-#endif
-#endif
-
 inline int64_t sysTimeMillis(int clock)
 {
     struct timespec ts = {};
@@ -120,7 +111,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 #define MAX_COMMAND_STR_LEN (255)
-#define BOOT_KPI_FILE "/sys/kernel/debug/bootkpi/kpi_values"
+#define BOOT_KPI_FILE "/sys/kernel/boot_kpi/kpi_values"
 
 // OpenWrt Musl C library supports strlcpy/strlcat
 #if !defined(OPENWRT_BUILD) && !defined(OFF_TARGET)

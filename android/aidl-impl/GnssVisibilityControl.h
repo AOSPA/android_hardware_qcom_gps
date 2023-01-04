@@ -49,13 +49,11 @@ using ::android::hardware::gnss::aidl::implementation::Gnss;
 class GnssVisibilityControl : public BnGnssVisibilityControl {
 public:
   GnssVisibilityControl(Gnss* gnss);
-  virtual ~GnssVisibilityControl();
+  virtual ~GnssVisibilityControl() = default;
 
     ScopedAStatus enableNfwLocationAccess(const std::vector<std::string>& proxyApps) override;
     ScopedAStatus setCallback(const shared_ptr<IGnssVisibilityControlCallback>& callback) override;
     /* Data call setup callback passed down to GNSS HAL implementation */
-    static void nfwStatusCb(GnssNfwNotification notification);
-    static bool isInEmergencySession();
     void statusCb(GnssNfwNotification notification);
     bool isE911Session();
 private:
