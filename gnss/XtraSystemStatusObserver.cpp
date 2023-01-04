@@ -191,9 +191,7 @@ XtraSystemStatusObserver::XtraSystemStatusObserver(GnssAdapter* adapter,
         mDgnssSender(LocIpc::getLocIpcLocalSender(LOC_IPC_DGNSS)),
         mRegisterForXtraStatus(false),
         mDelayLocTimer(*mXtraSender, *mDgnssSender) {
-#ifndef USE_FEATURE_TELSDK
     subscribe(true);
-#endif
     auto recver = LocIpc::getLocIpcLocalRecver(
             make_shared<XtraIpcListener>(sysStatObs, msgTask, *this),
             LOC_IPC_HAL);
