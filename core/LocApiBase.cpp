@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -260,11 +260,13 @@ bool LocApiBase::needReport(const UlpLocation& ulpLocation,
     } else {
         // intermediate fix is not allowed, only can report out final fixes
         if (LOC_SESS_SUCCESS == status) {
-            // this is a final fix
+            // this is a final fix with satellite and/or sensor contribution
             LocPosTechMask mask =
-                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS | LOC_POS_TECH_MASK_HYBRID |
-                LOC_POS_TECH_MASK_PROPAGATED;
-            // it is a Satellite fix or a sensor fix
+                LOC_POS_TECH_MASK_SATELLITE | LOC_POS_TECH_MASK_SENSORS;
+#ifndef __ANDROID__
+            // Include propagated GPS fix if not on Android target
+            mask |=  LOC_POS_TECH_MASK_PROPAGATED;
+#endif
             reported = (mask & techMask);
         }
     }
