@@ -4501,18 +4501,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
                 });
         }
 
-        mGnssSvIdUsedInPosAvail = false;
-        mGnssMbSvIdUsedInPosAvail = false;
         if (reportToAllClients) {
-            if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
-                mGnssSvIdUsedInPosAvail = true;
-                mGnssSvIdUsedInPosition = locationExtended.gnss_sv_used_ids;
-                if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_MULTIBAND) {
-                    mGnssMbSvIdUsedInPosAvail = true;
-                    mGnssMbSvIdUsedInPosition = locationExtended.gnss_mb_sv_used_ids;
-                }
-            }
-
             // if PACE is enabled
             if ((true == mLocConfigInfo.paceConfigInfo.isValid) &&
                 (true == mLocConfigInfo.paceConfigInfo.enable)) {
