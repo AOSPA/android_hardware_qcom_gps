@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -66,11 +66,13 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOG_TAG "LocSvc_MsgTask"
 
 #include <unistd.h>
+#include <LocTimer.h>
 #include <MsgTask.h>
 #include <msg_q.h>
 #include <log_util.h>
 #include <loc_log.h>
 #include <loc_pla.h>
+#include <algorithm>
 
 namespace loc_util {
 
@@ -101,16 +103,42 @@ MsgTask::MsgTask(const char* threadName) :
     mThread.start(threadName, std::make_shared<MTRunnable>(mQ));
 }
 
-void MsgTask::sendMsg(const LocMsg* msg) const {
-    if (msg) {
-        msg_q_snd((void*)mQ, (void*)msg, LocMsgDestroy);
-    } else {
-        LOC_LOGE("%s: msg is %p and this is %p",
-                 __func__, msg, this);
+MsgTask::~MsgTask() {
+    mAllMsgTimers.clear();
+}
+
+MsgTask::MsgTimer::~MsgTimer() {
+    if (nullptr != mMsg) {
+        LocMsgDestroy(mMsg);
     }
 }
 
-void MsgTask::sendMsg(const std::function<void()> runnable) const {
+void MsgTask::MsgTimer::timeOutCallback() {
+    mMsgTask.sendMsg(mMsg);
+    std::lock_guard<mutex> lock(mMsgTask.mMutex);
+    auto it = std::find_if(mMsgTask.mAllMsgTimers.begin(), mMsgTask.mAllMsgTimers.end(),
+                           [this](const MsgTask::MsgTimer& other) { return &other == this; });
+    if (mMsgTask.mAllMsgTimers.end() != it) {
+        it->detachMsg();
+        mMsgTask.mAllMsgTimers.erase(it);
+    }
+}
+
+void MsgTask::sendMsg(const LocMsg* msg, uint32_t delayInMs) const {
+    if (msg) {
+        if (0 == delayInMs) {
+            msg_q_snd((void*)mQ, (void*)msg, LocMsgDestroy);
+        } else {
+            std::lock_guard<mutex> lock(mMutex);
+            mAllMsgTimers.emplace_front(*(MsgTask*)this, msg, delayInMs);
+        }
+     } else {
+        LOC_LOGe("msg is %p and this is %p",
+                 msg, this);
+    }
+}
+
+void MsgTask::sendMsg(const std::function<void()> runnable, uint32_t delayInMs) const {
     struct RunMsg : public LocMsg {
         const std::function<void()> mRunnable;
     public:
@@ -118,7 +146,7 @@ void MsgTask::sendMsg(const std::function<void()> runnable) const {
         ~RunMsg() = default;
         inline virtual void proc() const override { mRunnable(); }
     };
-    sendMsg(new RunMsg(runnable));
+    sendMsg(new RunMsg(runnable), delayInMs);
 }
 
 void MTRunnable::interrupt() {
