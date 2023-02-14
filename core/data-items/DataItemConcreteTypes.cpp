@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -170,18 +170,21 @@ void ENHDataItem::stringify(string& valueStr) {
         valueStr.clear ();
         valueStr = ENH_FIELD_ENABLED;
         if (!d->isEnabled()) {
+            Fields field = FIELD_MAX;
             switch (mFieldUpdate) {
                 case FIELD_CONSENT:
                     valueStr += "_FIELD_CONSENT";
+                    field = FIELD_CONSENT;
                     break;
                 case FIELD_REGION:
                     valueStr += "_FIELD_REGION";
+                    field = FIELD_REGION;
                     break;
                 default:
                     break;
             }
             valueStr += ": ";
-            valueStr += (SET == d->mAction) ? "true" : "false";
+            valueStr += (((1 << field) & d->mEnhFields) != 0) ? "true" : "false";
         } else {
             valueStr += ": ";
             valueStr += "true";

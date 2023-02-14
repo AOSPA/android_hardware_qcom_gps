@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -455,7 +455,6 @@ void loc_read_conf_long(const char* conf_file_name, const loc_param_s_type* conf
     FILE *conf_fp = NULL;
     QxdmF3 qxdmF3 = NULL;
 
-    log_buffer_init(false);
     if ((conf_fp = fopen(conf_file_name, "r")) != NULL)
     {
         LOC_LOGd("using %s", conf_file_name);

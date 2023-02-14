@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -368,6 +368,12 @@ LocAdapterBase::getCapabilities()
         if (mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIBRARY_PRESENT) {
             mask |= LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT;
         }
+        if (ContextBase::isAntennaInfoAvailable()) {
+            mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
+        }
+        //Get QWES feature status mask
+        mask |= ContextBase::getQwesFeatureStatus();
+
     } else {
         LOC_LOGe("attempt to get capabilities before they are known.");
     }
