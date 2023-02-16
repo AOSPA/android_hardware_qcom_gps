@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -132,18 +132,23 @@ ssize_t Sock::sendto(const void *buf, size_t len, int flags, const struct sockad
     if (len <= mMaxTxSize) {
         rtv = ::sendto(mSid, buf, len, flags, destAddr, addrlen);
     } else {
-        rtv = 1;
-        char tempBuf[sizeof(LOC_IPC_HEAD) + mMaxTxSize];
-        memcpy(tempBuf, LOC_IPC_HEAD, sizeof(LOC_IPC_HEAD) - 9);
-        /** Writting 10 instead of 9 bytes into tempBuf to prevent overwritting of "$" by null
-        character at last index of LOC_IPC_HEAD. tempBuff is large enough to prevent any overflow */
-        snprintf(tempBuf + 33, sizeof(LOC_IPC_HEAD) - 32, "%8.8X$", len);
-        for (size_t offset = 0; offset < len && rtv > 0; offset += (rtv - sizeof(LOC_IPC_HEAD))) {
-            size_t thisLen = min(len - offset, (size_t)mMaxTxSize);
-            memcpy(tempBuf+sizeof(LOC_IPC_HEAD), (char*)buf + offset, thisLen);
-            rtv = ::sendto(mSid, tempBuf, thisLen + sizeof(LOC_IPC_HEAD), flags, destAddr, addrlen);
+        char* tempBuf = new char[sizeof(LOC_IPC_HEAD) + mMaxTxSize];
+        if (nullptr != tempBuf) {
+            rtv = 1;
+            memcpy(tempBuf, LOC_IPC_HEAD, sizeof(LOC_IPC_HEAD) - 9);
+            /** Writting 10 instead of 9 bytes into tempBuf to prevent overwritting of "$" by null
+                character at last index of LOC_IPC_HEAD. tempBuff is large enough to prevent any
+                overflow */
+            snprintf(tempBuf + 33, sizeof(LOC_IPC_HEAD) - 32, "%8.8X$", len);
+            for (size_t offset = 0; offset < len && rtv > 0; offset += rtv - sizeof(LOC_IPC_HEAD)) {
+                size_t thisLen = min(len - offset, (size_t)mMaxTxSize);
+                memcpy(tempBuf+sizeof(LOC_IPC_HEAD), (char*)buf + offset, thisLen);
+                rtv = ::sendto(mSid, tempBuf, thisLen + sizeof(LOC_IPC_HEAD), flags, destAddr,
+                               addrlen);
+            }
+            rtv = (rtv > 0) ? (len) : -1;
+            delete[] tempBuf;
         }
-        rtv = (rtv > 0) ? (len) : -1;
     }
     return rtv;
 }
@@ -167,7 +172,7 @@ ssize_t Sock::recvfrom(const LocIpcRecver& recver, const shared_ptr<ILocIpcListe
             size_t payLoadSize = nBytes - sizeof(LOC_IPC_HEAD);
             if (iter == sSockToPayloadMap.end()) {
                 size_t totalSize = 0;
-                sscanf(msg.data() + sizeof(LOC_IPC_HEAD) - 9, "%x", &totalSize);
+                sscanf(msg.data() + sizeof(LOC_IPC_HEAD) - 9, "%zx", &totalSize);
                 sSockToPayloadMap[key] = std::make_pair(totalSize - payLoadSize,
                                                         string(totalSize, 0));
                 memcpy((char*) sSockToPayloadMap[key].second.data(), (char *)msg.data()+

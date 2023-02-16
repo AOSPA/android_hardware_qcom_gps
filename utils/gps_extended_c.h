@@ -27,7 +27,7 @@
  */
 
 /*
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -69,6 +69,16 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <loc_gps.h>
 #include <LocationAPI.h>
+
+/** SV Polynomial Coefficient Max Size */
+#define GNSS_SV_POLY_XYZ_COEFF_SIZE_MAX  18
+/** SV Polynomial Clock bias Coefficient max size  */
+#define GNSS_SV_POLY_CLKBIAS_COEFF_SIZE_MAX  6
+/** SV Poly Order Max size*/
+#define GNSS_SV_POLY_ORDER_SIZE_MAX  5
+/** Value of SV Poly Order Size above which higher order fields will be
+populated */
+#define GNSS_SV_POLY_ORDER_SIZE_DEFAULT  3
 
 /** Y2038- Compliant */
 struct timespec64_t {
@@ -1257,6 +1267,11 @@ enum ulp_gnss_sv_measurement_valid_flags{
 #define ULP_GNSS_SV_POLY_BIT_IODC                   (0x1000000000)
 #define ULP_GNSS_SV_POLY_BIT_TOE                    (0x2000000000)
 #define ULP_GNSS_SV_POLY_BIT_EPHEMERIS_SOURCE       (0x4000000000)
+/* Validity fields for higher order poly info */
+#define ULP_GNSS_SV_POLY_BIT_POLY_ORDER             (0x8000000000)
+#define ULP_GNSS_SV_POLY_BIT_POLYCOEFF_XYZ          (0x10000000000)
+#define ULP_GNSS_SV_POLY_BIT_POLYCOEFF_CLKBIAS      (0x20000000000)
+#define ULP_GNSS_SV_POLY_BIT_POLY_DURATION          (0x40000000000)
 
 typedef enum
 {
@@ -1807,6 +1822,39 @@ typedef struct {
     - GNSS_LOC_EPHEMERIS_SOURCE_NETWORK_INJECTED_V02 (3) --  Network-injected ephemeris
     - GNSS_LOC_EPHEMERIS_SOURCE_EFS_V02 (4) --  Source is EFS
     */
+    /**<   Polynomial Order.
+         Maximum Poly Order size -- GNSS_SV_POLY_ORDER_SIZE_MAX
+    */
+    uint8_t polyOrder;
+    /*  Valid Polynomial Duration */
+    /**<   Valid Duration
+         - Units -- Seconds
+    */
+    uint16_t validDuration;
+
+    /**<   Zero, First, Second,... Nth terms of the Polynomial coefficient for X, Y, and
+           Z coordinates
+           (C0X, C1X, ..., CNX, C0Y, C1Y,..., CNY, C0Z, C1Z, ..., CNZ).
+           Units:
+           - 0th term -- Meters
+           - 1st term -- Meters per second^1
+           - 2nd term -- Meters per second^2
+           - Nth term -- Meters per second^N
+
+          Note: N -- Polynomial Order Size as specified by polyOrder
+    */
+    double polyCoeffXYZ[GNSS_SV_POLY_XYZ_COEFF_SIZE_MAX];
+
+    /**<    Polynomial coefficients for satellite clock bias correction (C0T, C1T, C2T, CNT).
+            Units:
+            - 0th term -- Milliseconds
+            - 1st term -- Milliseconds per second^1
+            - 2nd term -- Milliseconds per second^2
+            - Nth term -- Milliseconds per second^N
+
+          Note: N -- Polynomial Order Size as specified by polyOrder
+    */
+    double polyClockBias[GNSS_SV_POLY_CLKBIAS_COEFF_SIZE_MAX];
 } GnssSvPolynomial;
 
 typedef enum {

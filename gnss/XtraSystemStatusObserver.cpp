@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -265,8 +265,8 @@ bool XtraSystemStatusObserver::updateTac(const string& tac) {
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
 }
 
-bool XtraSystemStatusObserver::updateMccMnc(const string& mccmnc) {
-    mMccmnc = mccmnc;
+bool XtraSystemStatusObserver::updateMccMnc(const string& mccmncCountry) {
+    mMccmnc = mccmncCountry;
 
     if (!mReqStatusReceived) {
         return true;
@@ -274,7 +274,7 @@ bool XtraSystemStatusObserver::updateMccMnc(const string& mccmnc) {
 
     stringstream ss;
     ss <<  "mncmcc";
-    ss << " " << mccmnc.c_str();
+    ss << " " << mccmncCountry.c_str();
     string s = ss.str();
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
 }

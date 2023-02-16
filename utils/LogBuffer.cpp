@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -85,6 +85,7 @@ LogBuffer* LogBuffer::getInstance() {
         lock_guard<mutex> guard(sLock);
         if (mInstance == nullptr) {
             mInstance = new LogBuffer();
+            mInstance->setLogBufferConfig();
         }
     }
     return mInstance;
@@ -93,21 +94,6 @@ LogBuffer* LogBuffer::getInstance() {
 LogBuffer::LogBuffer(): mLogList(TOTAL_LOG_LEVELS),
         mConfigVec(TOTAL_LOG_LEVELS, ConfigsInLevel(TIME_DEPTH_THRESHOLD_MINIMAL_IN_SEC,
                     MAXIMUM_NUM_IN_LIST, 0)) {
-    loc_param_s_type log_buff_config_table[] =
-    {
-        {"E_LEVEL_TIME_DEPTH",      &mConfigVec[0].mTimeDepthThres,  NULL, 'n'},
-        {"E_LEVEL_MAX_CAPACITY",    &mConfigVec[0].mMaxNumThres,     NULL, 'n'},
-        {"W_LEVEL_TIME_DEPTH",      &mConfigVec[1].mTimeDepthThres,  NULL, 'n'},
-        {"W_LEVEL_MAX_CAPACITY",    &mConfigVec[1].mMaxNumThres,     NULL, 'n'},
-        {"I_LEVEL_TIME_DEPTH",      &mConfigVec[2].mTimeDepthThres,  NULL, 'n'},
-        {"I_LEVEL_MAX_CAPACITY",    &mConfigVec[2].mMaxNumThres,     NULL, 'n'},
-        {"D_LEVEL_TIME_DEPTH",      &mConfigVec[3].mTimeDepthThres,  NULL, 'n'},
-        {"D_LEVEL_MAX_CAPACITY",    &mConfigVec[3].mMaxNumThres,     NULL, 'n'},
-        {"V_LEVEL_TIME_DEPTH",      &mConfigVec[4].mTimeDepthThres,  NULL, 'n'},
-        {"V_LEVEL_MAX_CAPACITY",    &mConfigVec[4].mMaxNumThres,     NULL, 'n'},
-    };
-    loc_read_conf(LOC_PATH_GPS_CONF_STR, log_buff_config_table,
-            sizeof(log_buff_config_table)/sizeof(log_buff_config_table[0]));
     registerSignalHandler();
 }
 
@@ -167,6 +153,24 @@ void LogBuffer::dumpToLogFile(string filePath) {
 
 void LogBuffer::flush() {
     mLogList.flush();
+}
+
+void LogBuffer::setLogBufferConfig() {
+    loc_param_s_type log_buff_config_table[] =
+    {
+        {"E_LEVEL_TIME_DEPTH",      &mConfigVec[0].mTimeDepthThres,  NULL, 'n'},
+        {"E_LEVEL_MAX_CAPACITY",    &mConfigVec[0].mMaxNumThres,     NULL, 'n'},
+        {"W_LEVEL_TIME_DEPTH",      &mConfigVec[1].mTimeDepthThres,  NULL, 'n'},
+        {"W_LEVEL_MAX_CAPACITY",    &mConfigVec[1].mMaxNumThres,     NULL, 'n'},
+        {"I_LEVEL_TIME_DEPTH",      &mConfigVec[2].mTimeDepthThres,  NULL, 'n'},
+        {"I_LEVEL_MAX_CAPACITY",    &mConfigVec[2].mMaxNumThres,     NULL, 'n'},
+        {"D_LEVEL_TIME_DEPTH",      &mConfigVec[3].mTimeDepthThres,  NULL, 'n'},
+        {"D_LEVEL_MAX_CAPACITY",    &mConfigVec[3].mMaxNumThres,     NULL, 'n'},
+        {"V_LEVEL_TIME_DEPTH",      &mConfigVec[4].mTimeDepthThres,  NULL, 'n'},
+        {"V_LEVEL_MAX_CAPACITY",    &mConfigVec[4].mMaxNumThres,     NULL, 'n'},
+    };
+    loc_read_conf(LOC_PATH_GPS_CONF_STR, log_buff_config_table,
+            sizeof(log_buff_config_table)/sizeof(log_buff_config_table[0]));
 }
 
 void LogBuffer::registerSignalHandler() {
