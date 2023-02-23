@@ -29,42 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted (subject to the limitations in the
-disclaimer below) provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-Changes from Qualcomm Innovation Center are provided under the following license:
-
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -137,34 +102,6 @@ MeasurementAPIClient::~MeasurementAPIClient()
     LOC_LOGD("%s]: ()", __FUNCTION__);
 }
 
-// for GpsInterface
-Return<IGnssMeasurement::GnssMeasurementStatus>
-MeasurementAPIClient::measurementSetCallback(const sp<V1_0::IGnssMeasurementCallback>& callback)
-{
-    LOC_LOGD("%s]: (%p)", __FUNCTION__, &callback);
-
-    mMutex.lock();
-    mGnssMeasurementCbIface = callback;
-    mMutex.unlock();
-
-    return startTracking();
-}
-
-Return<IGnssMeasurement::GnssMeasurementStatus>
-MeasurementAPIClient::measurementSetCallback_1_1(
-        const sp<IGnssMeasurementCallback>& callback,
-        GnssPowerMode powerMode, uint32_t timeBetweenMeasurement)
-{
-    LOC_LOGD("%s]: (%p) (powermode: %d) (tbm: %d)",
-            __FUNCTION__, &callback, (int)powerMode, timeBetweenMeasurement);
-
-    mMutex.lock();
-    mGnssMeasurementCbIface_1_1 = callback;
-    mMutex.unlock();
-
-    return startTracking(powerMode, timeBetweenMeasurement);
-}
-
 Return<IGnssMeasurement::GnssMeasurementStatus>
 MeasurementAPIClient::startTracking(
         GnssPowerMode powerMode, uint32_t timeBetweenMeasurement)
@@ -173,16 +110,6 @@ MeasurementAPIClient::startTracking(
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
     locationCallbacks.size = sizeof(LocationCallbacks);
 
-    locationCallbacks.trackingCb = nullptr;
-    locationCallbacks.batchingCb = nullptr;
-    locationCallbacks.geofenceBreachCb = nullptr;
-    locationCallbacks.geofenceStatusCb = nullptr;
-    locationCallbacks.gnssLocationInfoCb = nullptr;
-    locationCallbacks.gnssNiCb = nullptr;
-    locationCallbacks.gnssSvCb = nullptr;
-    locationCallbacks.gnssNmeaCb = nullptr;
-
-    locationCallbacks.gnssMeasurementsCb = nullptr;
     if (mGnssMeasurementCbIface_1_1 != nullptr || mGnssMeasurementCbIface != nullptr) {
         locationCallbacks.gnssMeasurementsCb =
             [this](const GnssMeasurementsNotification &gnssMeasurementsNotification) {
@@ -203,7 +130,7 @@ MeasurementAPIClient::startTracking(
     }
 
     mTracking = true;
-    LOC_LOGD("%s]: start tracking session", __FUNCTION__);
+    LOC_LOGd("(powermode: %d) (tbm %d)", (int)powerMode, timeBetweenMeasurement);
     locAPIStartTracking(options);
     return IGnssMeasurement::GnssMeasurementStatus::SUCCESS;
 }

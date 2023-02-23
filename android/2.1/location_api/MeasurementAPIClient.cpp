@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -132,65 +132,6 @@ void MeasurementAPIClient::clearInterfaces()
     mGnssMeasurementCbIface_2_1 = nullptr;
 }
 
-// for GpsInterface
-Return<IGnssMeasurement::GnssMeasurementStatus>
-MeasurementAPIClient::measurementSetCallback(const sp<V1_0::IGnssMeasurementCallback>& callback)
-{
-    LOC_LOGD("%s]: (%p)", __FUNCTION__, &callback);
-
-    mMutex.lock();
-    clearInterfaces();
-    mGnssMeasurementCbIface = callback;
-    mMutex.unlock();
-
-    return startTracking();
-}
-
-Return<IGnssMeasurement::GnssMeasurementStatus>
-MeasurementAPIClient::measurementSetCallback_1_1(
-        const sp<V1_1::IGnssMeasurementCallback>& callback,
-        GnssPowerMode powerMode, uint32_t timeBetweenMeasurement)
-{
-    LOC_LOGD("%s]: (%p) (powermode: %d) (tbm: %d)",
-            __FUNCTION__, &callback, (int)powerMode, timeBetweenMeasurement);
-
-    mMutex.lock();
-    clearInterfaces();
-    mGnssMeasurementCbIface_1_1 = callback;
-    mMutex.unlock();
-
-    return startTracking(powerMode, timeBetweenMeasurement);
-}
-
-Return<IGnssMeasurement::GnssMeasurementStatus>
-MeasurementAPIClient::measurementSetCallback_2_0(
-    const sp<V2_0::IGnssMeasurementCallback>& callback,
-    GnssPowerMode powerMode, uint32_t timeBetweenMeasurement)
-{
-    LOC_LOGD("%s]: (%p) (powermode: %d) (tbm: %d)",
-        __FUNCTION__, &callback, (int)powerMode, timeBetweenMeasurement);
-
-    mMutex.lock();
-    clearInterfaces();
-    mGnssMeasurementCbIface_2_0 = callback;
-    mMutex.unlock();
-
-    return startTracking(powerMode, timeBetweenMeasurement);
-}
-
-Return<IGnssMeasurement::GnssMeasurementStatus> MeasurementAPIClient::measurementSetCallback_2_1(
-        const sp<V2_1::IGnssMeasurementCallback>& callback,
-        GnssPowerMode powerMode, uint32_t timeBetweenMeasurement) {
-    LOC_LOGD("%s]: (%p) (powermode: %d) (tbm: %d)",
-        __FUNCTION__, &callback, (int)powerMode, timeBetweenMeasurement);
-
-    mMutex.lock();
-    clearInterfaces();
-    mGnssMeasurementCbIface_2_1 = callback;
-    mMutex.unlock();
-
-    return startTracking(powerMode, timeBetweenMeasurement);
-}
 Return<IGnssMeasurement::GnssMeasurementStatus>
 MeasurementAPIClient::startTracking(
         GnssPowerMode powerMode, uint32_t timeBetweenMeasurement)
@@ -199,16 +140,6 @@ MeasurementAPIClient::startTracking(
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
     locationCallbacks.size = sizeof(LocationCallbacks);
 
-    locationCallbacks.trackingCb = nullptr;
-    locationCallbacks.batchingCb = nullptr;
-    locationCallbacks.geofenceBreachCb = nullptr;
-    locationCallbacks.geofenceStatusCb = nullptr;
-    locationCallbacks.gnssLocationInfoCb = nullptr;
-    locationCallbacks.gnssNiCb = nullptr;
-    locationCallbacks.gnssSvCb = nullptr;
-    locationCallbacks.gnssNmeaCb = nullptr;
-
-    locationCallbacks.gnssMeasurementsCb = nullptr;
     if (mGnssMeasurementCbIface_2_1 != nullptr ||
         mGnssMeasurementCbIface_2_0 != nullptr ||
         mGnssMeasurementCbIface_1_1 != nullptr ||
@@ -232,7 +163,8 @@ MeasurementAPIClient::startTracking(
     }
 
     mTracking = true;
-    LOC_LOGD("%s]: start tracking session", __FUNCTION__);
+    LOC_LOGd("(powermode: %d) (tbm %d)", (int)powerMode, timeBetweenMeasurement);
+
     locAPIStartTracking(options);
     return IGnssMeasurement::GnssMeasurementStatus::SUCCESS;
 }
@@ -241,6 +173,7 @@ MeasurementAPIClient::startTracking(
 void MeasurementAPIClient::measurementClose() {
     LOC_LOGD("%s]: ()", __FUNCTION__);
     mTracking = false;
+    clearInterfaces();
     locAPIStopTracking();
 
     // Clear measurement callback

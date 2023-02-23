@@ -17,6 +17,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
 
 #ifndef ANDROID_HARDWARE_GNSS_V2_1_GNSSMEASUREMENT_H
 #define ANDROID_HARDWARE_GNSS_V2_1_GNSSMEASUREMENT_H
@@ -24,6 +28,7 @@
 #include <android/hardware/gnss/2.1/IGnssMeasurement.h>
 #include <hidl/MQDescriptor.h>
 #include <hidl/Status.h>
+#include "MeasurementAPIClient.h"
 
 namespace android {
 namespace hardware {
@@ -76,7 +81,9 @@ struct GnssMeasurement : public V2_1::IGnssMeasurement {
 
     void handleClientDeath();
 
- private:
+    template <typename T>
+    Return<IGnssMeasurement::GnssMeasurementStatus> setCallback(
+            const sp<T>& callback, sp<T>& myCallback, GnssPowerMode powerMode);
     // this has to be a reference, not a copy
     // because the pointer is not set when mSelf is assigned
     const sp<GnssMeasurement>& mSelf;
