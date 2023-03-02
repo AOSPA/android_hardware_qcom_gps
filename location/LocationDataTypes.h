@@ -372,7 +372,9 @@ typedef enum {
     // This mask indicates Antenna info is enabled.
     LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<28),
     // This mask indicates qppe or qfe library is presented.
-    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT               = (1<<29)
+    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT               = (1<<29),
+    // This mask indicates modem 3GPP source is available.
+    LOCATION_CAPABILITIES_MODEM_3GPP_AVAIL                  = (1<<30)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -417,6 +419,12 @@ typedef enum {
     // This indicates DLP feature is enabled by QESDK APP
     // license
     LOCATION_QWES_FEATURE_TYPE_DLP_QESDK,
+    // This indicates MLP feature is enabled by QESDK APP
+    // license
+    LOCATION_QWES_FEATURE_TYPE_MLP_QESDK,
+    // This indicates EP can do SSR2OSR correction data
+    // parseing
+    LOCATION_FEATURE_TYPE_CORR_DATA_PARSER,
     // Max value
     LOCATION_QWES_FEATURE_TYPE_MAX
 } LocationQwesFeatureTypes;
@@ -2995,5 +3003,21 @@ enum {
 } ModemGnssQesdkFeatureBits;
 
 typedef uint64_t ModemGnssQesdkFeatureMask;
+
+typedef void* QDgnssListenerHDL;
+
+typedef std::function<void(
+    bool    sessionActive
+)> QDgnssSessionActiveCb;
+
+typedef uint16_t QDgnss3GppSourceBitMask;
+#define QDGNSS_3GPP_SOURCE_UNKNOWN          0X00
+#define QDGNSS_3GPP_EP_PARSER_AVAIL         0X01
+#define QDGNSS_3GPP_SOURCE_AVAIL            0X02
+#define QDGNSS_3GPP_SOURCE_ACTIVE           0X04
+
+typedef std::function<void(
+    QDgnss3GppSourceBitMask    modem3GppSourceMask
+)> QDgnssModem3GppAvailCb;
 
 #endif /* LOCATIONDATATYPES_H */
