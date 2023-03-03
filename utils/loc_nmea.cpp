@@ -2160,13 +2160,13 @@ void loc_nmea_generate_pos(const UlpLocation &location,
         nmeaArraystr.push_back(sentence_DTM);
         // ------$--RMC-------
         nmeaArraystr.push_back(sentence_RMC);
-        if (GEODETIC_TYPE_PZ_90 == mNmeaDatumType) {
+        if ((GEODETIC_TYPE_PZ_90 == mNmeaDatumType) && (mEnabledNmeaTypes & NMEA_TYPE_GNS)) {
             // ------$--DTM-------
             nmeaArraystr.push_back(sentence_DTM);
         }
         // ------$--GNS-------
         nmeaArraystr.push_back(sentence_GNS);
-        if (GEODETIC_TYPE_PZ_90 == mNmeaDatumType) {
+        if (GEODETIC_TYPE_PZ_90 == mNmeaDatumType && (mEnabledNmeaTypes & NMEA_TYPE_GGA)) {
             // ------$--DTM-------
             nmeaArraystr.push_back(sentence_DTM);
         }
