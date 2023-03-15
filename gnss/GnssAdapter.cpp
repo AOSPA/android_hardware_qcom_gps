@@ -209,7 +209,8 @@ GnssAdapter::GnssAdapter() :
     mPowerElapsedRealTimeCal(30000000),
     mPositionElapsedRealTimeCal(30000000),
     mAddressRequestCb(nullptr),
-    mHmacConfig(HMAC_CONFIG_UNKNOWN)
+    mHmacConfig(HMAC_CONFIG_UNKNOWN),
+    mNmeaReqEngTypeMask(LOC_REQ_ENGINE_FUSED_BIT)
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -2938,6 +2939,10 @@ GnssAdapter::updateClientsEventMask()
             it->second.engineLocationsInfoCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_PARSED_POSITION_REPORT;
         }
+        if (it->second.gnssNmeaCb != nullptr || it->second.engineNmeaCb != nullptr) {
+            mask |= LOC_API_ADAPTER_BIT_PARSED_POSITION_REPORT;
+            mask |= LOC_API_ADAPTER_BIT_SATELLITE_REPORT;
+        }
         if (it->second.gnssSvCb != nullptr) {
             mask |= LOC_API_ADAPTER_BIT_SATELLITE_REPORT;
         }
@@ -3218,7 +3223,8 @@ GnssAdapter::hasCallbacksToStartTracking(LocationAPI* client)
         if (it->second.trackingCb || it->second.gnssLocationInfoCb ||
                 it->second.engineLocationsInfoCb || it->second.gnssMeasurementsCb ||
                 it->second.gnssNHzMeasurementsCb || it->second.gnssDataCb ||
-                it->second.gnssSvCb || it->second.gnssNmeaCb || it->second.gnssDcReportCb) {
+                it->second.gnssSvCb || it->second.gnssNmeaCb || it->second.gnssDcReportCb ||
+                it->second.engineNmeaCb) {
             allowed = true;
         } else {
             LOC_LOGi("missing right callback to start tracking")
@@ -4220,6 +4226,7 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
                 }
 
                 mAdapter.reportPosition(mUlpLocation, mLocationExtended, mStatus, mTechMask);
+                mAdapter.reportPositionNmea(mUlpLocation, mLocationExtended, mStatus, mTechMask);
             }
         }
     };
@@ -4367,6 +4374,18 @@ bool GnssAdapter::needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
     return retVal;
 }
 
+bool GnssAdapter::needReportEnginePosition()
+{
+    bool needReportEnginePosition = false;
+    for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
+        if (nullptr != it->second.engineLocationsInfoCb) {
+            needReportEnginePosition = true;
+            break;
+        }
+    }
+    return needReportEnginePosition;
+}
+
 void GnssAdapter::notifyPreciseLocation() {
     bool enable = (mDlpFeatureStatusMask & DLP_FEATURE_STATUS_LIBRARY_PRESENT) &&
             ((mDlpFeatureStatusMask & DLP_FEATURE_ENABLED_BY_QESDK) ||
@@ -4375,6 +4394,7 @@ void GnssAdapter::notifyPreciseLocation() {
      updateClientsEventMask();
      setTribandState();
 }
+
 void
 GnssAdapter::logLatencyInfo()
 {
@@ -4429,6 +4449,108 @@ GnssAdapter::logLatencyInfo()
     mLogger.log(mGnssLatencyInfoQueue.front());
     mGnssLatencyInfoQueue.pop();
     LOC_LOGv("mGnssLatencyInfoQueue.size after pop=%zu", mGnssLatencyInfoQueue.size());
+}
+
+LocReqEngineTypeMask convertEngTypeToEngMask(const LocOutputEngineType &engType) {
+    LocReqEngineTypeMask engMask = LOC_REQ_ENGINE_FUSED_BIT;
+    switch (engType) {
+    case LOC_OUTPUT_ENGINE_FUSED:
+        engMask = LOC_REQ_ENGINE_FUSED_BIT;
+        break;
+    case LOC_OUTPUT_ENGINE_SPE:
+        engMask = LOC_REQ_ENGINE_SPE_BIT;
+        break;
+    case LOC_OUTPUT_ENGINE_PPE:
+        engMask = LOC_REQ_ENGINE_PPE_BIT;
+        break;
+    case LOC_OUTPUT_ENGINE_VPE:
+        engMask = LOC_REQ_ENGINE_VPE_BIT;
+        break;
+    default:
+        break;
+    }
+    return engMask;
+}
+
+void GnssAdapter::reportNmeaArray(std::vector<std::string>& nmeaArraystr,
+                                  LocOutputEngineType engineType,
+                                  bool isSvNmea) {
+    stringstream ss;
+    for (auto itor = nmeaArraystr.begin(); itor != nmeaArraystr.end(); ++itor) {
+        ss << *itor;
+    }
+    string s = ss.str();
+    reportNmea(s.c_str(), s.length(), engineType, isSvNmea);
+}
+
+void GnssAdapter::reportPositionNmea(const UlpLocation& ulpLocation,
+                                     const GpsLocationExtended& locationExtended,
+                                     enum loc_sess_status status,
+                                     LocPosTechMask techMask) {
+    bool reportToAllClients = needReportForAllClients(ulpLocation, status, techMask);
+    bool needReportEngineNmea = false;
+    bool needReportGnssNmea = false;
+    for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
+        if (nullptr != it->second.engineNmeaCb) {
+            needReportEngineNmea = true;
+            break;
+        }
+    }
+    for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
+        if (nullptr != it->second.gnssNmeaCb) {
+            needReportGnssNmea = true;
+            break;
+        }
+    }
+    if (needToGenerateNmeaReport(locationExtended.gpsTime.gpsTimeOfWeekMs,
+            locationExtended.timeStamp.apTimeStamp)) {
+        /*Only BlankNMEA sentence needs to be processed and sent, if both lat, long is 0 &
+          horReliability is not set. */
+
+        bool blank_fix = ((0 == ulpLocation.gpsLocation.latitude) &&
+                          (0 == ulpLocation.gpsLocation.longitude) &&
+                          (LOC_RELIABILITY_NOT_SET == locationExtended.horizontal_reliability));
+        uint8_t generate_nmea = (reportToAllClients && status != LOC_SESS_FAILURE && !blank_fix);
+        bool custom_nmea_gga = (1 == ContextBase::mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED);
+        bool isTagBlockGroupingEnabled =
+                (1 == ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED);
+        std::vector<std::string> nmeaArraystr;
+        int indexOfGGA = -1;
+        bool nmeaGenerated = false;
+        if (needReportEngineNmea || needReportGnssNmea) {
+            loc_nmea_generate_pos(ulpLocation, locationExtended, mLocSystemInfo, generate_nmea,
+                     custom_nmea_gga, nmeaArraystr, indexOfGGA, isTagBlockGroupingEnabled);
+            nmeaGenerated = true;
+            if (false == isPreciseEnabled()) {
+                if (mNmeaReqEngTypeMask & LOC_REQ_ENGINE_FUSED_BIT) {
+                    reportNmeaArray(nmeaArraystr, LOC_OUTPUT_ENGINE_FUSED, false);
+                }
+                if (mNmeaReqEngTypeMask & LOC_REQ_ENGINE_SPE_BIT) {
+                    reportNmeaArray(nmeaArraystr, LOC_OUTPUT_ENGINE_SPE, false);
+                }
+            } else {
+                LocReqEngineTypeMask engMask = convertEngTypeToEngMask(
+                        locationExtended.locOutputEngType);
+                if (mNmeaReqEngTypeMask & engMask) {
+                    reportNmeaArray(nmeaArraystr, locationExtended.locOutputEngType, false);
+                }
+            }
+        }
+        /* DgnssNtrip */
+        if (isDgnssNmeaRequired()) {
+            if (!nmeaGenerated && (LOC_OUTPUT_ENGINE_SPE == locationExtended.locOutputEngType)) {
+                loc_nmea_generate_pos(ulpLocation, locationExtended, mLocSystemInfo, generate_nmea,
+                     custom_nmea_gga, nmeaArraystr, indexOfGGA, isTagBlockGroupingEnabled);
+            }
+            if (-1 != indexOfGGA) {
+                mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
+                mStartDgnssNtripParams.nmea = std::move(nmeaArraystr[indexOfGGA]);
+                bool isLocationValid = (0 != ulpLocation.gpsLocation.latitude) ||
+                        (0 != ulpLocation.gpsLocation.longitude);
+                checkUpdateDgnssNtrip(isLocationValid);
+            }
+        }
+    }
 }
 
 // only fused report (when engine hub is enabled) or
@@ -4508,38 +4630,6 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
             }
         }
     }
-
-    if (needToGenerateNmeaReport(locationExtended.gpsTime.gpsTimeOfWeekMs,
-            locationExtended.timeStamp.apTimeStamp)) {
-        /*Only BlankNMEA sentence needs to be processed and sent, if both lat, long is 0 &
-          horReliability is not set. */
-        bool blank_fix = ((0 == ulpLocation.gpsLocation.latitude) &&
-                          (0 == ulpLocation.gpsLocation.longitude) &&
-                          (LOC_RELIABILITY_NOT_SET == locationExtended.horizontal_reliability));
-        uint8_t generate_nmea = (reportToAllClients && LOC_SESS_SUCCESS == status  && !blank_fix);
-        bool custom_nmea_gga = (1 == ContextBase::mGps_conf.CUSTOM_NMEA_GGA_FIX_QUALITY_ENABLED);
-        bool isTagBlockGroupingEnabled =
-                (1 == ContextBase::mGps_conf.NMEA_TAG_BLOCK_GROUPING_ENABLED);
-        std::vector<std::string> nmeaArraystr;
-        int indexOfGGA = -1;
-        loc_nmea_generate_pos(ulpLocation, locationExtended, mLocSystemInfo, generate_nmea,
-                custom_nmea_gga, nmeaArraystr, indexOfGGA, isTagBlockGroupingEnabled);
-        stringstream ss;
-        for (auto itor = nmeaArraystr.begin(); itor != nmeaArraystr.end(); ++itor) {
-            ss << *itor;
-        }
-        string s = ss.str();
-        reportNmea(s.c_str(), s.length());
-
-        /* DgnssNtrip */
-        if (-1 != indexOfGGA && isDgnssNmeaRequired()) {
-            mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
-            mStartDgnssNtripParams.nmea = std::move(nmeaArraystr[indexOfGGA]);
-            bool isLocationValid = (0 != ulpLocation.gpsLocation.latitude) ||
-                    (0 != ulpLocation.gpsLocation.longitude);
-            checkUpdateDgnssNtrip(isLocationValid);
-        }
-    }
 }
 
 void GnssAdapter::reportEngDebugDataInfo(const GnssEngineDebugDataInfo& gnssEngineDebugDataInfo) {
@@ -4609,14 +4699,7 @@ GnssAdapter::reportEnginePositions(unsigned int count,
                                    const EngineLocationInfo* locationArr) {
     bool isPrecisePositioningEnabled = isPreciseEnabled();
     if (isPrecisePositioningEnabled) {
-        bool needReportEnginePositions = false;
-        for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if (nullptr != it->second.engineLocationsInfoCb) {
-                needReportEnginePositions = true;
-                break;
-            }
-        }
-
+        bool needReportEnginePositions = needReportEnginePosition();
         GnssLocationInfoNotification locationInfo[LOC_OUTPUT_ENGINE_COUNT] = {};
         for (unsigned int i = 0; i < count; i++) {
             const EngineLocationInfo* engLocation = (locationArr+i);
@@ -4638,7 +4721,13 @@ GnssAdapter::reportEnginePositions(unsigned int count,
                 fillElapsedRealTime(engLocation->locationExtended,
                                     locationInfo[i].location);
             }
-        }
+
+            reportPositionNmea(engLocation->location,
+                           engLocation->locationExtended,
+                           engLocation->sessionStatus,
+                           engLocation->location.tech_mask);
+
+       }
 
         const EngineLocationInfo* engLocation = locationArr;
         LOC_LOGv("engLocation->locationExtended.locOutputEngType=%d",
@@ -4842,13 +4931,9 @@ GnssAdapter::reportSv(GnssSvNotification& svNotify)
     if (NMEA_PROVIDER_AP == ContextBase::mGps_conf.NMEA_PROVIDER &&
         !mTimeBasedTrackingSessions.empty()) {
         std::vector<std::string> nmeaArraystr;
+        LocOutputEngineType engineType = LOC_OUTPUT_ENGINE_SPE;
         loc_nmea_generate_sv(svNotify, nmeaArraystr);
-        stringstream ss;
-        for (auto itor = nmeaArraystr.begin(); itor != nmeaArraystr.end(); ++itor) {
-            ss << *itor;
-        }
-        string s = ss.str();
-        reportNmea(s.c_str(), s.length());
+        reportNmeaArray(nmeaArraystr, engineType, true);
     }
 
     // report to engine hub to deliver to registered plugin
@@ -4904,7 +4989,10 @@ GnssAdapter::reportNmeaEvent(const char* nmea, size_t length)
 }
 
 void
-GnssAdapter::reportNmea(const char* nmea, size_t length)
+GnssAdapter::reportNmea(const char* nmea,
+                        size_t length,
+                        LocOutputEngineType engineType,
+                        bool isSvNmea)
 {
     GnssNmeaNotification nmeaNotification = {};
     nmeaNotification.size = sizeof(GnssNmeaNotification);
@@ -4915,9 +5003,12 @@ GnssAdapter::reportNmea(const char* nmea, size_t length)
     nmeaNotification.timestamp = now;
     nmeaNotification.nmea = nmea;
     nmeaNotification.length = length;
-
+    nmeaNotification.locOutputEngType = engineType;
+    nmeaNotification.isSvNmea = isSvNmea;
     for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-        if (nullptr != it->second.gnssNmeaCb) {
+        if (nullptr != it->second.engineNmeaCb) {
+            it->second.engineNmeaCb(nmeaNotification);
+        } else if (nullptr != it->second.gnssNmeaCb) {
             it->second.gnssNmeaCb(nmeaNotification);
         }
     }
@@ -7340,34 +7431,39 @@ uint32_t GnssAdapter::configEngineRunStateCommand(
 }
 
 uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes,
-                                                   GnssGeodeticDatumType nmeaDatumType) {
+                                                   GnssGeodeticDatumType nmeaDatumType,
+                                                   LocReqEngineTypeMask nmeaReqEngTypeMask) {
     // generated session id will be none-zero
     uint32_t sessionId = generateSessionId();
-    LOC_LOGd("session id %u, enabled nmea = 0x%x, datum type = %d",
-             sessionId, enabledNmeaTypes, nmeaDatumType);
-
+    LOC_LOGd("session id %u, enabled nmea = 0x%x, datum type = %d, engine type mask = 0x%x",
+             sessionId, enabledNmeaTypes, nmeaDatumType, nmeaReqEngTypeMask);
     struct MsgConfigOutputNmeaType : public LocMsg {
         GnssAdapter& mAdapter;
         uint32_t     mSessionId;
         GnssNmeaTypesMask mEnabledNmeaTypes;
         GnssGeodeticDatumType mNmeaDatumType;
+        LocReqEngineTypeMask  mNmeaReqEngTypeMask;
 
         inline MsgConfigOutputNmeaType(GnssAdapter& adapter,
                                        uint32_t sessionId,
                                        GnssNmeaTypesMask enabledNmeaTypes,
-                                       GnssGeodeticDatumType nmeaDatumType) :
+                                       GnssGeodeticDatumType nmeaDatumType,
+                                       LocReqEngineTypeMask nmeaReqEngTypeMask) :
             LocMsg(),
             mAdapter(adapter),
             mSessionId(sessionId),
             mEnabledNmeaTypes(enabledNmeaTypes),
-            mNmeaDatumType(nmeaDatumType) {}
+            mNmeaDatumType(nmeaDatumType),
+            mNmeaReqEngTypeMask(nmeaReqEngTypeMask) {}
         inline virtual void proc() const {
            loc_nmea_config_output_types(mEnabledNmeaTypes, mNmeaDatumType);
+           mAdapter.setNmeaReqEngTypeMask(mNmeaReqEngTypeMask);
            mAdapter.reportResponse(LOCATION_ERROR_SUCCESS, mSessionId);
         }
     };
 
-    sendMsg(new MsgConfigOutputNmeaType(*this, sessionId, enabledNmeaTypes, nmeaDatumType));
+    sendMsg(new MsgConfigOutputNmeaType(*this, sessionId, enabledNmeaTypes, nmeaDatumType,
+            nmeaReqEngTypeMask));
 
     return sessionId;
 }

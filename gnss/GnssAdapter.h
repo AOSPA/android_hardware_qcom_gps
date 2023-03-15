@@ -261,6 +261,7 @@ class GnssAdapter : public LocAdapterBase {
     LocationControlCallbacks mControlCallbacks;
     uint32_t mAfwControlId;
     uint32_t mNmeaMask;
+    LocReqEngineTypeMask mNmeaReqEngTypeMask;
     uint64_t mPrevNmeaRptTimeNsec;
     GnssSvIdConfig mGnssSvIdConfig;
     GnssSvTypeConfig mGnssSeconaryBandConfig;
@@ -547,7 +548,11 @@ public:
     uint32_t configEngineRunStateCommand(PositioningEngineMask engType,
                                          LocEngineRunState engState);
     uint32_t configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmeaTypes,
-                                          GnssGeodeticDatumType nmeaDatumType);
+                                          GnssGeodeticDatumType nmeaDatumType,
+                                          LocReqEngineTypeMask nmeaReqEngTypeMask);
+    inline void setNmeaReqEngTypeMask (LocReqEngineTypeMask nmeaReqEngTypeMask) {
+        mNmeaReqEngTypeMask = nmeaReqEngTypeMask;
+    }
     void powerIndicationInitCommand(const powerIndicationCb powerIndicationCallback);
     void powerIndicationRequestCommand();
     uint32_t configEngineIntegrityRiskCommand(PositioningEngineMask engType,
@@ -653,19 +658,29 @@ public:
     /** Y2038- Compliant */
     bool needToGenerateNmeaReport(const uint32_t &gpsTimeOfWeekMs,
             const struct timespec64_t &apTimeStamp);
+    bool needReportEnginePosition();
     void notifyPreciseLocation();
 
     void reportPosition(const UlpLocation &ulpLocation,
                         const GpsLocationExtended &locationExtended,
                         enum loc_sess_status status,
                         LocPosTechMask techMask);
+    void reportPositionNmea(const UlpLocation& ulpLocation,
+                            const GpsLocationExtended& locationExtended,
+                            enum loc_sess_status status,
+                            LocPosTechMask techMask);
+    void reportNmeaArray(std::vector<std::string>& nmeaArrayStr,
+                         LocOutputEngineType engineType,
+                         bool isSvNmea);
     bool reportEnginePositions(unsigned int count,
                                const EngineLocationInfo* locationArr);
     bool reportSpeAsEnginePosition(const UlpLocation& ulpLocation,
                                    const GpsLocationExtended& locationExtended,
                                    enum loc_sess_status status);
     void reportSv(GnssSvNotification& svNotify);
-    void reportNmea(const char* nmea, size_t length);
+    void reportNmea(const char* nmea, size_t length,
+                    LocOutputEngineType engineType = LOC_OUTPUT_ENGINE_FUSED,
+                    bool isSvNmea = false);
     void reportData(GnssDataNotification& dataNotify);
     bool requestNiNotify(const GnssNiNotification& notify, const void* data,
                          const bool bInformNiAccept);

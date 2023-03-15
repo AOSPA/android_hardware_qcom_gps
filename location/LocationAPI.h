@@ -589,7 +589,8 @@ public:
     */
     virtual uint32_t configOutputNmeaTypes(
             GnssNmeaTypesMask enabledNmeaTypes,
-            GnssGeodeticDatumType nmeaDatumType = GEODETIC_TYPE_WGS_84) override;
+            GnssGeodeticDatumType nmeaDatumType = GEODETIC_TYPE_WGS_84,
+            LocReqEngineTypeMask locReqEngTypeMask = LOC_REQ_ENGINE_FUSED_BIT) override;
 
    /** @brief
         This API is used to send platform power events to GNSS adapters in order
