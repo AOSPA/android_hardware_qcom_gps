@@ -4262,12 +4262,32 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
     // to send out to the clients
     if (!ulpLocation.unpropagatedPosition) {
         GnssDataNotification dataNotifyCopy = {};
+        uint64_t pvtReportTimeDelta = 0ULL;
+
         if (pDataNotify) {
             dataNotifyCopy = *pDataNotify;
             dataNotifyCopy.size = sizeof(dataNotifyCopy);
         }
-        sendMsg(new MsgReportSPEPosition(*this, ulpLocation, locationExtended,
-                                          status, techMask, dataNotifyCopy, msInWeek));
+
+        if (locationExtended.isReportTimeAccurate()) {
+#define NSEC_IN_ONE_MSEC 1000000ULL
+
+            uint64_t hlosQtimerTick = getQTimerTickCount();
+
+            // locationExtended.systemTick contains the PVT applicable time,
+            // if it is in the future, do not report it promptly
+            if (locationExtended.systemTick > hlosQtimerTick) {
+                uint64_t hlosQtimerNanos = qTimerTicksToNanos(double(hlosQtimerTick));
+                uint64_t gpsPvtApplicableNanos =
+                        qTimerTicksToNanos(double(locationExtended.systemTick));
+                pvtReportTimeDelta =
+                        (gpsPvtApplicableNanos - hlosQtimerNanos)/NSEC_IN_ONE_MSEC;
+            }
+        }
+
+        MsgReportSPEPosition* pLocMsg = new MsgReportSPEPosition(*this, ulpLocation,
+                locationExtended, status, techMask, dataNotifyCopy, msInWeek);
+        sendMsg((const LocMsg*)pLocMsg, (uint32_t)pvtReportTimeDelta);
     }
 }
 
@@ -4501,18 +4521,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
                 });
         }
 
-        mGnssSvIdUsedInPosAvail = false;
-        mGnssMbSvIdUsedInPosAvail = false;
         if (reportToAllClients) {
-            if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_GNSS_SV_USED_DATA) {
-                mGnssSvIdUsedInPosAvail = true;
-                mGnssSvIdUsedInPosition = locationExtended.gnss_sv_used_ids;
-                if (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_MULTIBAND) {
-                    mGnssMbSvIdUsedInPosAvail = true;
-                    mGnssMbSvIdUsedInPosition = locationExtended.gnss_mb_sv_used_ids;
-                }
-            }
-
             // if PACE is enabled
             if ((true == mLocConfigInfo.paceConfigInfo.isValid) &&
                 (true == mLocConfigInfo.paceConfigInfo.enable)) {

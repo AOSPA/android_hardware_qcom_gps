@@ -19,7 +19,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -56,13 +56,14 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOC_GPS_H
 
 #include <stdint.h>
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <pthread.h>
 #include <sys/socket.h>
 #include <stdbool.h>
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define LOC_FLP_STATUS_LOCATION_AVAILABLE         0
 #define LOC_FLP_STATUS_LOCATION_UNAVAILABLE       1
@@ -2280,7 +2281,9 @@ typedef struct {
     void (*configuration_update) (const char* config_data, int32_t length);
 } LocGnssConfigurationInterface;
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LOC_GPS_H */
 
