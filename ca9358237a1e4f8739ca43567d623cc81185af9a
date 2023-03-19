@@ -16,6 +16,24 @@
       "message": "pretty sure this is reverted in 12900",
       "revId": "ca9358237a1e4f8739ca43567d623cc81185af9a",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "72ef6d1f_69a55082",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000730
+      },
+      "writtenOn": "2023-03-19T16:35:03Z",
+      "side": 1,
+      "message": "it was 13000",
+      "parentUuid": "db2f913f_cfa10f0c",
+      "revId": "ca9358237a1e4f8739ca43567d623cc81185af9a",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }
