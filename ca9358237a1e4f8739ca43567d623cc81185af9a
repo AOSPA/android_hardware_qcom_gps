@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db2f913f_cfa10f0c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2023-03-19T14:53:24Z",
+      "side": 1,
+      "message": "pretty sure this is reverted in 12900",
+      "revId": "ca9358237a1e4f8739ca43567d623cc81185af9a",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}
