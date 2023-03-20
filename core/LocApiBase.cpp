@@ -962,33 +962,34 @@ void LocApiBase::
 DEFAULT_IMPL()
 
 void LocApiBase::
-    getRobustLocationConfig(uint32_t sessionId, LocApiResponse* /*adapterResponse*/)
+    getRobustLocationConfig(uint32_t /*sessionId*/, LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
 void LocApiBase::
-    configMinGpsWeek(uint16_t minGpsWeek,
+    configMinGpsWeek(uint16_t /*minGpsWeek*/,
                      LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
 void LocApiBase::
-    getMinGpsWeek(uint32_t sessionId, LocApiResponse* /*adapterResponse*/)
+    getMinGpsWeek(uint32_t /*sessionId*/, LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
 LocationError LocApiBase::
-    setParameterSync(const GnssConfig& gnssConfig)
+    setParameterSync(const GnssConfig& /*gnssConfig*/)
 DEFAULT_IMPL(LOCATION_ERROR_SUCCESS)
 
 void LocApiBase::
-    getParameter(uint32_t sessionId, GnssConfigFlagsMask flags, LocApiResponse* /*adapterResponse*/)
+    getParameter(uint32_t /*sessionId*/, GnssConfigFlagsMask /*flags*/,
+                 LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
 void LocApiBase::
-    configConstellationMultiBand(const GnssSvTypeConfig& secondaryBandConfig,
+    configConstellationMultiBand(const GnssSvTypeConfig& /*secondaryBandConfig*/,
                                  LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
 void LocApiBase::
-    getConstellationMultiBandConfig(uint32_t sessionId, LocApiResponse* /*adapterResponse*/)
+    getConstellationMultiBandConfig(uint32_t /*sessionId*/, LocApiResponse* /*adapterResponse*/)
 DEFAULT_IMPL()
 
 void LocApiBase::setTribandState(bool /*enabled*/)
@@ -1104,12 +1105,8 @@ void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInPvtReport(
         const GpsLocationExtended& locationExtended) {
 
     // Use GPS timestamp and qtimer tick for 1Hz PVT report for association
-    if ((locationExtended.gnssSystemTime.hasAccurateGpsTime() == true) &&
-            (locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec % 1000 == 0) &&
-            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK) &&
-            (locationExtended.systemTick != 0) &&
-            (locationExtended.flags & GPS_LOCATION_EXTENDED_HAS_SYSTEM_TICK_UNC) &&
-            (locationExtended.systemTickUnc != 0.0f)) {
+    if (locationExtended.isReportTimeAccurate() &&
+            (locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec % 1000 == 0)) {
         LOC_LOGv("save time association from PVT report with gps time %u %u",
                  locationExtended.gnssSystemTime.u.gpsSystemTime.systemWeek,
                  locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec);
@@ -1243,4 +1240,5 @@ bool ElapsedRealtimeEstimator::getCurrentTime(
     }
     return clockGetTimeSuccess;
 }
+
 } // namespace loc_core
