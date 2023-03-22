@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -162,7 +162,11 @@ void ContextBase::readConfig()
         mGps_conf.INTERMEDIATE_POS = 0;
         mGps_conf.ACCURACY_THRES = 0;
         mGps_conf.NMEA_PROVIDER = 0;
+#ifdef FEATURE_AUTOMOTIVE
+        mGps_conf.GPS_LOCK = GNSS_CONFIG_GPS_LOCK_MO_AND_NI & (~GNSS_CONFIG_GPS_LOCK_NFW_V2X);
+#else
         mGps_conf.GPS_LOCK = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
+#endif
         mGps_conf.SUPL_VER = 0x10000;
         mGps_conf.SUPL_MODE = 0x1;
         mGps_conf.SUPL_ES = 0;

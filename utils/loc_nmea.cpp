@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -1580,6 +1580,11 @@ void loc_nmea_generate_pos(const UlpLocation &location,
                 length = loc_nmea_put_checksum(sentence, sizeof(sentence), false);
                 nmeaArraystr.push_back(sentence);
             }
+        } else {
+            loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_GPS, GNSS_SIGNAL_GPS_L1CA,
+                    true);
+            talker[0] = sv_meta.talker[0];
+            talker[1] = sv_meta.talker[1];
         }
 
         char ggaGpsQuality[3] = {'0', '\0', '\0'};

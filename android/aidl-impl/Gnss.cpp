@@ -20,7 +20,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -112,7 +112,7 @@ ScopedAStatus Gnss::setCallback(const shared_ptr<IGnssCallback>& callback) {
     //Send the gps enable signal
     notifyGnssStatus();
     if (nullptr != sGnssStatusCbRef) {
-        mApi.gnssUpdateFlpCallbacks();
+        updateFlpCallbacksIfOpen();
     } else {
         mApi.gnssUpdateCallbacks(callback);
     }
