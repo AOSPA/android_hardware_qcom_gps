@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -1997,7 +1997,21 @@ bool SystemStatus::updatePowerConnectState(bool charging)
 ******************************************************************************/
 bool SystemStatus::eventOptInStatus(bool userConsent)
 {
-    SystemStatusENH s(userConsent);
+    SystemStatusENH s(userConsent, ENHDataItem::FIELD_CONSENT);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
+/******************************************************************************
+@brief      API to update Region
+
+@param[In]  region
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventRegionStatus(bool region)
+{
+    SystemStatusENH s(region, ENHDataItem::FIELD_REGION);
     mSysStatusObsvr.notify({&s.mDataItem});
     return true;
 }
