@@ -100,7 +100,7 @@ public:
 
     void measurementClose();
     Return<IGnssMeasurement::GnssMeasurementStatus> startTracking(
-            GnssPowerMode powerMode = GNSS_POWER_MODE_INVALID,
+            GnssPowerMode powerMode = GNSS_POWER_MODE_DEFAULT,
             uint32_t timeBetweenMeasurement = GPS_DEFAULT_FIX_INTERVAL_MS);
 
     // callbacks we are interested in
