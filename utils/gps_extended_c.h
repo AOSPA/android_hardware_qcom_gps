@@ -620,6 +620,7 @@ typedef struct {
     uint64_t qzss_l5_sv_used_ids_mask;      // QZSS L5
     uint64_t sbas_l1_sv_used_ids_mask;      // SBAS L1
     uint64_t bds_b2aq_sv_used_ids_mask;     // BDS B2AQ
+    uint64_t navic_l5_sv_used_ids_mask;     // NAVIC L5
 } GnssSvMbUsedInPosition;
 
 /* Body Frame parameters */
@@ -2024,6 +2025,35 @@ typedef struct {
        - 1 : Unhealthy */
 } GalileoEphemeris;
 
+/* NAVIC Navigation Model Info */
+typedef struct {
+
+    GnssEphCommon commonEphemerisData;
+    /**<   Common ephemeris data.   */
+    /** Week number since the NavIC system time start epoch (August 22, 1999) */
+    uint32_t weekNum;
+    /** Issue of Data, Clock
+        Mandatory Field */
+    uint32_t iodec;
+    /** Health status of navigation data on L5 SPS signal.
+        0=OK, 1=bad */
+    uint8_t l5Health;
+    /** Health status of navigation data on S SPS signal.
+        0=OK, 1=bad */
+    uint8_t sHealth;
+    /** Inclination angle at reference time
+        Unit: radian
+        Mandatory Field */
+    double inclinationAngleRad;
+    /** User Range Accuracy Index(4bit)
+        Mandatory Field */
+    uint8_t urai;
+    /** Time of Group delay
+        Unit: second
+        Mandatory Field */
+    double  tgd;
+} NavicEphemeris;
+
 /** GPS Navigation model for each SV */
 typedef struct {
     uint16_t numOfEphemeris;
@@ -2053,7 +2083,11 @@ typedef struct {
     uint16_t numOfEphemeris;
     GpsEphemeris qzssEphemerisData[GNSS_EPHEMERIS_LIST_MAX_SIZE_V02];
 } QzssEphemerisResponse;
-
+/** NAVIC Navigation model for each SV */
+typedef struct {
+    uint16_t numOfEphemeris;
+    NavicEphemeris navicEphemerisData[GNSS_EPHEMERIS_LIST_MAX_SIZE_V02];
+} NavicEphemerisResponse;
 
 typedef struct {
     /** Indicates GNSS Constellation Type
@@ -2075,6 +2109,8 @@ typedef struct {
        GalileoEphemerisResponse galileoEphemeris;
        /** QZSS Ephemeris */
        QzssEphemerisResponse qzssEphemeris;
+       /** NAVIC Ephemeris */
+       NavicEphemerisResponse navicEphemeris;
     } ephInfo;
 } GnssSvEphemerisReport;
 
