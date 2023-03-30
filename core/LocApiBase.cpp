@@ -194,7 +194,7 @@ volatile int32_t LocApiBase::mMsgTaskRefCount = 0;
 LocApiBase::LocApiBase(LOC_API_ADAPTER_EVENT_MASK_T excludedMask,
                        ContextBase* context) :
     mContext(context),
-    mMask(0), mExcludedMask(excludedMask) {
+    mMask(0), mExcludedMask(excludedMask), mEngineLockState(ENGINE_LOCK_STATE_DISABLED) {
     memset(mLocAdapters, 0, sizeof(mLocAdapters));
 
     android_atomic_inc(&mMsgTaskRefCount);
