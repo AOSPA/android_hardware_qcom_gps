@@ -55,13 +55,6 @@ static double nextRandomOffset() {
     return nextRandom() * sAccuracyM;
 }
 
-static void resetOffsets() {
-    sLatitudeOffsetM = nextRandomOffset();
-    sLongitudeOffsetM = nextRandomOffset();
-    auto millis = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    sNextUpdateRealtimeMs = millis + OFFSET_UPDATE_INTERVAL_MS;
-}
-
 static void updateOffsets() {
     long now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     if (now < sNextUpdateRealtimeMs) {

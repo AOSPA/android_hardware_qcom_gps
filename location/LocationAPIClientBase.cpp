@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -412,7 +412,8 @@ uint32_t LocationAPIClientBase::locAPIStartTracking(TrackingOptions& options)
     pthread_mutex_lock(&mMutex);
     if (mLocationAPI) {
         if (mTracking) {
-            LOC_LOGW("%s:%d] Existing tracking session present", __FUNCTION__, __LINE__);
+            pthread_mutex_unlock(&mMutex);
+            locAPIUpdateTrackingOptions(options);
         } else {
             uint32_t session = mLocationAPI->startTracking(options);
             LOC_LOGI("%s:%d] start new session: %d", __FUNCTION__, __LINE__, session);
@@ -422,11 +423,13 @@ uint32_t LocationAPIClientBase::locAPIStartTracking(TrackingOptions& options)
             mRequestQueues[REQUEST_TRACKING].reset(session);
             mRequestQueues[REQUEST_TRACKING].push(new StartTrackingRequest(*this));
             mTracking = true;
+            pthread_mutex_unlock(&mMutex);
         }
 
         retVal = LOCATION_ERROR_SUCCESS;
+    } else {
+        pthread_mutex_unlock(&mMutex);
     }
-    pthread_mutex_unlock(&mMutex);
 
     return retVal;
 }

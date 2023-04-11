@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -1027,8 +1027,7 @@ bool SystemStatusRfAndParams::equals(const SystemStatusItemBase& peer) {
 void SystemStatusRfAndParams::dump()
 {
     LOC_LOGV("RfAndParams: u=%ld:%ld p=%d bi=%d bq=%d ai=%d aq=%d "
-             "jgp=%d jgl=%d jbd=%d jga=%d "
-             "agp=%d agl=%d abd=%d aga=%d",
+             "jgp=%d jgl=%d jbd=%d jga=%d ",
              mUtcTime.tv_sec, mUtcTime.tv_nsec,
              mPgaGain,
              mGpsBpAmpI,
