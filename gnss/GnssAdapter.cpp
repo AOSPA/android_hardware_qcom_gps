@@ -4007,7 +4007,7 @@ GnssAdapter::enableCommand(LocationTechnologyType techType)
             } else {
                 mContext.modemPowerVote(true);
                 mAdapter.setAfwControlId(mSessionId);
-
+                mAdapter.mSystemStatus->eventGpsEnabled(true);
                 GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_NONE;
                 if (mAdapter.mSupportNfwControl) {
                     ContextBase::mGps_conf.GPS_LOCK &= GNSS_CONFIG_GPS_LOCK_NFW_ALL;
@@ -4063,6 +4063,7 @@ GnssAdapter::disableCommand(uint32_t id)
             } else {
                 mContext.modemPowerVote(false);
                 mAdapter.setAfwControlId(0);
+                mAdapter.mSystemStatus->eventGpsEnabled(false);
 
                 if (mAdapter.mSupportNfwControl) {
                     /* We need to disable MO (AFW) */
@@ -4079,6 +4080,7 @@ GnssAdapter::disableCommand(uint32_t id)
                 } else {
                     mAdapter.mXtraObserver.updateLockStatus(gpsLock);
                 }
+
             }
             mAdapter.reportResponse(err, mSessionId);
         }

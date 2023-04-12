@@ -942,6 +942,7 @@ public:
     bool eventSetTracking(bool tracking, bool updateSysStatusTrkState);
     bool eventNtripStarted(bool ntripStarted);
     bool eventPreciseLocation(bool preciseLocation);
+    bool eventGpsEnabled(bool gpsEnabled);
 };
 
 } // namespace loc_core
