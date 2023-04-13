@@ -67,6 +67,12 @@ fi
 
 AC_SUBST([CPPFLAGS])
 
+AC_ARG_WITH([telsdk],
+      AC_HELP_STRING([--with-telsdk],
+         [enable telsdk, check prescence of telsdk]))
+
+AM_CONDITIONAL(USE_TELSDK, test "x${with_telsdk}" = "xyes")
+
 AC_ARG_WITH([glib],
       AC_HELP_STRING([--with-glib],
          [enable glib, building HLOS systems which use glib]))
