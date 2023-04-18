@@ -26,8 +26,9 @@ SPDX-License-Identifier: BSD-3-Clause-Clear
 #include <random>
 #include <chrono>
 
-// Fudge fine location to coarse
-static const float MIN_ACCURACY_M = 200.0f;
+// Fudge fine location to coarse:
+// value need to match with Android Framework default
+static const float MIN_ACCURACY_M = 2000.0f;
 static const long OFFSET_UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 static const double CHANGE_PER_INTERVAL = 0.03;
 static const double NEW_WEIGHT = CHANGE_PER_INTERVAL;
@@ -53,13 +54,6 @@ static double nextRandom() {
 
 static double nextRandomOffset() {
     return nextRandom() * sAccuracyM;
-}
-
-static void resetOffsets() {
-    sLatitudeOffsetM = nextRandomOffset();
-    sLongitudeOffsetM = nextRandomOffset();
-    auto millis = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    sNextUpdateRealtimeMs = millis + OFFSET_UPDATE_INTERVAL_MS;
 }
 
 static void updateOffsets() {

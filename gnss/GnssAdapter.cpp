@@ -3043,7 +3043,7 @@ void
 GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
 
     GnssConfigGpsLock gpsLock = GNSS_CONFIG_GPS_LOCK_MO_AND_NI;
-    if (ENGINE_LOCK_STATE_ENABLED == engineLockState) {
+    if (ENGINE_LOCK_STATE_DISABLED != engineLockState) {
         for (auto msg: mPendingMsgs) {
             sendMsg(msg);
         }
@@ -3090,7 +3090,7 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.gnssSecondaryBandConfigUpdate();
             // restart sessions only when Lock state is enabled and in power state resume
             mAdapter.initGnssPowerStatistics();
-            if (ENGINE_LOCK_STATE_ENABLED == mApi.getEngineLockState()) {
+            if (ENGINE_LOCK_STATE_DISABLED != mApi.getEngineLockState()) {
                 for (auto msg: mAdapter.mPendingMsgs) {
                     mAdapter.sendMsg(msg);
                 }
@@ -3411,7 +3411,7 @@ GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
                             [&mAdapter = mAdapter, mSessionId = mSessionId, mClient = mClient,
                             &mApi = mApi]
                             (LocationError err) {
-                        if (ENGINE_LOCK_STATE_ENABLED == mApi.getEngineLockState() &&
+                        if (ENGINE_LOCK_STATE_DISABLED != mApi.getEngineLockState() &&
                             LOCATION_ERROR_SUCCESS != err) {
                             mAdapter.eraseTrackingSession(mClient, mSessionId);
                         }
@@ -3531,7 +3531,7 @@ GnssAdapter::startTimeBasedTracking(LocationAPI* client, uint32_t sessionId,
     if (!checkAndSetSPEToRunforNHz(tempOptions)) {
         mLocApi->startTimeBasedTracking(tempOptions, new LocApiResponse(*getContext(),
                           [this, client, sessionId] (LocationError err) {
-                if (ENGINE_LOCK_STATE_ENABLED == mLocApi->getEngineLockState() &&
+                if (ENGINE_LOCK_STATE_DISABLED != mLocApi->getEngineLockState() &&
                     LOCATION_ERROR_SUCCESS != err) {
                     eraseTrackingSession(client, sessionId);
                 } else {
@@ -3567,7 +3567,7 @@ GnssAdapter::updateTracking(LocationAPI* client, uint32_t sessionId,
     if(!checkAndSetSPEToRunforNHz(tempOptions)) {
         mLocApi->startTimeBasedTracking(tempOptions, new LocApiResponse(*getContext(),
                           [this, client, sessionId, oldOptions] (LocationError err) {
-                if (ENGINE_LOCK_STATE_ENABLED == mLocApi->getEngineLockState() &&
+                if (ENGINE_LOCK_STATE_DISABLED != mLocApi->getEngineLockState() &&
                     LOCATION_ERROR_SUCCESS != err) {
                     // restore the old LocationOptions
                     saveTrackingSession(client, sessionId, oldOptions);
