@@ -191,7 +191,9 @@ XtraSystemStatusObserver::XtraSystemStatusObserver(GnssAdapter* adapter,
         mDgnssSender(LocIpc::getLocIpcLocalSender(LOC_IPC_DGNSS)),
         mRegisterForXtraStatus(false),
         mDelayLocTimer(*mXtraSender, *mDgnssSender) {
+#ifndef USE_FEATURE_TELSDK
     subscribe(true);
+#endif
     auto recver = LocIpc::getLocIpcLocalRecver(
             make_shared<XtraIpcListener>(sysStatObs, msgTask, *this),
             LOC_IPC_HAL);
@@ -299,6 +301,44 @@ bool XtraSystemStatusObserver::notifySessionStart() {
     }
 
     string s = "sessionstart";
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
+bool XtraSystemStatusObserver::updatePowerState(const PowerStateType powerState) {
+
+    if (mPowerState == powerState) {
+        return true;
+    }
+
+    mPowerState = powerState;
+
+    if (!mReqStatusReceived) {
+        return true;
+    }
+
+    int32_t pState;
+    switch (mPowerState) {
+        case POWER_STATE_UNKNOWN:
+            pState = 0;
+            break;
+        case POWER_STATE_SUSPEND:
+            pState = 1;
+            break;
+        case POWER_STATE_RESUME:
+            pState = 2;
+            break;
+        case POWER_STATE_SHUTDOWN:
+            pState = 3;
+            break;
+        default:
+            LOC_LOGd("Invalid power state %d", mPowerState);
+            break;
+    };
+
+    stringstream ss;
+    ss <<  "powerstate";
+    ss << " " << pState;
+    string s = ss.str();
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
 }
 
