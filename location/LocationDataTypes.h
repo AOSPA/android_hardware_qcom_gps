@@ -1003,7 +1003,7 @@ typedef struct {
     PositioningEngineMask posEngineMask;     // engines to perform the delete operation on.
 } GnssAidingData;
 
-typedef uint16_t DrCalibrationStatusMask;
+typedef uint32_t DrCalibrationStatusMask;
 typedef enum {
     // Indicate that roll calibration is needed. Need to take more turns on level ground
     DR_ROLL_CALIBRATION_NEEDED  = (1<<0),
@@ -1401,19 +1401,22 @@ typedef struct {
 } GnssSystemTime;
 
 typedef uint32_t DrSolutionStatusMask;
-#define VEHICLE_SENSOR_SPEED_INPUT_DETECTED (1<<0)
-#define VEHICLE_SENSOR_SPEED_INPUT_USED     (1<<1)
-#define DRE_ERROR_UNCALIBRATED              (1<<2)
-#define DRE_ERROR_GNSS_QUALITY_INSUFFICIENT (1<<3)
-#define DRE_ERROR_FERRY_DETECTED            (1<<4)
-#define DRE_ERROR_6DOF_SENSOR_UNAVAILABLE   (1<<5)
-#define DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE (1<<6)
-#define DRE_ERROR_GNSS_EPH_UNAVAILABLE      (1<<7)
-#define DRE_ERROR_GNSS_MEAS_UNAVAILABLE     (1<<8)
-#define DRE_ERROR_NO_STORED_POSITION        (1<<9)
-#define DRE_ERROR_MOVING_AT_START           (1<<10)
-#define DRE_ERROR_POSITON_UNRELIABLE        (1<<11)
-#define DRE_ERROR_GENERIC                   (1<<12)
+#define VEHICLE_SENSOR_SPEED_INPUT_DETECTED    (1<<0)
+#define VEHICLE_SENSOR_SPEED_INPUT_USED        (1<<1)
+#define DRE_WARNING_UNCALIBRATED               (1<<2)
+#define DRE_WARNING_GNSS_QUALITY_INSUFFICIENT  (1<<3)
+#define DRE_WARNING_FERRY_DETECTED             (1<<4)
+#define DRE_ERROR_6DOF_SENSOR_UNAVAILABLE      (1<<5)
+#define DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE    (1<<6)
+#define DRE_ERROR_GNSS_EPH_UNAVAILABLE         (1<<7)
+#define DRE_ERROR_GNSS_MEAS_UNAVAILABLE        (1<<8)
+#define DRE_WARNING_INIT_POSITION_INVALID      (1<<9)
+#define DRE_WARNING_INIT_POSITION_UNRELIABLE   (1<<10)
+#define DRE_WARNING_POSITON_UNRELIABLE         (1<<11)
+#define DRE_ERROR_GENERIC                      (1<<12)
+#define DRE_WARNING_SENSOR_TEMP_OUT_OF_RANGE   (1<<13)
+#define DRE_WARNING_USER_DYNAMICS_INSUFFICIENT (1<<14)
+#define DRE_WARNING_FACTORY_DATA_INCONSISTENT  (1<<15)
 
 typedef struct {
     double latitude;  // in degree
