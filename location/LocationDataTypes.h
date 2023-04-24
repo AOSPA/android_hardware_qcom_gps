@@ -2987,4 +2987,13 @@ typedef struct {
     mgpOsnmaMerkleTreeT  zMerkleTree; /* Merkle Tree Nodes */
 } mgpOsnmaPublicKeyAndMerkleTreeStruct;
 
+enum {
+    MODEM_QESDK_FEATURE_CARRIER_PHASE     = (1<<0),
+    MODEM_QESDK_FEATURE_SV_POLYNOMIALS    = (1<<1),
+    MODEM_QESDK_FEATURE_DGNSS             = (1<<2),
+    MODEM_QESDK_FEATURE_ROBUST_LOCATION   = (1<<3)
+} ModemGnssQesdkFeatureBits;
+
+typedef uint64_t ModemGnssQesdkFeatureMask;
+
 #endif /* LOCATIONDATATYPES_H */

@@ -93,11 +93,13 @@ namespace loc_core {
 
 class LocAdapterProxyBase;
 
-typedef uint16_t DlpFeatureStatusMask;
+typedef uint16_t PpFeatureStatusMask;
 #define DLP_FEATURE_STATUS_QPPE_LIBRARY_PRESENT   0X01
 #define DLP_FEATURE_STATUS_QFE_LIBRARY_PRESENT    0X02
 #define DLP_FEATURE_ENABLED_BY_DEFAULT            0X04
 #define DLP_FEATURE_ENABLED_BY_QESDK              0X08
+#define MLP_FEATURE_ENABLED_BY_DEFAULT            0X10
+#define MLP_FEATURE_ENABLED_BY_QESDK              0X20
 #define DLP_FEATURE_STATUS_LIBRARY_PRESENT   (DLP_FEATURE_STATUS_QPPE_LIBRARY_PRESENT | \
                                               DLP_FEATURE_STATUS_QFE_LIBRARY_PRESENT)
 
@@ -115,7 +117,7 @@ protected:
     const MsgTask* mMsgTask;
     bool mAdapterAdded;
     /* === QESDK RTK feature status =================================================== */
-    DlpFeatureStatusMask mDlpFeatureStatusMask;
+    PpFeatureStatusMask mPpFeatureStatusMask;
 
     inline LocAdapterBase(const MsgTask* msgTask) :
         mIsMaster(false), mEvtMask(0), mContext(NULL), mLocApi(NULL),
@@ -239,7 +241,7 @@ public:
     virtual bool reportXtraServer(const char* url1, const char* url2,
                                   const char* url3, const int maxlength);
     virtual void reportLocationSystemInfoEvent(const LocationSystemInfo& locationSystemInfo);
-
+    virtual void reportModemGnssQesdkFeatureStatus(const ModemGnssQesdkFeatureMask& mask);
     virtual bool requestXtraData();
     virtual bool requestTime();
     virtual bool requestLocation();
