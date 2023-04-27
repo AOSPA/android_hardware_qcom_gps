@@ -26,4 +26,18 @@ endif #TARGET_BOARD_AUTO
 PRODUCT_PACKAGES += android.hardware.gnss-aidl-impl-qti
 PRODUCT_PACKAGES += android.hardware.gnss-aidl-service-qti
 
+# Soong Namespace
+SOONG_CONFIG_NAMESPACES += qtilocation
+
+# Soong Keys
+SOONG_CONFIG_qtilocation := feature_nhz
+
+# Soong Values
+SOONG_CONFIG_qtilocation_feature_nhz := false
+
+# Enable NHz location feature
+ifeq ($(FEATURE_LOCATION_NHZ),true)
+    SOONG_CONFIG_qtilocation_feature_nhz := true
+endif
+
 endif # ifneq ($(BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE),)
