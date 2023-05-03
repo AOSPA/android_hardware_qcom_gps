@@ -302,6 +302,44 @@ bool XtraSystemStatusObserver::notifySessionStart() {
     return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
 }
 
+bool XtraSystemStatusObserver::updatePowerState(const PowerStateType powerState) {
+
+    if (mPowerState == powerState) {
+        return true;
+    }
+
+    mPowerState = powerState;
+
+    if (!mReqStatusReceived) {
+        return true;
+    }
+
+    int32_t pState;
+    switch (mPowerState) {
+        case POWER_STATE_UNKNOWN:
+            pState = 0;
+            break;
+        case POWER_STATE_SUSPEND:
+            pState = 1;
+            break;
+        case POWER_STATE_RESUME:
+            pState = 2;
+            break;
+        case POWER_STATE_SHUTDOWN:
+            pState = 3;
+            break;
+        default:
+            LOC_LOGd("Invalid power state %d", mPowerState);
+            break;
+    };
+
+    stringstream ss;
+    ss <<  "powerstate";
+    ss << " " << pState;
+    string s = ss.str();
+    return ( LocIpc::send(*mXtraSender, (const uint8_t*)s.data(), s.size()) );
+}
+
 inline bool XtraSystemStatusObserver::onStatusRequested(int32_t statusUpdated) {
     mReqStatusReceived = true;
 
