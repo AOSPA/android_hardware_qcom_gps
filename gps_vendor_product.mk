@@ -26,6 +26,11 @@ PRODUCT_PACKAGES += android.hardware.gnss@2.1-impl-qti
 PRODUCT_PACKAGES += android.hardware.gnss-aidl-impl-qti
 PRODUCT_PACKAGES += android.hardware.gnss-aidl-service-qti
 
+## Feature flags - self contained FR in gps module
+# Enable NHz location feature. Default is false.
+# Set this flag to true to enable the NHz location feature.
+FEATURE_LOCATION_NHZ := false
+
 # Soong Namespace
 SOONG_CONFIG_NAMESPACES += qtilocation
 
