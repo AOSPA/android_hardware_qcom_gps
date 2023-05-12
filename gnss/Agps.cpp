@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -342,7 +342,11 @@ void AgpsStateMachine::requestOrReleaseDataConn(bool request){
         nifRequest.status = AGPS_RELEASE_AGPS_DATA_CONN;
     }
 
-    mFrameworkStatusV4Cb(nifRequest);
+    if (mFrameworkStatusV4Cb) {
+        mFrameworkStatusV4Cb(nifRequest);
+    } else {
+        LOC_LOGe("mFrameworkStatusV4Cb is not set");
+    }
 }
 
 void AgpsStateMachine::notifyAllSubscribers(
