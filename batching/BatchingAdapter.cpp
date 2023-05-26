@@ -232,6 +232,7 @@ BatchingAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
         mPendingMsgs.clear();
 
         if ((POWER_STATE_SUSPEND != mSystemPowerState) &&
+            (POWER_STATE_DEEP_SLEEP_ENTRY != mSystemPowerState) &&
             POWER_STATE_SHUTDOWN != mSystemPowerState) {
             restartSessions();
         }
@@ -261,6 +262,7 @@ BatchingAdapter::handleEngineUpEvent()
                 mAdapter.mPendingMsgs.clear();
 
                 if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
+                    (POWER_STATE_DEEP_SLEEP_ENTRY != mAdapter.mSystemPowerState) &&
                     POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
                     mAdapter.restartSessions();
                 }
@@ -1160,10 +1162,12 @@ BatchingAdapter::updateSystemPowerState(PowerStateType systemPowerState)
 
             case POWER_STATE_SUSPEND:
             case POWER_STATE_SHUTDOWN:
+            case POWER_STATE_DEEP_SLEEP_ENTRY:
                 suspendBatchingSessions();
                 LOC_LOGd("Suspending all Batching session -- powerState: %d", systemPowerState);
                 break;
             case POWER_STATE_RESUME:
+            case POWER_STATE_DEEP_SLEEP_EXIT:
                 restartSessions();
                 LOC_LOGd("Re-starting all Batching session -- powerState: %d", systemPowerState);
                 break;
