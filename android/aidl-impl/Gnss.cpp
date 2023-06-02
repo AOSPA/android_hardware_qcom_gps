@@ -156,6 +156,7 @@ Gnss::Gnss(): mApi(mGnssCallback), mGnssCallback(nullptr),
     }
     // register health client to listen on battery change
     loc_extn_battery_properties_listener_init(location_on_battery_status_changed);
+    getLocationControlApi();
 }
 
 Gnss::~Gnss() {
@@ -187,6 +188,7 @@ ILocationControlAPI* Gnss::getLocationControlApi() {
         };
 
         mLocationControlApi = LocationControlAPI::getInstance(locCtrlCbs);
+        mLocationControlApi->updateCallbacks(locCtrlCbs);
     }
 
     return mLocationControlApi;

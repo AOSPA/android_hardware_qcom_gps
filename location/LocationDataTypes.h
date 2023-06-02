@@ -1014,7 +1014,31 @@ typedef enum {
     // Indicate that odo calibration is needed. Need to accelerate in a straight line
     DR_ODO_CALIBRATION_NEEDED   = (1<<3),
     // Indicate that gyro calibration is needed. Need to take more turns on level ground
-    DR_GYRO_CALIBRATION_NEEDED  = (1<<4)
+    DR_GYRO_CALIBRATION_NEEDED  = (1<<4),
+    // Lot more turns on level ground needed
+    DR_TURN_CALIBRATION_LOW     = (1<<5),
+    // Some more turns on level ground needed
+    DR_TURN_CALIBRATION_MEDIUM  = (1<<6),
+    // Sufficient turns on level ground observed
+    DR_TURN_CALIBRATION_HIGH  =   (1<<7),
+    // Lot more accelerations in straight line needed
+    DR_LINEAR_ACCEL_CALIBRATION_LOW  = (1<<8),
+    // Some more accelerations in straight line needed
+    DR_LINEAR_ACCEL_CALIBRATION_MEDIUM  =  (1<<9),
+    // Sufficient acceleration events in straight line observed
+    DR_LINEAR_ACCEL_CALIBRATION_HIGH  =    (1<<10),
+    // Lot more motion in straight line needed
+    DR_LINEAR_MOTION_CALIBRATION_LOW  =    (1<<11),
+    // Some more motion in straight line needed
+    DR_LINEAR_MOTION_CALIBRATION_MEDIUM  = (1<<12),
+    // Sufficient motion events in straight line observed
+    DR_LINEAR_MOTION_CALIBRATION_HIGH  =   (1<<13),
+    // Lot more stationary events on level ground needed
+    DR_STATIC_CALIBRATION_LOW  =           (1<<14),
+    // Some more stationary events on level ground needed
+    DR_STATIC_CALIBRATION_MEDIUM  =        (1<<15),
+    // Sufficient stationary events on level ground observed
+    DR_STATIC_CALIBRATION_HIGH  =          (1<<16)
 } DrCalibrationStatusBits;
 
 typedef enum {
@@ -1379,6 +1403,17 @@ typedef struct {
 typedef uint32_t DrSolutionStatusMask;
 #define VEHICLE_SENSOR_SPEED_INPUT_DETECTED (1<<0)
 #define VEHICLE_SENSOR_SPEED_INPUT_USED     (1<<1)
+#define DRE_ERROR_UNCALIBRATED              (1<<2)
+#define DRE_ERROR_GNSS_QUALITY_INSUFFICIENT (1<<3)
+#define DRE_ERROR_FERRY_DETECTED            (1<<4)
+#define DRE_ERROR_6DOF_SENSOR_UNAVAILABLE   (1<<5)
+#define DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE (1<<6)
+#define DRE_ERROR_GNSS_EPH_UNAVAILABLE      (1<<7)
+#define DRE_ERROR_GNSS_MEAS_UNAVAILABLE     (1<<8)
+#define DRE_ERROR_NO_STORED_POSITION        (1<<9)
+#define DRE_ERROR_MOVING_AT_START           (1<<10)
+#define DRE_ERROR_POSITON_UNRELIABLE        (1<<11)
+#define DRE_ERROR_GENERIC                   (1<<12)
 
 typedef struct {
     double latitude;  // in degree
@@ -2871,5 +2906,57 @@ enum PowerStateType {
 typedef uint64_t NetworkHandle;
 #define NETWORK_HANDLE_UNKNOWN  ~0
 #define MAX_NETWORK_HANDLES 10
+
+/* enum OSNMA New Public Key Type (NPKT) */
+typedef enum {
+    MGP_OSNMA_NPKT_RESERVED0    = 0, /* reserved 0 */
+    MGP_OSNMA_NPKT_ECDSA_P_256  = 1, /* 1: ECDSA P-256, key length shall be 264 */
+    MGP_OSNMA_NPKT_RESERVED2    = 2, /* reserved 2 */
+    MGP_OSNMA_NPKT_ECDSA_P_521  = 3, /* 3: ECDSA P-521, key length shall be 536 */
+    MGP_OSNMA_NPKT_ALERT        = 4  /* OSNMA Alert Message (OAM) */
+} mgpOsnmaNpktEnumTypeVal;
+typedef uint8_t mgpOsnmaNpktEnumType;
+
+/* Tree Node structure */
+typedef struct {
+    uint8_t uj; /* the height of the node in the Merkle Tree */
+    uint8_t ui; /* the position of the node in the Merkle Tree level */
+    uint16_t wLengthInBits; /*  the length in bits of the hash in the x_ji element;
+                         shall be 256 */
+    uint8_t uHash[32]; /* Hash of Merkle tree nodes */
+} mgpOsnmaTreeNodeT;
+
+/* public key structure */
+typedef struct {
+    uint8_t uFlag; /* 1: valid, 0: invalid */
+    mgpOsnmaNpktEnumType eNpkt; /* Public key type */
+    uint8_t  uNpkId; /* public key ID */
+    uint16_t wKeyLen; /* in bits */
+    uint8_t  uKey[67]; /* max key length is 536 = 8 * 67 */
+    mgpOsnmaTreeNodeT zNodes[4]; /* required Merkle tree nodes at level 0, 1, 2, 3
+                                 zNodes[0] is at level 0;
+                                 zNodes[3] is at level 3 */
+} mgpOsnmaPublicKeyT;
+
+/* Hash Function (HF) */
+typedef enum {
+    MGP_OSNMA_HF_SHA_256   = 0, /* 0: SHA-256 */
+    MGP_OSNMA_HF_RESERVED1 = 1, /* 1: reserved */
+    MGP_OSNMA_HF_SHA3_256  = 2, /* 2: SHA3-256 */
+    MGP_OSNMA_HF_RESERVED3 = 3, /* 3: reserved */
+} mgpOsnmaHfEnumTypeVal;
+typedef uint8_t mgpOsnmaHfEnumType;
+
+/* Merkle Tree Nodes */
+typedef struct {
+    uint8_t uFlag; /* 1: valid; 0: invalid */
+    mgpOsnmaHfEnumType eHfType;
+    mgpOsnmaTreeNodeT zRootNode; /* Root Node */
+} mgpOsnmaMerkleTreeT;
+
+typedef struct {
+    mgpOsnmaPublicKeyT   zPublicKey;  /* public key */
+    mgpOsnmaMerkleTreeT  zMerkleTree; /* Merkle Tree Nodes */
+} mgpOsnmaPublicKeyAndMerkleTreeStruct;
 
 #endif /* LOCATIONDATATYPES_H */
