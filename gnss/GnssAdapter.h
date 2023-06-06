@@ -386,6 +386,9 @@ class GnssAdapter : public LocAdapterBase {
     uint64_t   mDgnssLastNmeaBootTimeMilli;
     bool mQppeResp;
 
+    /*==== Qesdk Feature Status ========================================================*/
+    std::string mAppHash;
+
 protected:
 
     /* ==== CLIENT ========================================================================= */

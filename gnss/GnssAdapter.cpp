@@ -210,7 +210,8 @@ GnssAdapter::GnssAdapter() :
     mPositionElapsedRealTimeCal(30000000),
     mAddressRequestCb(nullptr),
     mHmacConfig(HMAC_CONFIG_UNKNOWN),
-    mNmeaReqEngTypeMask(LOC_REQ_ENGINE_FUSED_BIT)
+    mNmeaReqEngTypeMask(LOC_REQ_ENGINE_FUSED_BIT),
+    mAppHash("")
 {
     LOC_LOGD("%s]: Constructor %p", __func__, this);
     mLocPositionMode.mode = LOC_POSITION_MODE_INVALID;
@@ -3090,7 +3091,8 @@ GnssAdapter::handleEngineLockStatus(EngineLockState engineLockState) {
 void
 GnssAdapter::handleEngineUpEvent()
 {
-    LOC_LOGD("%s]: ", __func__);
+    LOC_LOGd("mPpFeatureStatusMask: %x, isInSession(): %d, mAppHash: %s",
+            mPpFeatureStatusMask, isInSession(), mAppHash.c_str());
 
     struct MsgHandleEngineUpEvent : public LocMsg {
         GnssAdapter& mAdapter;
@@ -3104,6 +3106,7 @@ GnssAdapter::handleEngineUpEvent()
             mAdapter.broadcastCapabilities(mAdapter.getCapabilities());
             // must be called only after capabilities are known
             mAdapter.setConfig();
+            mAdapter.setTribandState();
             mAdapter.gnssSvIdConfigUpdate();
             mAdapter.gnssSvTypeConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
@@ -3111,6 +3114,17 @@ GnssAdapter::handleEngineUpEvent()
                 mAdapter.mLocApi->updatePowerConnectState(
                    mAdapter.mPowerConnectState == POWER_CONNECT_YES);
             }
+            // inject AppHash when modem SSR but there is session ongoing
+            if (mAdapter.isInSession() && !mAdapter.mAppHash.empty()) {
+                if (mAdapter.isPreciseEnabled()) { //RTK will also enable eDGNSS, check DLP at first
+                    mAdapter.mLocApi->configPrecisePositioning(QESDK_FEATURE_ID_RTK, true,
+                            mAdapter.mAppHash);
+                } else if (mAdapter.isMlpEnabled()) { //eDGNSS only
+                    mAdapter.mLocApi->configPrecisePositioning(QESDK_FEATURE_ID_EDGNSS, true,
+                            mAdapter.mAppHash);
+                }
+            }
+
             mAdapter.gnssSecondaryBandConfigUpdate();
             // restart sessions only when Lock state is enabled and in power state resume
             mAdapter.initGnssPowerStatistics();
@@ -7725,6 +7739,8 @@ void GnssAdapter::configPrecisePositioningCommand(
             mAdapter.mEngHubProxy->configPrecisePositioning(mFeatureId, mEnable, mAppHash);
             //call QMI API to configPrecisePositioning
             mAdapter.mLocApi->configPrecisePositioning(mFeatureId, mEnable, mAppHash);
+            // cache the Qesdk Feature Status
+            mAdapter.mAppHash = mAppHash;
         }
     };
     sendMsg(new MsgConfigPrecisePositioning(*this, enable, appHash, featureId));
