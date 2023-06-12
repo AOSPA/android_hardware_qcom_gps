@@ -87,12 +87,15 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gps_extended_c.h>
 #include <sys/stat.h>
 #include <thread>
+#ifdef USE_GLIB
+#include "XmlFileParser.h"
+#endif
 
 #define RAD2DEG    (180.0 / M_PI)
 #define DEG2RAD    (M_PI / 180.0)
 #define PROCESS_NAME_ENGINE_SERVICE "engine-service"
 #define PROCESS_NAME_SAP_MAP        "hmacdaemon"
-#ifdef FEATURE_AUTOMOTIVE
+#if defined (FEATURE_AUTOMOTIVE) || defined (FEATURE_NHZ_ENABLED)
 #define MIN_TRACKING_INTERVAL (100) // 100 msec
 #else
 #define MIN_TRACKING_INTERVAL (1000) // 1 sec
@@ -845,72 +848,6 @@ GnssAdapter::convertLocationInfo(GnssLocationInfoNotification& out,
         for (uint32_t i = 0; i < locationExtended.numOfDgnssStationId; i++) {
             out.dgnssStationId[i] = locationExtended.dgnssStationId[i];
         }
-    }
-
-    if (locationExtended.calibrationStatus & DR_TURN_CALIBRATION_LOW) {
-        out.calibrationStatus |= DR_TURN_CALIBRATION_LOW;
-    } else if (locationExtended.calibrationStatus & DR_TURN_CALIBRATION_MEDIUM) {
-        out.calibrationStatus |= DR_TURN_CALIBRATION_MEDIUM;
-    } else if (locationExtended.calibrationStatus & DR_TURN_CALIBRATION_HIGH) {
-        out.calibrationStatus |= DR_TURN_CALIBRATION_HIGH;
-    }
-
-    if (locationExtended.calibrationStatus & DR_LINEAR_ACCEL_CALIBRATION_LOW) {
-        out.calibrationStatus |= DR_LINEAR_ACCEL_CALIBRATION_LOW;
-    } else if (locationExtended.calibrationStatus & DR_LINEAR_ACCEL_CALIBRATION_MEDIUM) {
-        out.calibrationStatus |= DR_LINEAR_ACCEL_CALIBRATION_MEDIUM;
-    } else if (locationExtended.calibrationStatus & DR_LINEAR_ACCEL_CALIBRATION_HIGH) {
-        out.calibrationStatus |= DR_LINEAR_ACCEL_CALIBRATION_HIGH;
-    }
-
-    if (locationExtended.calibrationStatus & DR_LINEAR_MOTION_CALIBRATION_LOW) {
-        out.calibrationStatus |= DR_LINEAR_MOTION_CALIBRATION_LOW;
-    } else if (locationExtended.calibrationStatus & DR_LINEAR_MOTION_CALIBRATION_MEDIUM) {
-        out.calibrationStatus |= DR_LINEAR_MOTION_CALIBRATION_MEDIUM;
-    } else if (locationExtended.calibrationStatus & DR_LINEAR_MOTION_CALIBRATION_HIGH) {
-        out.calibrationStatus |= DR_LINEAR_MOTION_CALIBRATION_HIGH;
-    }
-
-    if (locationExtended.calibrationStatus & DR_STATIC_CALIBRATION_LOW) {
-        out.calibrationStatus |= DR_STATIC_CALIBRATION_LOW;
-    } else if (locationExtended.calibrationStatus & DR_STATIC_CALIBRATION_MEDIUM) {
-        out.calibrationStatus |= DR_STATIC_CALIBRATION_MEDIUM;
-    } else if (locationExtended.calibrationStatus & DR_STATIC_CALIBRATION_HIGH) {
-        out.calibrationStatus |= DR_STATIC_CALIBRATION_HIGH;
-    }
-
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_UNCALIBRATED) {
-        out.drSolutionStatusMask |= DRE_ERROR_UNCALIBRATED;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_GNSS_QUALITY_INSUFFICIENT) {
-        out.drSolutionStatusMask |= DRE_ERROR_GNSS_QUALITY_INSUFFICIENT;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_FERRY_DETECTED) {
-        out.drSolutionStatusMask |= DRE_ERROR_FERRY_DETECTED;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_6DOF_SENSOR_UNAVAILABLE) {
-        out.drSolutionStatusMask |= DRE_ERROR_6DOF_SENSOR_UNAVAILABLE;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE) {
-        out.drSolutionStatusMask |= DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_GNSS_EPH_UNAVAILABLE) {
-        out.drSolutionStatusMask |= DRE_ERROR_GNSS_EPH_UNAVAILABLE;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_GNSS_MEAS_UNAVAILABLE) {
-        out.drSolutionStatusMask |= DRE_ERROR_GNSS_MEAS_UNAVAILABLE;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_NO_STORED_POSITION) {
-        out.drSolutionStatusMask |= DRE_ERROR_NO_STORED_POSITION;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_MOVING_AT_START) {
-        out.drSolutionStatusMask |= DRE_ERROR_MOVING_AT_START;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_POSITON_UNRELIABLE) {
-        out.drSolutionStatusMask |= DRE_ERROR_POSITON_UNRELIABLE;
-    }
-    if (locationExtended.drSolutionStatusMask & DRE_ERROR_GENERIC) {
-        out.drSolutionStatusMask |= DRE_ERROR_GENERIC;
     }
 }
 
@@ -7683,6 +7620,116 @@ void GnssAdapter::configPrecisePositioningCommand(
     };
     sendMsg(new MsgConfigPrecisePositioning(*this, enable, appHash, featureId));
 }
+
+#ifdef USE_GLIB
+uint32_t GnssAdapter::configMerkleTreeCommand(const char * merkleTreeConfigBuffer, int bufLen) {
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, merkle tree buffer length %d", sessionId, bufLen);
+    struct MsgConfigMerkleTreeParams : public LocMsg {
+        GnssAdapter&     mAdapter;
+        LocApiBase&      mApi;
+        uint32_t         mSessionId;
+        char*            mMerkleTreeConfigBuffer;
+        int              mBufferLen;
+        mutable int      mKeyNum;
+
+        inline MsgConfigMerkleTreeParams(GnssAdapter& adapter, LocApiBase& api,
+                uint32_t sessionId, const char* merkleTreeBuf, int bufLen) :
+                LocMsg(), mAdapter(adapter), mApi(api), mSessionId(sessionId), mBufferLen(bufLen),
+                mKeyNum(0) {
+            mMerkleTreeConfigBuffer = new char[bufLen+1];
+            strlcpy(mMerkleTreeConfigBuffer, merkleTreeBuf, bufLen+1);
+        }
+        inline ~MsgConfigMerkleTreeParams() {
+            if (mMerkleTreeConfigBuffer) {
+                delete[] mMerkleTreeConfigBuffer;
+            }
+        }
+        inline virtual void proc() const {
+            mgpOsnmaPublicKeyAndMerkleTreeStruct* treeParam =
+                    new mgpOsnmaPublicKeyAndMerkleTreeStruct[2];
+            if (nullptr == treeParam) {
+                LOC_LOGe("Merkle tree struct malloc failed");
+                return;
+            }
+            memset(treeParam, 0, sizeof(mgpOsnmaPublicKeyAndMerkleTreeStruct)*2);
+            int retVal = loc_read_conf_xml(mMerkleTreeConfigBuffer, mBufferLen, treeParam);
+            if (retVal != 0) {
+                mAdapter.reportResponse(LOCATION_ERROR_INVALID_PARAMETER, mSessionId);
+                LOC_LOGe("Merkle tree config file parse failed");
+                if (treeParam != nullptr) {
+                    delete treeParam;
+                }
+                return;
+            }
+            //inject Merkle tree Parameter into PE
+            LocationError err = LOCATION_ERROR_SUCCESS;
+            int keyNum = (treeParam[1].zPublicKey.uFlag == 1)? 2: 1;
+            LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
+                    [&mAdapter = mAdapter, this, treeParam, keyNum] (LocationError err) mutable {
+                mAdapter.reportResponse(err, mSessionId);
+                ++mKeyNum;
+                // clean treeParam when response for the last public key reports
+                if (treeParam != nullptr && mKeyNum == keyNum) {
+                    delete treeParam;
+                    treeParam = nullptr;
+                }
+            });
+            if (!locApiResponse) {
+                LOC_LOGe("memory alloc failed");
+                mAdapter.reportResponse(LOCATION_ERROR_GENERAL_FAILURE, mSessionId);
+                if (treeParam != nullptr) {
+                    delete treeParam;
+                    treeParam = nullptr;
+                }
+            } else {
+                for (int i=0; i<keyNum; ++i) {
+                    mApi.configMerkleTree(treeParam + i, locApiResponse);
+                }
+            }
+        }
+    };
+
+    sendMsg(new MsgConfigMerkleTreeParams(*this, *mLocApi, sessionId,
+            merkleTreeConfigBuffer, bufLen));
+    return sessionId;
+}
+
+uint32_t GnssAdapter::configOsnmaEnablementCommand(bool enable) {
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u, osnma enablement %d", sessionId, enable);
+    struct MsgConfigOsnmaEnablementParams : public LocMsg {
+        GnssAdapter&     mAdapter;
+        LocApiBase&      mApi;
+        uint32_t         mSessionId;
+        bool             mEnable;
+
+        inline MsgConfigOsnmaEnablementParams(GnssAdapter& adapter, LocApiBase& api,
+                uint32_t sessionId, bool enable) :
+                LocMsg(), mAdapter(adapter), mApi(api), mSessionId(sessionId), mEnable(enable) {}
+        inline ~MsgConfigOsnmaEnablementParams() {}
+        inline virtual void proc() const {
+            //inject Merkle tree Parameter into PE
+            LocationError err = LOCATION_ERROR_SUCCESS;
+            LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
+                    [&mAdapter = mAdapter, this] (LocationError err) mutable {
+                mAdapter.reportResponse(err, mSessionId);
+            });
+            if (!locApiResponse) {
+                LOC_LOGe("memory alloc failed");
+                mAdapter.reportResponse(LOCATION_ERROR_GENERAL_FAILURE, mSessionId);
+            } else {
+                mApi.configOsnmaEnablement(mEnable, locApiResponse);
+            }
+        }
+    };
+
+    sendMsg(new MsgConfigOsnmaEnablementParams(*this, *mLocApi, sessionId, enable));
+    return sessionId;
+}
+#endif
 
 void GnssAdapter::reportGnssConfigEvent(uint32_t sessionId, const GnssConfig& gnssConfig)
 {

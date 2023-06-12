@@ -1000,6 +1000,13 @@ void LocApiBase::
             LocApiResponse* /*adpterResponse*/)
 DEFAULT_IMPL()
 
+void LocApiBase::configMerkleTree(mgpOsnmaPublicKeyAndMerkleTreeStruct* /*merkleTree*/,
+            LocApiResponse* /*adapterResponse*/)
+DEFAULT_IMPL()
+
+void LocApiBase::configOsnmaEnablement(bool /*enable*/, LocApiResponse* /*adapterResponse*/)
+DEFAULT_IMPL()
+
 int64_t ElapsedRealtimeEstimator::getElapsedRealtimeEstimateNanos(int64_t curDataTimeNanos,
             bool isCurDataTimeTrustable, int64_t tbfNanos) {
     //The algorithm works follow below steps:

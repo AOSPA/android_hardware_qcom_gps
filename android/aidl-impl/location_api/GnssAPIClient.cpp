@@ -445,6 +445,7 @@ void GnssAPIClient::updateCapabilities(LocationCapabilitiesMask capabilitiesMask
         data |= IGnssCallback::CAPABILITY_SATELLITE_BLOCKLIST;
     }
     if (capabilitiesMask & LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT) {
+        data |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS;
         data |= IGnssCallback::CAPABILITY_MEASUREMENT_CORRECTIONS_FOR_DRIVING;
     }
     if (capabilitiesMask & LOCATION_CAPABILITIES_ANTENNA_INFO) {

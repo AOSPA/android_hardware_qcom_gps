@@ -37,6 +37,10 @@ PKG_CHECK_MODULES([LOCCORE], [loc-core])
 AC_SUBST([LOCCORE_CFLAGS])
 AC_SUBST([LOCCORE_LIBS])
 
+PKG_CHECK_MODULES([LIBXML], [libxml-2.0])
+AC_SUBST([LIBXML_CFLAGS])
+AC_SUBST([LIBXML_LIBS])
+
 AC_ARG_WITH([auto_feature],
     AC_HELP_STRING([--with-auto_feature=@<:@dir@:>@],
         [Using Automotive feature]),

@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -761,7 +761,7 @@ public:
     virtual uint32_t configEngineIntegrityRisk(
             PositioningEngineMask engType, uint32_t integrityRisk) = 0;
 
-     /** @brief
+    /** @brief
         This API is used to enable/disable the XTRA (Predicted GNSS
         Satellite Orbit Data) feature on device. If XTRA feature is
         to be enabled, this API is also used to configure the
@@ -800,6 +800,33 @@ public:
     */
     virtual uint32_t configXtraParams(
             bool enable, const XtraConfigParams& configParams) = 0;
+
+    /** @brief
+        Inject Merkle tree configure buffer which reads from a .xml configure file.
+        Configure file contains Merkle Root, Merkle Nodes and information for
+        up to 2 public keys.
+        Please note that caller should free the merkleTreeXml. <br/>
+        @param
+        merkleTreeXml: char buffer read from Merkle Tree configure file <br/>
+
+        @param
+        xmlSize: the length of char buffer
+
+        @return
+        A session id that will be returned in responseCallback to
+        match command with response.
+    */
+    virtual uint32_t configMerkleTree(const char * merkleTreeXml, int xmlSize) = 0;
+
+    /** @brief
+        API to Enable/Disable OSNMA operation in PE/CD;
+        @param
+        isEnabled - The flag to indicate enable or disable OSNMA
+        @return
+        A session id that will be returned in responseCallback to
+        match command with response.
+    */
+    virtual uint32_t configOsnmaEnablement(bool IsEnabled) = 0;
 };
 
 #endif /* ILOCATIONAPI_H */

@@ -28,7 +28,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -1298,6 +1298,34 @@ uint32_t LocationControlAPI::configXtraParams(
 
     if (gData.gnssInterface != NULL) {
         id = gData.gnssInterface->configXtraParams(enable, xtraParams);
+    } else {
+        LOC_LOGe("No gnss interface available for Location Control API");
+    }
+
+    pthread_mutex_unlock(&gDataMutex);
+    return id;
+}
+
+uint32_t LocationControlAPI::configMerkleTree(const char * merkleTreeXml, int xmlSize) {
+    uint32_t id = 0;
+    pthread_mutex_lock(&gDataMutex);
+
+    if (gData.gnssInterface != NULL) {
+        id = gData.gnssInterface->configMerkleTree(merkleTreeXml, xmlSize);
+    } else {
+        LOC_LOGe("No gnss interface available for Location Control API");
+    }
+
+    pthread_mutex_unlock(&gDataMutex);
+    return id;
+}
+
+uint32_t LocationControlAPI::configOsnmaEnablement(bool enable) {
+    uint32_t id = 0;
+    pthread_mutex_lock(&gDataMutex);
+
+    if (gData.gnssInterface != NULL) {
+        id = gData.gnssInterface->configOsnmaEnablement(enable);
     } else {
         LOC_LOGe("No gnss interface available for Location Control API");
     }

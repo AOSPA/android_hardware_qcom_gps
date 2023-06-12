@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -158,6 +158,8 @@ struct GnssInterface {
     uint32_t (*gnssGetXtraStatus)();
     uint32_t (*gnssRegisterXtraStatusUpdate)(bool registerUpdate);
     void (*configPrecisePositioning)(uint32_t featureId, bool enable, std::string appHash);
+    uint32_t (*configMerkleTree) (const char * merkleTreeConfigBuffer, int bufferLength);
+    uint32_t (*configOsnmaEnablement) (bool enable);
 };
 
 struct BatchingInterface {
