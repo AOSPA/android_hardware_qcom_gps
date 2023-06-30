@@ -1087,7 +1087,10 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
                             sizeof(child_proc[j].args[index]));
                 }
             }
-
+            // disable dynamic launch for AUTO SP
+#if defined (USE_GLIB) && !defined (OPENWRT_BUILD)
+            conf.launch_trigger_mask = 0;
+#endif
             // Send auto shutdown feature status, to mute shutdown timer if auto shutdown
             // feature is disable
             if (conf.launch_trigger_mask) {

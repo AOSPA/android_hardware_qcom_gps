@@ -8335,6 +8335,7 @@ void GnssAdapter::readPPENtripConfig() {
     mDgnssState |= DGNSS_STATE_ENABLE_NTRIP_COMMAND;
     mDgnssState |= DGNSS_STATE_NO_NMEA_PENDING;
     mDgnssState &= ~DGNSS_STATE_NTRIP_SESSION_STARTED;
+    getSystemStatus()->eventNtripStarted(true);
 
     mStartDgnssNtripParams.nmea.clear();
     if (pNtripParams->requiresNmeaLocation) {
