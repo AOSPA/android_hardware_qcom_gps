@@ -7598,12 +7598,10 @@ uint32_t GnssAdapter::configMerkleTreeCommand(const char * merkleTreeConfigBuffe
         uint32_t         mSessionId;
         char*            mMerkleTreeConfigBuffer;
         int              mBufferLen;
-        mutable int      mKeyNum;
 
         inline MsgConfigMerkleTreeParams(GnssAdapter& adapter, LocApiBase& api,
                 uint32_t sessionId, const char* merkleTreeBuf, int bufLen) :
-                LocMsg(), mAdapter(adapter), mApi(api), mSessionId(sessionId), mBufferLen(bufLen),
-                mKeyNum(0) {
+                LocMsg(), mAdapter(adapter), mApi(api), mSessionId(sessionId), mBufferLen(bufLen) {
             mMerkleTreeConfigBuffer = new char[bufLen+1];
             strlcpy(mMerkleTreeConfigBuffer, merkleTreeBuf, bufLen+1);
         }
@@ -7634,12 +7632,35 @@ uint32_t GnssAdapter::configMerkleTreeCommand(const char * merkleTreeConfigBuffe
             int keyNum = (treeParam[1].zPublicKey.uFlag == 1)? 2: 1;
             LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
                     [&mAdapter = mAdapter, this, treeParam, keyNum] (LocationError err) mutable {
-                mAdapter.reportResponse(err, mSessionId);
-                ++mKeyNum;
-                // clean treeParam when response for the last public key reports
-                if (treeParam != nullptr && mKeyNum == keyNum) {
-                    delete treeParam;
-                    treeParam = nullptr;
+                // when there are two valid public keys, inject second key as well
+                if (keyNum == 2) {
+                    LocApiResponse* locApiResp = new LocApiResponse(*mAdapter.getContext(),
+                            [&mAdapter = mAdapter, this, treeParam, keyNum] (
+                            LocationError err) mutable {
+                        mAdapter.reportResponse(err, mSessionId);
+                        // clean treeParam when response for the last public key reports
+                        if (treeParam != nullptr) {
+                            delete treeParam;
+                            treeParam = nullptr;
+                        }
+                    });
+                    if (!locApiResp) {
+                        LOC_LOGe("memory alloc failed");
+                        mAdapter.reportResponse(LOCATION_ERROR_GENERAL_FAILURE, mSessionId);
+                        if (treeParam != nullptr) {
+                            delete treeParam;
+                            treeParam = nullptr;
+                        }
+                    } else {
+                        mApi.configMerkleTree(treeParam + 1, locApiResp);
+                    }
+                } else { // when there is single valid public key,
+                    mAdapter.reportResponse(err, mSessionId);
+                    // clean treeParam after response for the only injection reports
+                    if (treeParam != nullptr) {
+                        delete treeParam;
+                        treeParam = nullptr;
+                    }
                 }
             });
             if (!locApiResponse) {
@@ -7650,9 +7671,8 @@ uint32_t GnssAdapter::configMerkleTreeCommand(const char * merkleTreeConfigBuffe
                     treeParam = nullptr;
                 }
             } else {
-                for (int i=0; i<keyNum; ++i) {
-                    mApi.configMerkleTree(treeParam + i, locApiResponse);
-                }
+                LOC_LOGd("Merkle tree key num: %d", keyNum);
+                mApi.configMerkleTree(treeParam, locApiResponse);
             }
         }
     };
