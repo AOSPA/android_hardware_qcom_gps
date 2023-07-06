@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -246,7 +246,10 @@ class Sock {
                      int sid, int flags, struct sockaddr *srcAddr, socklen_t *addrlen) const;
 public:
     int mSid;
-    Sock(int sid, const uint32_t maxTxSize = 7168);
+    //QRTR supports maximum of 16KB packet length over MHI interface.
+    //Set it to 15K to ensure that the total packet size
+    //(including the header added at the underlying layer) does not exceed 16K
+    Sock(int sid, const uint32_t maxTxSize = 15360);
     inline ~Sock() { close(); }
     inline bool isValid() const { return -1 != mSid; }
     ssize_t send(const void *buf, uint32_t len, int flags, const struct sockaddr *destAddr,
