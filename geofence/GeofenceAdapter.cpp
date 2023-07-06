@@ -176,6 +176,7 @@ GeofenceAdapter::handleEngineUpEvent()
                 mAdapter.mPendingMsgs.clear();
 
                 if ((POWER_STATE_SUSPEND != mAdapter.mSystemPowerState) &&
+                    (POWER_STATE_DEEP_SLEEP_ENTRY != mAdapter.mSystemPowerState) &&
                     POWER_STATE_SHUTDOWN != mAdapter.mSystemPowerState) {
                     mAdapter.restartGeofences();
                 }
@@ -962,10 +963,12 @@ GeofenceAdapter::updateSystemPowerState(PowerStateType systemPowerState)
 
             case POWER_STATE_SUSPEND:
             case POWER_STATE_SHUTDOWN:
+            case POWER_STATE_DEEP_SLEEP_ENTRY:
                 pauseOrResumeGeofences(false /*pause*/);
                 LOC_LOGd("Pause all geoFences -- powerState: %d", systemPowerState);
                 break;
             case POWER_STATE_RESUME:
+            case POWER_STATE_DEEP_SLEEP_EXIT:
                 pauseOrResumeGeofences(true /*resume*/);
                 LOC_LOGd("Resume all geoFences -- powerState: %d", systemPowerState);
                 break;
