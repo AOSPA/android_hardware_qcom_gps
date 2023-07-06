@@ -2992,6 +2992,17 @@ GnssAdapter::updateClientsEventMask()
         // Nhz measurement bit is set based on callback from loc eng hub
         // for Nhz engines.
         mask |= checkMask(LOC_API_ADAPTER_BIT_GNSS_NHZ_MEASUREMENT);
+        /*
+        ** To avoid the possibility of NHz mask reset by saveClient() in cases
+        ** where EHUB loading takes time. When the EHUB is delayed and QWES feature
+        ** update has not been completed, control does not enter here and as a result,
+        ** local variable mask is not populated by NHZ flag hence later when
+        ** a call is made to updateClientMask() with status = 2, the mEvtmask is
+        ** overwritten and PPE engine is unable to receive NHz meas.
+        */
+        if (mNHzNeeded) {
+            mask |= LOC_API_ADAPTER_BIT_GNSS_NHZ_MEASUREMENT;
+        }
         LOC_LOGd("Auto usecase, Enable MEAS/POLY/EPHEMERIS - mask 0x%" PRIx64 "",
                 mask);
     }
