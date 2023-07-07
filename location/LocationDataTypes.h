@@ -1123,12 +1123,12 @@ struct LocationOptions {
 };
 
 typedef enum {
-    GNSS_POWER_MODE_INVALID = 0,
-    GNSS_POWER_MODE_M1,  /* Improved Accuracy Mode */
-    GNSS_POWER_MODE_M2,  /* Normal Mode */
-    GNSS_POWER_MODE_M3,  /* Background Mode */
-    GNSS_POWER_MODE_M4,  /* Background Mode */
-    GNSS_POWER_MODE_M5   /* Background Mode */
+    GNSS_POWER_MODE_M1 = 1,  /* Improved Accuracy Mode */
+    GNSS_POWER_MODE_M2,      /* Normal Mode */
+    GNSS_POWER_MODE_M3,      /* Background Mode */
+    GNSS_POWER_MODE_M4,      /* Background Mode */
+    GNSS_POWER_MODE_M5,      /* Background Mode */
+    GNSS_POWER_MODE_DEFAULT = GNSS_POWER_MODE_M2
 } GnssPowerMode;
 
 typedef enum {
@@ -1144,14 +1144,34 @@ struct TrackingOptions : LocationOptions {
     SpecialReqType specialReq; /* Special Request type */
 
     inline TrackingOptions() :
-            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            LocationOptions(), powerMode(GNSS_POWER_MODE_DEFAULT), tbm(0),
             specialReq(SPECIAL_REQ_INVALID){}
-    inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
-            LocationOptions(), powerMode(m), tbm(t),
-            specialReq(SPECIAL_REQ_INVALID){ LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
-            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_DEFAULT), tbm(0),
             specialReq(SPECIAL_REQ_INVALID){}
+    inline bool equalsInTimeBasedRequest(const TrackingOptions& other) const {
+        return minInterval == other.minInterval && powerMode == other.powerMode &&
+                tbm == other.tbm && qualityLevelAccepted == other.qualityLevelAccepted;
+    }
+    inline bool multiplexWithForTimeBasedRequest(const TrackingOptions& other) {
+        bool updated = false;
+        if (other.minInterval < minInterval) {
+            updated = true;
+            minInterval = other.minInterval;
+        }
+        if (other.powerMode < powerMode) {
+            updated = true;
+            powerMode = other.powerMode;
+        }
+        if (other.tbm < tbm) {
+            updated = true;
+            tbm = other.tbm;
+        }
+        if (other.qualityLevelAccepted > qualityLevelAccepted) {
+            qualityLevelAccepted = other.qualityLevelAccepted;
+        }
+        return updated;
+    }
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;

@@ -3477,54 +3477,24 @@ GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessi
         // need to wait for QMI callback
         reportToClientWithNoWait = false;
     } else {
-        // find the smallest interval and powerMode
-        TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
-        GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
-        for (auto it = mTimeBasedTrackingSessions.begin(); it != mTimeBasedTrackingSessions.end(); ++it) {
-            // if not set or there is a new smallest interval, then set the new interval
-            if (0 == multiplexedOptions.size ||
-                it->second.minInterval < multiplexedOptions.minInterval) {
-                multiplexedOptions = it->second;
-            }
-            // if session is not the one we are updating and either powerMode
-            // is not set or there is a new smallest powerMode, then set the new powerMode
-            if (GNSS_POWER_MODE_INVALID == multiplexedPowerMode ||
-                it->second.powerMode < multiplexedPowerMode) {
-                multiplexedPowerMode = it->second.powerMode;
-            }
-            //if not set or there is a new higher qualityLevelAccepted, then set the higher one
-            if (it->second.qualityLevelAccepted > multiplexedOptions.qualityLevelAccepted) {
-                multiplexedOptions.qualityLevelAccepted = it->second.qualityLevelAccepted;
+        TrackingOptions multiplexedOptions;
+        bool optionSetOnce = false;
+        for (auto it2 = mTimeBasedTrackingSessions.begin();
+             it2 != mTimeBasedTrackingSessions.end(); ++it2) {
+            if (!optionSetOnce) {
+                multiplexedOptions = it2->second;
+                optionSetOnce = true;
+            } else {
+                multiplexedOptions.multiplexWithForTimeBasedRequest(it2->second);
             }
         }
-        // if client is nullptr, that means that we do not have an active session
-        // running in the modem, e.g. when we are trying to resume from suspension.
-        // in that case, we need updateOptions to be true.
-        bool updateOptions = (nullptr == client);
-        // if session we are starting has smaller interval then next smallest
-        if (options.minInterval < multiplexedOptions.minInterval) {
-            multiplexedOptions.minInterval = options.minInterval;
-            updateOptions = true;
-        }
-
-        // if session we are starting has smaller powerMode then next smallest
-        if (options.powerMode < multiplexedPowerMode) {
-            multiplexedOptions.powerMode = options.powerMode;
-            updateOptions = true;
-        }
-        // if session we are starting has higher qualityLevelAccepted then next highest
-        if (options.qualityLevelAccepted > multiplexedOptions.qualityLevelAccepted) {
-            multiplexedOptions.qualityLevelAccepted = options.qualityLevelAccepted;
-            updateOptions = true;
-        }
-        if (updateOptions) {
-            // restart time based tracking with the newly updated options
-
+        TrackingOptions priorOptions = multiplexedOptions;
+        multiplexedOptions.multiplexWithForTimeBasedRequest(options);
+        if (!priorOptions.equalsInTimeBasedRequest(multiplexedOptions)) {
             startTimeBasedTracking(client, sessionId, multiplexedOptions);
             // need to wait for QMI callback
             reportToClientWithNoWait = false;
         }
-        // else part: no QMI call is made, need to report back to client right away
     }
 
     return reportToClientWithNoWait;
@@ -3732,52 +3702,38 @@ GnssAdapter::updateTrackingMultiplex(LocationAPI* client, uint32_t id,
     // get the session we are updating
     auto it = mTimeBasedTrackingSessions.find(key);
 
-    // cache the clients existing LocationOptions
-    TrackingOptions oldOptions = it->second;
-
     // if session we are updating exists and the minInterval or powerMode has changed
     if (it != mTimeBasedTrackingSessions.end() &&
-       (it->second.minInterval != trackingOptions.minInterval ||
-        it->second.powerMode != trackingOptions.powerMode)) {
-        // find the smallest interval and powerMode, other than the session we are updating
-        TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
-        GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
-        memset(&multiplexedOptions, 0, sizeof(multiplexedOptions));
+            !it->second.equalsInTimeBasedRequest(trackingOptions)) {
+        TrackingOptions multiplexedOptions; // size is 0 until set for the first time
+        bool optionSetOnce = false;
         for (auto it2 = mTimeBasedTrackingSessions.begin();
              it2 != mTimeBasedTrackingSessions.end(); ++it2) {
-            // if session is not the one we are updating and either interval
-            // is not set or there is a new smallest interval, then set the new interval
-            if (it2->first != key && (0 == multiplexedOptions.size ||
-                it2->second.minInterval < multiplexedOptions.minInterval)) {
-                 multiplexedOptions = it2->second;
+            if (it2->first != key) {
+                if (!optionSetOnce) {
+                    multiplexedOptions = it2->second;
+                    optionSetOnce = true;
+                } else {
+                    multiplexedOptions.multiplexWithForTimeBasedRequest(it2->second);
+                }
             }
-            // if session is not the one we are updating and either powerMode
-            // is not set or there is a new smallest powerMode, then set the new powerMode
-            if (it2->first != key && (GNSS_POWER_MODE_INVALID == multiplexedPowerMode ||
-                it2->second.powerMode < multiplexedPowerMode)) {
-                multiplexedPowerMode = it2->second.powerMode;
-            }
-            // else part: no QMI call is made, need to report back to client right away
         }
-        bool updateOptions = false;
-        // if session we are updating has smaller interval then next smallest
-        if (trackingOptions.minInterval < multiplexedOptions.minInterval) {
-            multiplexedOptions.minInterval = trackingOptions.minInterval;
-            updateOptions = true;
+
+        // if optionSetOnce is false when it gets here, it means that there is only one session
+        // in the Sessions table, which is the one to be updated.  So we compare that with the
+        // incoming one.  If they are not equal, toUpdate should be true.
+        bool toUpdate = !optionSetOnce && !it->second.equalsInTimeBasedRequest(trackingOptions);
+        // if toUpdate is false AND optionSetOnce is true, it means that multiplexedOptions
+        // contains valid multiplexed option, we need to check further
+        if (!toUpdate && optionSetOnce) {
+            TrackingOptions priorOptions = multiplexedOptions;
+            priorOptions.multiplexWithForTimeBasedRequest(it->second);
+            multiplexedOptions.multiplexWithForTimeBasedRequest(trackingOptions);
+            toUpdate = !priorOptions.equalsInTimeBasedRequest(multiplexedOptions);
         }
-        // if session we are updating has smaller powerMode then next smallest
-        if (trackingOptions.powerMode < multiplexedPowerMode) {
-            multiplexedOptions.powerMode = trackingOptions.powerMode;
-            updateOptions = true;
-        }
-        // if only one session exists, then tracking should be updated with it
-        if (1 == mTimeBasedTrackingSessions.size()) {
-            multiplexedOptions = trackingOptions;
-            updateOptions = true;
-        }
-        if (updateOptions) {
+        if (toUpdate) {
             // restart time based tracking with the newly updated options
-            updateTracking(client, id, multiplexedOptions, oldOptions);
+            updateTracking(client, id, multiplexedOptions, it->second);
             // need to wait for QMI callback
             reportToClientWithNoWait = false;
         }
@@ -3857,29 +3813,23 @@ GnssAdapter::stopTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t id)
         auto it = mTimeBasedTrackingSessions.find(key);
         if (it != mTimeBasedTrackingSessions.end()) {
             // find the smallest interval and powerMode, other than the session we are stopping
-            TrackingOptions multiplexedOptions = {}; // size is 0 until set for the first time
-            GnssPowerMode multiplexedPowerMode = GNSS_POWER_MODE_INVALID;
-            memset(&multiplexedOptions, 0, sizeof(multiplexedOptions));
+            TrackingOptions multiplexedOptions; // size is 0 until set for the first time
+            bool optionSetOnce = false;
             for (auto it2 = mTimeBasedTrackingSessions.begin();
                  it2 != mTimeBasedTrackingSessions.end(); ++it2) {
-                // if session is not the one we are stopping and either interval
-                // is not set or there is a new smallest interval, then set the new interval
-                if (it2->first != key && (0 == multiplexedOptions.size ||
-                    it2->second.minInterval < multiplexedOptions.minInterval)) {
-                     multiplexedOptions = it2->second;
-                }
-                // if session is not the one we are stopping and either powerMode
-                // is not set or there is a new smallest powerMode, then set the new powerMode
-                if (it2->first != key && (GNSS_POWER_MODE_INVALID == multiplexedPowerMode ||
-                    it2->second.powerMode < multiplexedPowerMode)) {
-                    multiplexedPowerMode = it2->second.powerMode;
+                if (it2->first != key) {
+                    if (!optionSetOnce) {
+                        multiplexedOptions = it2->second;
+                        optionSetOnce = true;
+                    } else {
+                        multiplexedOptions.multiplexWithForTimeBasedRequest(it2->second);
+                    }
                 }
             }
-            // if session we are stopping has smaller interval then next smallest or
-            // if session we are stopping has smaller powerMode then next smallest
-            if (it->second.minInterval < multiplexedOptions.minInterval ||
-                it->second.powerMode < multiplexedPowerMode) {
-                multiplexedOptions.powerMode = multiplexedPowerMode;
+            TrackingOptions priorOptions = multiplexedOptions;
+            priorOptions.multiplexWithForTimeBasedRequest(it->second);
+
+            if (!priorOptions.equalsInTimeBasedRequest(multiplexedOptions)) {
                 // restart time based tracking with the newly updated options
                 startTimeBasedTracking(client, id, multiplexedOptions);
                 // need to wait for QMI callback

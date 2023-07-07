@@ -98,7 +98,7 @@ struct LocPosMode
     LocPosMode(LocPositionMode m, LocGpsPositionRecurrence recr,
                uint32_t gap, uint32_t accu, uint32_t time,
                bool sp, const char* cred, const char* prov,
-               GnssPowerMode pMode = GNSS_POWER_MODE_INVALID,
+               GnssPowerMode pMode = GNSS_POWER_MODE_DEFAULT,
                uint32_t tbm = 0) :
         mode(m), recurrence(recr),
         min_interval(gap < GPS_MIN_POSSIBLE_FIX_INTERVAL_MS ?
@@ -121,7 +121,7 @@ struct LocPosMode
         recurrence(LOC_GPS_POSITION_RECURRENCE_PERIODIC),
         min_interval(GPS_DEFAULT_FIX_INTERVAL_MS),
         preferred_accuracy(50), preferred_time(120000),
-        share_position(true), powerMode(GNSS_POWER_MODE_INVALID),
+        share_position(true), powerMode(GNSS_POWER_MODE_DEFAULT),
         timeBetweenMeasurements(GPS_DEFAULT_FIX_INTERVAL_MS) {
         memset(credentials, 0, sizeof(credentials));
         memset(provider, 0, sizeof(provider));
