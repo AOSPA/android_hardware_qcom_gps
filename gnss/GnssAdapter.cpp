@@ -3726,22 +3726,27 @@ GnssAdapter::updateTrackingMultiplex(LocationAPI* client, uint32_t id,
         }
 
         // if optionSetOnce is false when it gets here, it means that there is only one session
-        // in the Sessions table, which is the one to be updated.  So we compare that with the
-        // incoming one.  If they are not equal, toUpdate should be true.
-        bool toUpdate = !optionSetOnce && !it->second.equalsInTimeBasedRequest(trackingOptions);
-        // if toUpdate is false AND optionSetOnce is true, it means that multiplexedOptions
-        // contains valid multiplexed option, we need to check further
-        if (!toUpdate && optionSetOnce) {
+        // in the Sessions table, which is the one to be updated.
+        if (false == optionSetOnce) {
+            // check whether client updates to the option or not
+            bool sameOption = it->second.equalsInTimeBasedRequest(trackingOptions);
+            LOC_LOGd("same client, option same %d", sameOption);
+            if (false == sameOption) {
+                // restart time based tracking with the newly updated options
+                updateTracking(client, id, trackingOptions, it->second);
+                // need to wait for QMI callback
+                reportToClientWithNoWait = false;
+            }
+        } else {
             TrackingOptions priorOptions = multiplexedOptions;
             priorOptions.multiplexWithForTimeBasedRequest(it->second);
             multiplexedOptions.multiplexWithForTimeBasedRequest(trackingOptions);
-            toUpdate = !priorOptions.equalsInTimeBasedRequest(multiplexedOptions);
-        }
-        if (toUpdate) {
-            // restart time based tracking with the newly updated options
-            updateTracking(client, id, multiplexedOptions, it->second);
-            // need to wait for QMI callback
-            reportToClientWithNoWait = false;
+            if (false == priorOptions.equalsInTimeBasedRequest(multiplexedOptions)) {
+                // restart time based tracking with the newly updated options
+                updateTracking(client, id, multiplexedOptions, it->second);
+                // need to wait for QMI callback
+                reportToClientWithNoWait = false;
+            }
         }
     }
 
