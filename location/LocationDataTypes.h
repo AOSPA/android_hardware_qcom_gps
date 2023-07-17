@@ -376,7 +376,9 @@ typedef enum {
     // This mask indicates modem 3GPP source is available.
     LOCATION_CAPABILITIES_MODEM_3GPP_AVAIL                  = (1<<30),
     // support GNSS bands
-    LOCATION_CAPABILITIES_GNSS_BANDS_BIT                    = (1ULL<<34)
+    LOCATION_CAPABILITIES_GNSS_BANDS_BIT                    = (1ULL<<34),
+    // This mask indicates PR ML inference is present
+    LOCATION_CAPABILITIES_NLOS_ML20                         = (1ULL<<35),
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -427,6 +429,8 @@ typedef enum {
     // This indicates EP can do SSR2OSR correction data
     // parseing
     LOCATION_FEATURE_TYPE_CORR_DATA_PARSER,
+    // This indicates PR meas ML infernece is enabled
+    LOCATION_QWES_FEATURE_NLOS_ML20,
     // Max value
     LOCATION_QWES_FEATURE_TYPE_MAX
 } LocationQwesFeatureTypes;
