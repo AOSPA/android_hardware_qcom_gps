@@ -430,12 +430,8 @@ public:
     bool setLocPositionMode(const LocPosMode& mode);
     LocPosMode& getLocPositionMode() { return mLocPositionMode; }
 
-    inline void reStartTimeBasedTracking() {
-        if (!mTimeBasedTrackingSessions.empty()) {
-            startTimeBasedTrackingMultiplex(nullptr, 0,
-                    mTimeBasedTrackingSessions.begin()->second);
-        }
-    }
+    void reStartTimeBasedTracking();
+
     bool startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessionId,
                                          const TrackingOptions& trackingOptions);
     void startTimeBasedTracking(LocationAPI* client, uint32_t sessionId,

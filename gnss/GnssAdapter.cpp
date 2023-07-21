@@ -3470,6 +3470,25 @@ GnssAdapter::startTrackingCommand(LocationAPI* client, TrackingOptions& options)
 
 }
 
+// Restarting the session after suspend
+void GnssAdapter::reStartTimeBasedTracking() {
+    if (!mTimeBasedTrackingSessions.empty()) {
+        TrackingOptions multiplexedOptions;
+        bool optionSetOnce = false;
+        for (auto it2 = mTimeBasedTrackingSessions.begin();
+                 it2 != mTimeBasedTrackingSessions.end(); ++it2) {
+            if (!optionSetOnce) {
+                multiplexedOptions = it2->second;
+                optionSetOnce = true;
+            } else {
+                multiplexedOptions.multiplexWithForTimeBasedRequest(it2->second);
+            }
+        }
+
+        startTimeBasedTracking(nullptr, 0, multiplexedOptions);
+    }
+}
+
 bool
 GnssAdapter::startTimeBasedTrackingMultiplex(LocationAPI* client, uint32_t sessionId,
                                              const TrackingOptions& options)
