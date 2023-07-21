@@ -12,6 +12,23 @@ SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #define LIB_XML_NAME "libxml2.so.2"
 #define ECDSA_KEY_LENGTH 67
+#define HASH_FUNC_LENGTH 16
+#define PK_TYPE_LENGTH   32
+#define UHASH_LENGTH     32
+
+
+// convert character of Hexadecimal into Decimal
+uint8_t toDecimal(char ecdsaKey[], int i) {
+    uint8_t decVal = 0;
+    if (ecdsaKey[i] >= '0' && ecdsaKey[i] <= '9') {
+        decVal = ecdsaKey[i] - '0';
+    } else if (ecdsaKey[i] >= 'A' && ecdsaKey[i] <= 'Z') {
+        decVal = ecdsaKey[i] - 'A' + 10;
+    } else if (ecdsaKey[i] >= 'a' && ecdsaKey[i] <= 'z') {
+        decVal = ecdsaKey[i] - 'a' + 10;
+    }
+    return decVal;
+}
 
 int loc_read_conf_xml(const char* buffer, int bufLen,
         mgpOsnmaPublicKeyAndMerkleTreeStruct* merkle_tree) {
@@ -136,7 +153,7 @@ void parse_scan_elements(xmlNode *a_node,
     for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
         if (cur_node != nullptr && cur_node->type == XML_ELEMENT_NODE) {
             if (!xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_HEADER,
-                        xmlParser.xmlStrlenFunc(XML_NODE_HEADER))) {
+                    xmlParser.xmlStrlenFunc(XML_NODE_HEADER))) {
                 continue;
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_BODY,
                     xmlParser.xmlStrlenFunc(XML_NODE_BODY)) == 0) {
@@ -149,9 +166,9 @@ void parse_scan_elements(xmlNode *a_node,
                 continue;
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_HASH_FUNCTION,
                     xmlParser.xmlStrlenFunc(XML_NODE_HASH_FUNCTION)) == 0) {
-                char hashFunc[16];
-                int status = parse_string_element(cur_node, hashFunc, 16, XML_NODE_HASH_FUNCTION,
-                        xmlParser);
+                char hashFunc[HASH_FUNC_LENGTH + 1];
+                int status = parse_string_element(cur_node, hashFunc, HASH_FUNC_LENGTH + 1,
+                        XML_NODE_HASH_FUNCTION, xmlParser);
                 if (status == 0) {
                     if (strncmp(hashFunc, "SHA-256", strlen("SHA-256")) == 0) {
                         merkle_tree[0].zMerkleTree.eHfType = MGP_OSNMA_HF_SHA_256;
@@ -161,18 +178,32 @@ void parse_scan_elements(xmlNode *a_node,
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_PUBLIC_KEY,
                     xmlParser.xmlStrlenFunc(XML_NODE_PUBLIC_KEY)) == 0) {
-                parse_public_key_elements(cur_node->children, merkle_tree[0].zPublicKey, xmlParser);
-                if (cur_node->next != nullptr &&  (xmlParser.xmlStrncmpFunc(cur_node->next->name,
+                int keyCount = 1;
+                while (cur_node->next != nullptr &&  (xmlParser.xmlStrncmpFunc(cur_node->next->name,
                         XML_NODE_PUBLIC_KEY, xmlParser.xmlStrlenFunc(XML_NODE_PUBLIC_KEY)) == 0)) {
-                    merkle_tree[1].zPublicKey.uFlag = 1;
                     cur_node = cur_node->next;
+                    ++keyCount;
+                }
+                // there might be three or more public keys, inject the last two
+                if (keyCount > 1) {
                     parse_public_key_elements(cur_node->children, merkle_tree[1].zPublicKey,
                             xmlParser);
+                    merkle_tree[1].zPublicKey.uFlag = 1;
+                    cur_node = cur_node->prev;
+                    parse_public_key_elements(cur_node->children, merkle_tree[0].zPublicKey,
+                            xmlParser);
+                    merkle_tree[0].zPublicKey.uFlag = 1;
+                    cur_node = cur_node->next;
+                } else { // only one public key
+                    parse_public_key_elements(cur_node->children, merkle_tree[0].zPublicKey,
+                            xmlParser);
+                    merkle_tree[0].zPublicKey.uFlag = 1;
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_TREE_NODE,
                     xmlParser.xmlStrlenFunc(XML_NODE_TREE_NODE)) == 0) {
                 parse_tree_node_elements(cur_node->children, merkle_tree[0].zMerkleTree.zRootNode,
                         xmlParser);
+                merkle_tree[0].zMerkleTree.uFlag = 1;
                 vector<mgpOsnmaTreeNodeT> treeNodes; //save all the tree nodes except root node
                 while (cur_node->next != nullptr && (xmlParser.xmlStrncmpFunc(cur_node->next->name,
                         XML_NODE_TREE_NODE, xmlParser.xmlStrlenFunc(XML_NODE_TREE_NODE)) == 0)) {
@@ -194,7 +225,7 @@ void parse_scan_elements(xmlNode *a_node,
                 int keyCnt = merkle_tree[1].zPublicKey.uFlag == 1? 2: 1;
                 IF_LOC_LOGV {
                     for (int i = 0; i < treePath[0].size(); ++i) {
-                        LOC_LOGv("treePath[0][%d]: %d",  treePath[0][i]);
+                        LOC_LOGv("treePath[0][%d]: %d", i, treePath[0][i]);
                     }
                 }
 
@@ -210,7 +241,7 @@ void parse_scan_elements(xmlNode *a_node,
                         }
                     }
                 }
-                for (int keyNum =0; keyNum < keyCnt; ++ keyNum) {
+                for (int keyNum =0; keyNum < keyCnt; ++keyNum) {
                     for (int layer=0; layer < 4; ++layer) {
                         merkle_tree[keyNum].zPublicKey.zNodes[layer] =
                                 find_node(layer, treePath[keyNum][layer], treeNodes);
@@ -247,7 +278,7 @@ void parse_public_key_elements(xmlNode *a_node, mgpOsnmaPublicKeyT& publicKey,
                     publicKey.uNpkId = pkID;
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_LENGTH_IN_BITS,
-                        xmlParser.xmlStrlenFunc(XML_NODE_LENGTH_IN_BITS)) == 0) {
+                    xmlParser.xmlStrlenFunc(XML_NODE_LENGTH_IN_BITS)) == 0) {
                 int lenInBits;
                 int status = parse_int_element(cur_node, lenInBits, XML_NODE_LENGTH_IN_BITS,
                         xmlParser);
@@ -255,34 +286,34 @@ void parse_public_key_elements(xmlNode *a_node, mgpOsnmaPublicKeyT& publicKey,
                     publicKey.wKeyLen = lenInBits;
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_POINT,
-                        xmlParser.xmlStrlenFunc(XML_NODE_POINT))
-                    == 0) {
-                char ecdsaKey[ECDSA_KEY_LENGTH * 2];
-                int status = parse_string_element(cur_node, ecdsaKey, 134, XML_NODE_POINT,
+                    xmlParser.xmlStrlenFunc(XML_NODE_POINT)) == 0) {
+                char ecdsaKey[ECDSA_KEY_LENGTH * 2 + 1];
+                int status = parse_string_element(cur_node, ecdsaKey, 135, XML_NODE_POINT,
                         xmlParser);
                 if (status == 0) {
                     uint8_t ecdsaKeyDec[ECDSA_KEY_LENGTH] = {0};
                     int i = 0;
+                    // convert Key from char to decimal
                     for (i = 0; i < ECDSA_KEY_LENGTH && ecdsaKey[2*i] != '\0' &&
                             ecdsaKey[2*i+1] != '\0'; ++i) {
-                        ecdsaKeyDec[i] = ecdsaKey[2*i]*16 + ecdsaKey[2*i+1];
+                        ecdsaKeyDec[i] = toDecimal(ecdsaKey, 2*i) * 16 + toDecimal(ecdsaKey, 2*i+1);
                     }
                     if (i < ECDSA_KEY_LENGTH && ecdsaKey[2*i+1] == '\0') {
-                        ecdsaKeyDec[i] = ecdsaKey[2*i] * 16;
+                        ecdsaKeyDec[i] = toDecimal(ecdsaKey, 2*i) * 16;
                     }
                     memcpy(publicKey.uKey, ecdsaKeyDec, ECDSA_KEY_LENGTH);
                     //For DEBUG
-                    IF_LOC_LOGD {
+                    IF_LOC_LOGV {
                         for (int j = 0; j < ECDSA_KEY_LENGTH; ++j) {
-                            LOC_LOGd("publicKey.uKey[%d]: %d", j, publicKey.uKey[j]);
+                            LOC_LOGv("publicKey.uKey[%d]: %d", j, publicKey.uKey[j]);
                         }
                     }
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_PK_TYPE,
-                        xmlParser.xmlStrlenFunc(XML_NODE_PK_TYPE)) == 0) {
-                char pkType[32];
-                int status = parse_string_element(cur_node, pkType, 32, XML_NODE_PK_TYPE,
-                        xmlParser);
+                    xmlParser.xmlStrlenFunc(XML_NODE_PK_TYPE)) == 0) {
+                char pkType[PK_TYPE_LENGTH + 1];
+                int status = parse_string_element(cur_node, pkType, PK_TYPE_LENGTH + 1,
+                        XML_NODE_PK_TYPE, xmlParser);
                 if (status == 0) {
                     if (strncmp(pkType, "ECDSA P-256", strlen("ECDSA P-256")) == 0) {
                         publicKey.eNpkt = MGP_OSNMA_NPKT_ECDSA_P_256;
@@ -295,9 +326,10 @@ void parse_public_key_elements(xmlNode *a_node, mgpOsnmaPublicKeyT& publicKey,
             }
         }
     }
-    LOC_LOGd("publicKey.uNpkId: %d, publicKey.wKeyLen: %d, publicKey.uKey: %s, eNpkt: %d",
-            publicKey.uNpkId, publicKey.wKeyLen, publicKey.uKey, publicKey.eNpkt);
+    LOC_LOGd("publicKey.uNpkId: %d, publicKey.wKeyLen: %d, eNpkt: %d",
+            publicKey.uNpkId, publicKey.wKeyLen, publicKey.eNpkt);
 }
+
 void parse_tree_node_elements(xmlNode *a_node, mgpOsnmaTreeNodeT& treeNode,
         XmlParserInterface& xmlParser) {
     xmlChar XML_NODE_J[]                   =  "j";
@@ -331,31 +363,30 @@ void parse_tree_node_elements(xmlNode *a_node, mgpOsnmaTreeNodeT& treeNode,
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_X_JI,
                     xmlParser.xmlStrlenFunc(XML_NODE_X_JI)) == 0) {
-                char xJiVal[64];
-                int status = parse_string_element(cur_node, xJiVal, 64, XML_NODE_X_JI, xmlParser);
+                char xJiVal[UHASH_LENGTH * 2 + 1];
+                int status = parse_string_element(cur_node, xJiVal, UHASH_LENGTH * 2 + 1,
+                        XML_NODE_X_JI, xmlParser);
                 if (status == 0) {
-                    uint8_t xJiValDec[32] = {0};
+                    uint8_t xJiValDec[UHASH_LENGTH] = {0};
                     int i = 0;
-                    for (i=0; i<32 && xJiVal[2*i] != '\0' && xJiVal[2*i+1] != '\0'; ++i) {
-                       xJiValDec[i] = xJiVal[2*i] * 16 + xJiVal[2*i+1];
-                    }
-                    if (i<32 && xJiVal[2*i+1] == '\0') {
-                       xJiValDec[i] = xJiVal[2*i] * 16;
+                    // convert hash value from char to decimal
+                    for (i=0; i < UHASH_LENGTH && xJiVal[2*i] != '\0'; ++i) {
+                       xJiValDec[i] = toDecimal(xJiVal, 2*i) * 16 + toDecimal(xJiVal, 2*i+1);
                     }
 
                     memcpy(treeNode.uHash, xJiValDec, sizeof(xJiValDec));
                     //For DEBUG
-                    IF_LOC_LOGD {
-                        for (int j = 0; j < 32; ++j) {
-                            LOC_LOGd("treeNode.uHash[%d]: %d", j, treeNode.uHash[j]);
+                    IF_LOC_LOGV {
+                        for (int j = 0; j < UHASH_LENGTH; ++j) {
+                            LOC_LOGv("treeNode.uHash[%d]: %d", j, treeNode.uHash[j]);
                         }
                     }
                 }
             }
         }
     }
-    LOC_LOGd("treeNode.ui: %d, treeNode.uj: %d, treeNode.wLengthInBits: %d, treeNode.uHash: %s\n",
-            treeNode.ui, treeNode.uj, treeNode.wLengthInBits, treeNode.uHash);
+    LOC_LOGd("treeNode.ui: %d, treeNode.uj: %d, treeNode.wLengthInBits: %d\n",
+            treeNode.ui, treeNode.uj, treeNode.wLengthInBits);
 }
 
 int parse_int_element(xmlNode *pXmlNode, int& value,

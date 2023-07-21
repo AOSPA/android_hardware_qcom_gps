@@ -115,11 +115,9 @@ MeasurementAPIClient::startTracking()
 
     locAPISetCallbacks(locationCallbacks);
 
-    TrackingOptions options = {};
-    memset(&options, 0, sizeof(TrackingOptions));
+    TrackingOptions options;
     options.size = sizeof(TrackingOptions);
     options.minInterval = 1000;
-    options.mode = GNSS_SUPL_MODE_STANDALONE;
 
     mTracking = true;
     LOC_LOGd();

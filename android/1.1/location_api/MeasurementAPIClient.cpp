@@ -119,15 +119,11 @@ MeasurementAPIClient::startTracking(
 
     locAPISetCallbacks(locationCallbacks);
 
-    TrackingOptions options = {};
-    memset(&options, 0, sizeof(TrackingOptions));
+    TrackingOptions options;
     options.size = sizeof(TrackingOptions);
     options.minInterval = 1000;
-    options.mode = GNSS_SUPL_MODE_STANDALONE;
-    if (GNSS_POWER_MODE_INVALID != powerMode) {
-        options.powerMode = powerMode;
-        options.tbm = timeBetweenMeasurement;
-    }
+    options.powerMode = powerMode;
+    options.tbm = timeBetweenMeasurement;
 
     mTracking = true;
     LOC_LOGd("(powermode: %d) (tbm %d)", (int)powerMode, timeBetweenMeasurement);
