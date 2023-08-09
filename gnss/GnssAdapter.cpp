@@ -7852,11 +7852,12 @@ uint32_t GnssAdapter::configMerkleTreeCommand(const char * merkleTreeConfigBuffe
             LocationError err = LOCATION_ERROR_SUCCESS;
             int keyNum = (treeParam[1].zPublicKey.uFlag == 1)? 2: 1;
             LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
-                    [&mAdapter = mAdapter, this, treeParam, keyNum] (LocationError err) mutable {
+                    [&mAdapter = mAdapter, mSessionId = mSessionId, treeParam, keyNum,
+                    &mApi = mApi] (LocationError err) mutable {
                 // when there are two valid public keys, inject second key as well
                 if (keyNum == 2) {
                     LocApiResponse* locApiResp = new LocApiResponse(*mAdapter.getContext(),
-                            [&mAdapter = mAdapter, this, treeParam, keyNum] (
+                            [&mAdapter = mAdapter, mSessionId = mSessionId, treeParam] (
                             LocationError err) mutable {
                         mAdapter.reportResponse(err, mSessionId);
                         // clean treeParam when response for the last public key reports
@@ -7921,7 +7922,7 @@ uint32_t GnssAdapter::configOsnmaEnablementCommand(bool enable) {
             //inject Merkle tree Parameter into PE
             LocationError err = LOCATION_ERROR_SUCCESS;
             LocApiResponse* locApiResponse = new LocApiResponse(*mAdapter.getContext(),
-                    [&mAdapter = mAdapter, this] (LocationError err) mutable {
+                    [&mAdapter = mAdapter, mSessionId = mSessionId] (LocationError err) mutable {
                 mAdapter.reportResponse(err, mSessionId);
             });
             if (!locApiResponse) {

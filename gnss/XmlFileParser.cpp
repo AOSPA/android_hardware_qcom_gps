@@ -219,6 +219,10 @@ void parse_scan_elements(xmlNode *a_node,
                 }
                 vector<vector<int>> treePath(2); // value i of all the 4 required Merkle tree nodes
 
+                if (merkle_tree[0].zPublicKey.uNpkId == 0) {
+                    LOC_LOGi("OSNMA Alert Message! No need to populate the treePath.");
+                    break;
+                }
                 get_node_path(0, merkle_tree[0].zPublicKey.uNpkId-1,
                         merkle_tree[0].zMerkleTree.zRootNode.uj,
                         merkle_tree[0].zMerkleTree.zRootNode.ui, treePath[0]);
