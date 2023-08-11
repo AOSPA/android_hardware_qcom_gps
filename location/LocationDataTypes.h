@@ -1795,8 +1795,10 @@ typedef struct {
 typedef struct {
     uint32_t size;         // set to sizeof(GnssNmeaNotification)
     uint64_t timestamp;  // timestamp
+    LocOutputEngineType locOutputEngType; // engine type
     const char* nmea;    // nmea text
     uint32_t length;       // length of the nmea text
+    bool isSvNmea;         //  is NMEA from SV report or not
 } GnssNmeaNotification;
 
 typedef struct {
@@ -2863,6 +2865,7 @@ typedef struct {
     locationSystemInfoCallback locationSystemInfoCb; // optional
     engineLocationsInfoCallback engineLocationsInfoCb; // optional
     gnssDcReportCallback gnssDcReportCb;               // optional
+    gnssNmeaCallback engineNmeaCb; // optional
 } LocationCallbacks;
 
 typedef struct {
@@ -2983,5 +2986,14 @@ typedef struct {
     mgpOsnmaPublicKeyT   zPublicKey;  /* public key */
     mgpOsnmaMerkleTreeT  zMerkleTree; /* Merkle Tree Nodes */
 } mgpOsnmaPublicKeyAndMerkleTreeStruct;
+
+enum {
+    MODEM_QESDK_FEATURE_CARRIER_PHASE     = (1<<0),
+    MODEM_QESDK_FEATURE_SV_POLYNOMIALS    = (1<<1),
+    MODEM_QESDK_FEATURE_DGNSS             = (1<<2),
+    MODEM_QESDK_FEATURE_ROBUST_LOCATION   = (1<<3)
+} ModemGnssQesdkFeatureBits;
+
+typedef uint64_t ModemGnssQesdkFeatureMask;
 
 #endif /* LOCATIONDATATYPES_H */

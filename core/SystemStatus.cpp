@@ -2044,5 +2044,20 @@ bool SystemStatus::eventSetTracking(bool tracking, bool updateSysStatusTrkState)
     pthread_mutex_unlock(&mMutexSystemStatus);
     return true;
 }
+
+/******************************************************************************
+@brief      API to update gps enable state
+
+@param[In]  enable state
+
+@return     true when successfully done
+******************************************************************************/
+
+bool SystemStatus::eventGpsEnabled(bool gpsEnabled) {
+    SystemStatusGpsState  s(gpsEnabled);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+
 } // namespace loc_core
 
