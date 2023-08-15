@@ -90,7 +90,7 @@ public:
     // for GpsMeasurementInterface
     template <typename T>
     Return<IGnssMeasurement::GnssMeasurementStatus> measurementSetCallback(
-            const sp<T>& callback, GnssPowerMode powerMode = GNSS_POWER_MODE_INVALID) {
+            const sp<T>& callback, GnssPowerMode powerMode = GNSS_POWER_MODE_DEFAULT) {
         mMutex.lock();
         setCallbackLocked(callback);
         mMutex.unlock();
@@ -99,7 +99,7 @@ public:
     }
     void measurementClose();
     Return<IGnssMeasurement::GnssMeasurementStatus> startTracking(
-            GnssPowerMode powerMode = GNSS_POWER_MODE_INVALID,
+            GnssPowerMode powerMode = GNSS_POWER_MODE_DEFAULT,
             uint32_t timeBetweenMeasurement = GPS_DEFAULT_FIX_INTERVAL_MS);
 
     // callbacks we are interested in

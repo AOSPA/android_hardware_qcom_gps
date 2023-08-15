@@ -536,6 +536,10 @@ void LocApiBase::reportDcMessage(const GnssDcReportInfo& dcReport) {
     TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportDcMessage(dcReport));
 }
 
+void LocApiBase::reportModemGnssQesdkFeatureStatus(const ModemGnssQesdkFeatureMask& mask) {
+    TO_ALL_LOCADAPTERS(mLocAdapters[i]->reportModemGnssQesdkFeatureStatus(mask));
+}
+
 void LocApiBase::reportQwesCapabilities
 (
     const std::unordered_map<LocationQwesFeatureType, bool> &featureMap

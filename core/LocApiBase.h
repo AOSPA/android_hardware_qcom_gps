@@ -262,6 +262,7 @@ public:
     void reportLocations(Location* locations, size_t count, BatchingMode batchingMode);
     void reportCompletedTrips(uint32_t accumulated_distance);
     void handleBatchStatusEvent(BatchingStatus batchStatus);
+    void reportModemGnssQesdkFeatureStatus(const ModemGnssQesdkFeatureMask& mask);
 
     // downward calls
     virtual void* getSibling();

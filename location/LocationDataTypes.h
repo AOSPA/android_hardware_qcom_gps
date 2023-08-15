@@ -1003,7 +1003,7 @@ typedef struct {
     PositioningEngineMask posEngineMask;     // engines to perform the delete operation on.
 } GnssAidingData;
 
-typedef uint16_t DrCalibrationStatusMask;
+typedef uint32_t DrCalibrationStatusMask;
 typedef enum {
     // Indicate that roll calibration is needed. Need to take more turns on level ground
     DR_ROLL_CALIBRATION_NEEDED  = (1<<0),
@@ -1123,12 +1123,12 @@ struct LocationOptions {
 };
 
 typedef enum {
-    GNSS_POWER_MODE_INVALID = 0,
-    GNSS_POWER_MODE_M1,  /* Improved Accuracy Mode */
-    GNSS_POWER_MODE_M2,  /* Normal Mode */
-    GNSS_POWER_MODE_M3,  /* Background Mode */
-    GNSS_POWER_MODE_M4,  /* Background Mode */
-    GNSS_POWER_MODE_M5   /* Background Mode */
+    GNSS_POWER_MODE_M1 = 1,  /* Improved Accuracy Mode */
+    GNSS_POWER_MODE_M2,      /* Normal Mode */
+    GNSS_POWER_MODE_M3,      /* Background Mode */
+    GNSS_POWER_MODE_M4,      /* Background Mode */
+    GNSS_POWER_MODE_M5,      /* Background Mode */
+    GNSS_POWER_MODE_DEFAULT = GNSS_POWER_MODE_M2
 } GnssPowerMode;
 
 typedef enum {
@@ -1144,14 +1144,34 @@ struct TrackingOptions : LocationOptions {
     SpecialReqType specialReq; /* Special Request type */
 
     inline TrackingOptions() :
-            LocationOptions(), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            LocationOptions(), powerMode(GNSS_POWER_MODE_DEFAULT), tbm(0),
             specialReq(SPECIAL_REQ_INVALID){}
-    inline TrackingOptions(uint32_t s, GnssPowerMode m, uint32_t t) :
-            LocationOptions(), powerMode(m), tbm(t),
-            specialReq(SPECIAL_REQ_INVALID){ LocationOptions::size = s; }
     inline TrackingOptions(const LocationOptions& options) :
-            LocationOptions(options), powerMode(GNSS_POWER_MODE_INVALID), tbm(0),
+            LocationOptions(options), powerMode(GNSS_POWER_MODE_DEFAULT), tbm(0),
             specialReq(SPECIAL_REQ_INVALID){}
+    inline bool equalsInTimeBasedRequest(const TrackingOptions& other) const {
+        return minInterval == other.minInterval && powerMode == other.powerMode &&
+                tbm == other.tbm && qualityLevelAccepted == other.qualityLevelAccepted;
+    }
+    inline bool multiplexWithForTimeBasedRequest(const TrackingOptions& other) {
+        bool updated = false;
+        if (other.minInterval < minInterval) {
+            updated = true;
+            minInterval = other.minInterval;
+        }
+        if (other.powerMode < powerMode) {
+            updated = true;
+            powerMode = other.powerMode;
+        }
+        if (other.tbm < tbm) {
+            updated = true;
+            tbm = other.tbm;
+        }
+        if (other.qualityLevelAccepted > qualityLevelAccepted) {
+            qualityLevelAccepted = other.qualityLevelAccepted;
+        }
+        return updated;
+    }
     inline void setLocationOptions(const LocationOptions& options) {
         size = sizeof(TrackingOptions);
         minInterval = options.minInterval;
@@ -1401,19 +1421,22 @@ typedef struct {
 } GnssSystemTime;
 
 typedef uint32_t DrSolutionStatusMask;
-#define VEHICLE_SENSOR_SPEED_INPUT_DETECTED (1<<0)
-#define VEHICLE_SENSOR_SPEED_INPUT_USED     (1<<1)
-#define DRE_ERROR_UNCALIBRATED              (1<<2)
-#define DRE_ERROR_GNSS_QUALITY_INSUFFICIENT (1<<3)
-#define DRE_ERROR_FERRY_DETECTED            (1<<4)
-#define DRE_ERROR_6DOF_SENSOR_UNAVAILABLE   (1<<5)
-#define DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE (1<<6)
-#define DRE_ERROR_GNSS_EPH_UNAVAILABLE      (1<<7)
-#define DRE_ERROR_GNSS_MEAS_UNAVAILABLE     (1<<8)
-#define DRE_ERROR_NO_STORED_POSITION        (1<<9)
-#define DRE_ERROR_MOVING_AT_START           (1<<10)
-#define DRE_ERROR_POSITON_UNRELIABLE        (1<<11)
-#define DRE_ERROR_GENERIC                   (1<<12)
+#define VEHICLE_SENSOR_SPEED_INPUT_DETECTED    (1<<0)
+#define VEHICLE_SENSOR_SPEED_INPUT_USED        (1<<1)
+#define DRE_WARNING_UNCALIBRATED               (1<<2)
+#define DRE_WARNING_GNSS_QUALITY_INSUFFICIENT  (1<<3)
+#define DRE_WARNING_FERRY_DETECTED             (1<<4)
+#define DRE_ERROR_6DOF_SENSOR_UNAVAILABLE      (1<<5)
+#define DRE_ERROR_VEHICLE_SPEED_UNAVAILABLE    (1<<6)
+#define DRE_ERROR_GNSS_EPH_UNAVAILABLE         (1<<7)
+#define DRE_ERROR_GNSS_MEAS_UNAVAILABLE        (1<<8)
+#define DRE_WARNING_INIT_POSITION_INVALID      (1<<9)
+#define DRE_WARNING_INIT_POSITION_UNRELIABLE   (1<<10)
+#define DRE_WARNING_POSITON_UNRELIABLE         (1<<11)
+#define DRE_ERROR_GENERIC                      (1<<12)
+#define DRE_WARNING_SENSOR_TEMP_OUT_OF_RANGE   (1<<13)
+#define DRE_WARNING_USER_DYNAMICS_INSUFFICIENT (1<<14)
+#define DRE_WARNING_FACTORY_DATA_INCONSISTENT  (1<<15)
 
 typedef struct {
     double latitude;  // in degree
@@ -1772,8 +1795,10 @@ typedef struct {
 typedef struct {
     uint32_t size;         // set to sizeof(GnssNmeaNotification)
     uint64_t timestamp;  // timestamp
+    LocOutputEngineType locOutputEngType; // engine type
     const char* nmea;    // nmea text
     uint32_t length;       // length of the nmea text
+    bool isSvNmea;         //  is NMEA from SV report or not
 } GnssNmeaNotification;
 
 typedef struct {
@@ -2840,6 +2865,7 @@ typedef struct {
     locationSystemInfoCallback locationSystemInfoCb; // optional
     engineLocationsInfoCallback engineLocationsInfoCb; // optional
     gnssDcReportCallback gnssDcReportCb;               // optional
+    gnssNmeaCallback engineNmeaCb; // optional
 } LocationCallbacks;
 
 typedef struct {
@@ -2900,7 +2926,9 @@ enum PowerStateType {
     POWER_STATE_UNKNOWN = 0,
     POWER_STATE_SUSPEND = 1,
     POWER_STATE_RESUME  = 2,
-    POWER_STATE_SHUTDOWN = 3
+    POWER_STATE_SHUTDOWN = 3,
+    POWER_STATE_DEEP_SLEEP_ENTRY = 4,
+    POWER_STATE_DEEP_SLEEP_EXIT = 5
 };
 
 typedef uint64_t NetworkHandle;
@@ -2958,5 +2986,14 @@ typedef struct {
     mgpOsnmaPublicKeyT   zPublicKey;  /* public key */
     mgpOsnmaMerkleTreeT  zMerkleTree; /* Merkle Tree Nodes */
 } mgpOsnmaPublicKeyAndMerkleTreeStruct;
+
+enum {
+    MODEM_QESDK_FEATURE_CARRIER_PHASE     = (1<<0),
+    MODEM_QESDK_FEATURE_SV_POLYNOMIALS    = (1<<1),
+    MODEM_QESDK_FEATURE_DGNSS             = (1<<2),
+    MODEM_QESDK_FEATURE_ROBUST_LOCATION   = (1<<3)
+} ModemGnssQesdkFeatureBits;
+
+typedef uint64_t ModemGnssQesdkFeatureMask;
 
 #endif /* LOCATIONDATATYPES_H */

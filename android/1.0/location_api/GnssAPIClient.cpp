@@ -99,7 +99,6 @@ GnssAPIClient::GnssAPIClient(const sp<IGnssCallback>& gpsCb,
     LOC_LOGD("%s]: (%p %p)", __FUNCTION__, &gpsCb, &niCb);
 
     // set default LocationOptions.
-    memset(&mTrackingOptions, 0, sizeof(TrackingOptions));
     mTrackingOptions.size = sizeof(TrackingOptions);
     mTrackingOptions.minInterval = 1000;
     mTrackingOptions.minDistance = 0;
@@ -199,7 +198,6 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
             (int)mode, recurrence, minIntervalMs, preferredAccuracyMeters,
             preferredTimeMs, (int)powerMode, timeBetweenMeasurement);
     bool retVal = true;
-    memset(&mTrackingOptions, 0, sizeof(TrackingOptions));
     mTrackingOptions.size = sizeof(TrackingOptions);
     mTrackingOptions.minInterval = minIntervalMs;
     if (IGnss::GnssPositionMode::MS_ASSISTED == mode ||
@@ -219,10 +217,8 @@ bool GnssAPIClient::gnssSetPositionMode(IGnss::GnssPositionMode mode,
         LOC_LOGD("%s]: invalid GnssPositionMode: %d", __FUNCTION__, (int)mode);
         retVal = false;
     }
-    if (GNSS_POWER_MODE_INVALID != powerMode) {
-        mTrackingOptions.powerMode = powerMode;
-        mTrackingOptions.tbm = timeBetweenMeasurement;
-    }
+    mTrackingOptions.powerMode = powerMode;
+    mTrackingOptions.tbm = timeBetweenMeasurement;
     locAPIUpdateTrackingOptions(mTrackingOptions);
     return retVal;
 }

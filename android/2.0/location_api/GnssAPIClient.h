@@ -99,7 +99,7 @@ public:
             uint32_t minIntervalMs,
             uint32_t preferredAccuracyMeters,
             uint32_t preferredTimeMs,
-            GnssPowerMode powerMode = GNSS_POWER_MODE_INVALID,
+            GnssPowerMode powerMode = GNSS_POWER_MODE_DEFAULT,
             uint32_t timeBetweenMeasurement = 0);
 
     // for GpsNiInterface

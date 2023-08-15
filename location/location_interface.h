@@ -147,7 +147,8 @@ struct GnssInterface {
     uint32_t (*configEngineRunState)(PositioningEngineMask engType,
                                      LocEngineRunState engState);
     uint32_t (*configOutputNmeaTypes)(GnssNmeaTypesMask enabledNmeaTypes,
-                                      GnssGeodeticDatumType nmeaDatumType);
+                                      GnssGeodeticDatumType nmeaDatumType,
+                                      LocReqEngineTypeMask locReqEngTypeMask);
     void (*powerIndicationInit)(const powerIndicationCb powerIndicationCallback);
     void (*powerIndicationRequest)();
     void (*setAddressRequestCb)(std::function<void(const Location&)> addressRequestCb);
