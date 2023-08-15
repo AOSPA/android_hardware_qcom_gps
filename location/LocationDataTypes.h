@@ -2659,6 +2659,13 @@ struct XtraConfigParams {
     uint32_t xtraIntegrityDownloadIntervalMinute;
     /** Level of debug log messages that will be logged. */
     DebugLogLevel xtraDaemonDebugLogLevel;
+    /** URL of NTS KE Server. if provided, shall be complete and
+     *  shall include the port number. Max of 128 bytes,
+     *  including null-terminating byte will be supported.
+     *  Valid NTS KE server URL should start with "https://".
+     *  If not specified, then device will use
+     *  default URL of https://nts.xtracloud.net:4460. */
+    char ntsKeServerURL[128];
 };
 
 enum XtraStatusUpdateType {
