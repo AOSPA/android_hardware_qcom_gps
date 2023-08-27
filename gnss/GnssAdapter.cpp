@@ -5472,7 +5472,7 @@ void
 GnssAdapter::reportGnssMeasurementsEvent(const GnssMeasurements& gnssMeasurements,
                                             int msInWeek)
 {
-    LOC_LOGD("%s]: msInWeek=%d", __func__, msInWeek);
+    LOC_LOGd("msInWeek=%d, isNhz = %d", msInWeek, gnssMeasurements.gnssSvMeasurementSet.isNhz);
 
     struct MsgReportGnssMeasurementData : public LocMsg {
         GnssAdapter& mAdapter;
@@ -5492,7 +5492,8 @@ GnssAdapter::reportGnssMeasurementsEvent(const GnssMeasurements& gnssMeasurement
             mAdapter.mPositionElapsedRealTimeCal.saveGpsTimeAndQtimerPairInMeasReport(
                     mGnssMeasurements.gnssSvMeasurementSet);
             mAdapter.reportGnssMeasurementData(mGnssMeasurements.gnssMeasNotification);
-            if (mAdapter.mDGnssNeedReport) {
+            if ((false == mGnssMeasurements.gnssSvMeasurementSet.isNhz) &&
+                    mAdapter.mDGnssNeedReport) {
                 mAdapter.reportDGnssDataUsable(mGnssMeasurements.gnssSvMeasurementSet);
             }
         }
