@@ -74,7 +74,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define GNSS_NI_REQUESTOR_MAX  (256)
 #define GNSS_NI_MESSAGE_ID_MAX (2048)
-#define GNSS_SV_MAX            (144)
+#define GNSS_SV_MAX            (176)
 #define GNSS_MEASUREMENTS_MAX  (144)
 #define GNSS_BANDS_MAX         (32)
 #define DGNSS_STATION_ID_MAX   (3)
