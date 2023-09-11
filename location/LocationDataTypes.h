@@ -2670,6 +2670,8 @@ struct XtraConfigParams {
      *  If not specified, then device will use
      *  default URL of https://nts.xtracloud.net:4460. */
     char ntsKeServerURL[128];
+    /** To indicate if Diag logging to be enabled for XTRA */
+    uint32_t xtraDaemonDiagLoggingStatus;
 };
 
 enum XtraStatusUpdateType {
