@@ -205,7 +205,9 @@ typedef enum {
     /**< Support the feature to report engine debug data */
     LOC_SUPPORTED_FEATURE_ENGINE_DEBUG_DATA,
     /**< Support the feature to report feature update in QMI_LOC_EVENT_REPORT_IND */
-    LOC_SUPPORTED_FEATURE_DYNAMIC_FEATURE_STATUS
+    LOC_SUPPORTED_FEATURE_DYNAMIC_FEATURE_STATUS,
+    /**<  Support the feature to report Supported GNSS Bands */
+    LOC_SUPPORTED_FEATURE_GNSS_BANDS_SUPPORTED
 } loc_supported_feature_enum;
 
 typedef struct {
@@ -924,6 +926,7 @@ enum loc_api_adapter_event_index {
     LOC_API_ADAPTER_ENGINE_LOCK_STATE_DATA_REPORT,     // Engine lock state data report
     LOC_API_ADAPTER_FEATURE_STATUS_UPDATE,             // Dynamic feature status update
     LOC_API_ADAPTER_REQUEST_ASSISTANCE_TIME,           // NTP time download request
+    LOC_API_ADAPTER_GNSS_BANDS_SUPPORTED,              // GNSS bands supported
     LOC_API_ADAPTER_EVENT_MAX
 };
 
@@ -972,6 +975,8 @@ enum loc_api_adapter_event_index {
 #define LOC_API_ADAPTER_BIT_FEATURE_STATUS_UPDATE            (1ULL<<LOC_API_ADAPTER_FEATURE_STATUS_UPDATE)
 #define LOC_API_ADAPTER_BIT_ASSISTANCE_TIME_REQUEST \
         (1ULL<<LOC_API_ADAPTER_REQUEST_ASSISTANCE_TIME)
+#define LOC_API_ADAPTER_BIT_GNSS_BANDS_SUPPORTED \
+        (1ULL<<LOC_API_ADAPTER_GNSS_BANDS_SUPPORTED)
 
 typedef uint64_t LOC_API_ADAPTER_EVENT_MASK_T;
 

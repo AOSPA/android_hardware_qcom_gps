@@ -327,7 +327,7 @@ typedef enum {
     // support measurement corrections
     LOCATION_CAPABILITIES_MEASUREMENTS_CORRECTION_BIT       = (1<<13),
     // support Robust Location
-    LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT               = (1<<14),
+    LOCATION_CAPABILITIES_CONFORMITY_INDEX_BIT              = (1<<14),
     // support precise location edgnss
     LOCATION_CAPABILITIES_EDGNSS_BIT                        = (1<<15),
     // Modem supports Carrier Phase for Precise Positioning
@@ -338,7 +338,7 @@ typedef enum {
     LOCATION_CAPABILITIES_QWES_SV_POLYNOMIAL_BIT            = (1<<17),
     // Modem supports SV Ephemeris for tightly coupled external
     // PPE engines. This is a Standalone Feature.
-    LOCATION_CAPABILITIES_QWES_SV_EPHEMERIS_BIT            = (1<<18),
+    LOCATION_CAPABILITIES_QWES_SV_EPHEMERIS_BIT             = (1<<18),
     // Modem supports GNSS Single Frequency feature. This is a
     // Standalone Feature.
     LOCATION_CAPABILITIES_QWES_GNSS_SINGLE_FREQUENCY        = (1<<19),
@@ -372,7 +372,11 @@ typedef enum {
     // This mask indicates Antenna info is enabled.
     LOCATION_CAPABILITIES_ANTENNA_INFO                      = (1<<28),
     // This mask indicates qppe or qfe library is presented.
-    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT               = (1<<29)
+    LOCATION_CAPABILITIES_PRECISE_LIB_PRESENT               = (1<<29),
+    // This mask indicates modem 3GPP source is available.
+    LOCATION_CAPABILITIES_MODEM_3GPP_AVAIL                  = (1<<30),
+    // support GNSS bands
+    LOCATION_CAPABILITIES_GNSS_BANDS_BIT                    = (1ULL<<34)
 } LocationCapabilitiesBits;
 
 typedef uint8_t LocationQwesFeatureType;
@@ -417,6 +421,12 @@ typedef enum {
     // This indicates DLP feature is enabled by QESDK APP
     // license
     LOCATION_QWES_FEATURE_TYPE_DLP_QESDK,
+    // This indicates MLP feature is enabled by QESDK APP
+    // license
+    LOCATION_QWES_FEATURE_TYPE_MLP_QESDK,
+    // This indicates EP can do SSR2OSR correction data
+    // parseing
+    LOCATION_FEATURE_TYPE_CORR_DATA_PARSER,
     // Max value
     LOCATION_QWES_FEATURE_TYPE_MAX
 } LocationQwesFeatureTypes;
@@ -1820,9 +1830,17 @@ typedef struct {
     uint32_t count;        // number of items in GnssMeasurements array
     GnssMeasurementsData measurements[GNSS_MEASUREMENTS_MAX];
     GnssMeasurementsClock clock; // clock
+    bool isFullTracking;
     uint32_t agcCount;     // number of items in GnssMeasurementsAgc array
     GnssMeasurementsAgc gnssAgc[GNSS_BANDS_MAX];
 } GnssMeasurementsNotification;
+
+typedef struct {
+    uint32_t size;              // set to sizeof(GnssCapabilitiesNotification)
+    uint32_t count;             // number of SVs in the gnssSignalType array
+    GnssMeasurementsSignalType  gnssSignalType[GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES];
+    GnssSignalTypeMask gnssSupportedSignals; // GNSS Supported Signals
+} GnssCapabNotification;
 
 typedef uint32_t GnssSvId;
 
@@ -2790,6 +2808,13 @@ typedef std::function<void(
    const GnssDcReportInfo& dcReportInfo
 )> gnssDcReportCallback;
 
+/* Informs the framework of the list of GnssSignalTypes the GNSS HAL implementation
+   supports, optional can be NULL
+ */
+typedef std::function<void(
+    const GnssCapabNotification& gnssCapabNotification
+)> gnssSignalTypesCallback;
+
 typedef std::function<void(
 )> locationApiDestroyCompleteCallback;
 
@@ -2866,6 +2891,7 @@ typedef struct {
     engineLocationsInfoCallback engineLocationsInfoCb; // optional
     gnssDcReportCallback gnssDcReportCb;               // optional
     gnssNmeaCallback engineNmeaCb; // optional
+    gnssSignalTypesCallback gnssSignalTypesCb;          // optional
 } LocationCallbacks;
 
 typedef struct {
@@ -2995,5 +3021,21 @@ enum {
 } ModemGnssQesdkFeatureBits;
 
 typedef uint64_t ModemGnssQesdkFeatureMask;
+
+typedef void* QDgnssListenerHDL;
+
+typedef std::function<void(
+    bool    sessionActive
+)> QDgnssSessionActiveCb;
+
+typedef uint16_t QDgnss3GppSourceBitMask;
+#define QDGNSS_3GPP_SOURCE_UNKNOWN          0X00
+#define QDGNSS_3GPP_EP_PARSER_AVAIL         0X01
+#define QDGNSS_3GPP_SOURCE_AVAIL            0X02
+#define QDGNSS_3GPP_SOURCE_ACTIVE           0X04
+
+typedef std::function<void(
+    QDgnss3GppSourceBitMask    modem3GppSourceMask
+)> QDgnssModem3GppAvailCb;
 
 #endif /* LOCATIONDATATYPES_H */
