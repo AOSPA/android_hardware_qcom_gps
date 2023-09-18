@@ -859,7 +859,7 @@ typedef enum {
 // if necessary.
 #define DEFAULT_IMPL(rtv)                                     \
 {                                                             \
-    LOC_LOGD("%s: default implementation invoked", __func__); \
+    LOC_LOGA("%s: default implementation invoked", __func__); \
     return rtv;                                               \
 }
 

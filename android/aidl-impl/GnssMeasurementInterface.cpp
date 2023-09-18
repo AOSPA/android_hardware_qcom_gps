@@ -142,7 +142,7 @@ void GnssMeasurementInterface::onGnssMeasurementsCb(
         const GnssMeasurementsNotification &gnssMeasurementsNotification) {
 
     std::unique_lock<std::mutex> lock(mMutex);
-    LOC_LOGd("(count: %u active: %d)", gnssMeasurementsNotification.count, mTracking);
+    LOC_LOGv("(count: %u active: %d)", gnssMeasurementsNotification.count, mTracking);
     if (mTracking) {
         auto gnssMeasurementCbIface = mGnssMeasurementCbIface;
         if (gnssMeasurementCbIface != nullptr) {
@@ -639,7 +639,7 @@ void GnssMeasurementInterface::convertElapsedRealtimeNanos(
         elapsedRealtime.timestampNs = in.clock.elapsedRealTime;
         elapsedRealtime.flags |= elapsedRealtime.HAS_TIME_UNCERTAINTY_NS;
         elapsedRealtime.timeUncertaintyNs = in.clock.elapsedRealTimeUnc;
-        LOC_LOGd("elapsedRealtime.timestampNs=%" PRIi64 ""
+        LOC_LOGa("elapsedRealtime.timestampNs=%" PRIi64 ""
                  " elapsedRealtime.timeUncertaintyNs=%lf elapsedRealtime.flags=0x%X",
                  elapsedRealtime.timestampNs,
                  elapsedRealtime.timeUncertaintyNs, elapsedRealtime.flags);
@@ -647,9 +647,9 @@ void GnssMeasurementInterface::convertElapsedRealtimeNanos(
 }
 
 void GnssMeasurementInterface::printGnssData(GnssData& data) {
-    LOC_LOGd(" Measurements Info for %zu satellites", data.measurements.size());
+    LOC_LOGa(" Measurements Info for %zu satellites", data.measurements.size());
     for (size_t i = 0; i < data.measurements.size(); i++) {
-        LOC_LOGd("%zu : flags: 0x%08x,"
+        LOC_LOGa("%zu : flags: 0x%08x,"
                  " svid: %d,"
                  " signalType.constellation: %u,"
                  " signalType.carrierFrequencyHz: %.2f,"
@@ -703,7 +703,7 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  data.measurements[i].satelliteInterSignalBiasNs,
                  data.measurements[i].satelliteInterSignalBiasUncertaintyNs
             );
-        LOC_LOGd("      satellitePvt.flags: 0x%04x,"
+        LOC_LOGa("      satellitePvt.flags: 0x%04x,"
                  " satellitePvt.satPosEcef.posXMeters: %.2f,"
                  " satellitePvt.satPosEcef.posYMeters: %.2f,"
                  " satellitePvt.satPosEcef.posZMeters: %.2f,"
@@ -743,7 +743,7 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
                  data.measurements[i].satellitePvt.ephemerisSource
             );
     }
-    LOC_LOGd(" Clocks Info "
+    LOC_LOGa(" Clocks Info "
              " gnssClockFlags: 0x%04x,"
              " leapSecond: %d,"
              " timeNs: %" PRId64
@@ -770,7 +770,7 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
              data.clock.referenceSignalTypeForIsb.constellation,
              data.clock.referenceSignalTypeForIsb.carrierFrequencyHz,
              data.clock.referenceSignalTypeForIsb.codeType.c_str());
-    LOC_LOGd(" ElapsedRealtime "
+    LOC_LOGa(" ElapsedRealtime "
              " flags: 0x%08x,"
              " timestampNs: %" PRId64", "
              " timeUncertaintyNs: %.2f",
@@ -778,7 +778,7 @@ void GnssMeasurementInterface::printGnssData(GnssData& data) {
              data.elapsedRealtime.timestampNs,
              data.elapsedRealtime.timeUncertaintyNs);
     for (size_t i = 0; i < data.gnssAgcs.size(); i++) {
-        LOC_LOGd("%zu : "
+        LOC_LOGa("%zu : "
                  " gnssAgcs.agcLevelDb: %.2f,"
                  " gnssAgcs.constellation: %u,"
                  " gnssAgcs.carrierFrequencyHz: %" PRIi64 "",

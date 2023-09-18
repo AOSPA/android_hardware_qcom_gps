@@ -372,12 +372,12 @@ void LocApiBase::reportPosition(UlpLocation& location,
                                 int msInWeek)
 {
     // print the location info before delivering
-    LOC_LOGD("flags: 0x%x\n  source: %d\n  latitude: %f\n  longitude: %f\n  "
+    LOC_LOGd("\n  flags: 0x%x\n  source: %d\n  latitude: %f\n  longitude: %f\n  "
              "altitude: %f\n  speed: %f\n  bearing: %f\n  accuracy: %f\n  "
-             "timestamp: %" PRId64 "\n"
-             "Session status: %d\n Technology mask: 0x%x, time bias unc %f msec\n "
-             "SV used in fix (gps/glo/bds/gal/qzss/navic) : \
-             (0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
+             "timestamp: %" PRId64 "\n  "
+             "session status: %d\n  technology mask: 0x%x\n  time bias unc %f msec\n  "
+             "SV used in fix (gps/glo/bds/gal/qzss/navic) : \n"
+             "(0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 "/0x%" PRIx64 ")",
              location.gpsLocation.flags, location.position_source,
              location.gpsLocation.latitude, location.gpsLocation.longitude,
              location.gpsLocation.altitude, location.gpsLocation.speed,
@@ -454,9 +454,9 @@ void LocApiBase::reportSv(GnssSvNotification& svNotify)
         "QZSS", "BEIDOU", "GALILEO", "NAVIC" };
 
     // print the SV info before delivering
-    LOC_LOGV("num sv: %u\n"
-        "      sv: constellation svid         cN0  basebandCN0"
-        "    elevation    azimuth    flags",
+    LOC_LOGv("num sv: %u\n"
+        "      sv: constellation svid  cN0  bbCN0"
+        "  elevation  azimuth  carrierFreq  gloFreq flags signalType",
         svNotify.count);
     for (size_t i = 0; i < svNotify.count && i < GNSS_SV_MAX; i++) {
         if (svNotify.gnssSvs[i].type >
@@ -464,7 +464,7 @@ void LocApiBase::reportSv(GnssSvNotification& svNotify)
             svNotify.gnssSvs[i].type = GNSS_SV_TYPE_UNKNOWN;
         }
         // Display what we report to clients
-        LOC_LOGV("   %03zu: %*s  %02d    %f    %f    %f    %f    %f    0x%02X 0x%2X",
+        LOC_LOGV(" %03zu: %*s %02d  %2.2f  %2.2f  %3.2f  %3.2f %10.2f %u 0x%02X 0x%2X",
             i,
             13,
             constellationString[svNotify.gnssSvs[i].type],
@@ -474,6 +474,7 @@ void LocApiBase::reportSv(GnssSvNotification& svNotify)
             svNotify.gnssSvs[i].elevation,
             svNotify.gnssSvs[i].azimuth,
             svNotify.gnssSvs[i].carrierFrequencyHz,
+            svNotify.gnssSvs[i].gloFrequency,
             svNotify.gnssSvs[i].gnssSvOptionsMask,
             svNotify.gnssSvs[i].gnssSignalTypeMask);
     }
@@ -1044,7 +1045,7 @@ int64_t ElapsedRealtimeEstimator::getElapsedRealtimeEstimateNanos(int64_t curDat
                 mFixTimeStablizationThreshold = 5;
             }
             int64_t currentTimeNanos = (int64_t)currentTime.tv_sec*1000000000 + currentTime.tv_nsec;
-            LOC_LOGd("sinceBootTimeNanos:%" PRIi64 " currentTimeNanos:%" PRIi64 ""
+            LOC_LOGv("sinceBootTimeNanos:%" PRIi64 " currentTimeNanos:%" PRIi64 ""
                      " locationTimeNanos:%" PRIi64 "",
                      sinceBootTimeNanos, currentTimeNanos, curDataTimeNanos);
             if (mFixTimeStablizationThreshold == 0) {
@@ -1064,7 +1065,7 @@ int64_t ElapsedRealtimeEstimator::getElapsedRealtimeEstimateNanos(int64_t curDat
     } else {
         return -1;
     }
-    LOC_LOGd("Estimated travel time: %" PRIi64 "", currentTravelTimeNanos);
+    LOC_LOGv("Estimated travel time: %" PRIi64 "", currentTravelTimeNanos);
     return (sinceBootTimeNanos - currentTravelTimeNanos);
 }
 
@@ -1123,9 +1124,11 @@ void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInPvtReport(
     // Use GPS timestamp and qtimer tick for 1Hz PVT report for association
     if (locationExtended.isReportTimeAccurate() &&
             (locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec % 1000 == 0)) {
-        LOC_LOGv("save time association from PVT report with gps time %u %u",
+        LOC_LOGv("save time association from PVT report with gps time %u %u, "
+                 "qtimer %" PRIi64 " %f ",
                  locationExtended.gnssSystemTime.u.gpsSystemTime.systemWeek,
-                 locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec);
+                 locationExtended.gnssSystemTime.u.gpsSystemTime.systemMsec,
+                 locationExtended.systemTick, locationExtended.systemTickUnc);
         mTimePairPVTReport.gpsTime.gpsWeek =
                 locationExtended.gnssSystemTime.u.gpsSystemTime.systemWeek;
         mTimePairPVTReport.gpsTime.gpsTimeOfWeekMs =
@@ -1148,9 +1151,12 @@ void ElapsedRealtimeEstimator::saveGpsTimeAndQtimerPairInMeasReport(
             (svMeasurementSet.svMeasSetHeader.refCountTicks != 0) &&
             (svMeasSetHeader.flags & GNSS_SV_MEAS_HEADER_HAS_REF_COUNT_TICKS_UNC) &&
             (svMeasurementSet.svMeasSetHeader.refCountTicksUnc != 0.0f)) {
-        LOC_LOGv("save time association from meas report with gps time %u %u",
+        LOC_LOGv("save time association from meas report with gps time %u %u, "
+                 "qtimer %" PRIi64 " %f ",
                  svMeasSetHeader.gpsSystemTime.systemWeek,
-                 svMeasSetHeader.gpsSystemTime.systemMsec);
+                 svMeasSetHeader.gpsSystemTime.systemMsec,
+                 svMeasurementSet.svMeasSetHeader.refCountTicks,
+                 svMeasurementSet.svMeasSetHeader.refCountTicksUnc);
             mTimePairMeasReport.gpsTime.gpsWeek = svMeasSetHeader.gpsSystemTime.systemWeek;
             mTimePairMeasReport.gpsTime.gpsTimeOfWeekMs = svMeasSetHeader.gpsSystemTime.systemMsec;
             mTimePairMeasReport.qtimerTick = svMeasurementSet.svMeasSetHeader.refCountTicks;
