@@ -2281,7 +2281,8 @@ typedef enum {
     LOC_ON_PRECISE_TRACKING_START = 1 << 2,
     LOC_ON_TRACKING_START = 1 << 3,
     LOC_ON_EMERGENCY = 1 << 4,
-    LOC_ON_NTRIP_START =  1 << 5
+    LOC_ON_NTRIP_START =  1 << 5,
+    LOC_ON_NLP_SESSION_START = 1 << 6,
 } LocLaunchTriggerEvents;
 
 /* Process subscribed for dynamic launch

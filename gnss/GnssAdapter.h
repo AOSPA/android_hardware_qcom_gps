@@ -79,6 +79,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <loc_misc_utils.h>
 #include <queue>
 #include <NativeAgpsHandler.h>
+#include <unordered_map>
 
 #define MAX_URL_LEN 256
 #define NMEA_SENTENCE_MAX_LENGTH 200
@@ -311,6 +312,7 @@ class GnssAdapter : public LocAdapterBase {
     OdcpiPrioritytype mCallbackPriority;
     OdcpiTimer mOdcpiTimer;
     OdcpiRequestInfo mOdcpiRequest;
+    std::unordered_map<OdcpiPrioritytype, odcpiRequestCallback> mNonEsOdcpiReqCbMap;
     void odcpiTimerExpire();
 
     std::function<void(const Location&)> mAddressRequestCb;
@@ -364,8 +366,16 @@ class GnssAdapter : public LocAdapterBase {
                                  int totalSvCntInThisConstellation);
 
     /* ======== UTILITIES ================================================================== */
-    inline void initOdcpi(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
+    inline void initOdcpi(const odcpiRequestCallback& callback,
+                          OdcpiPrioritytype priority,
+                          OdcpiCallbackTypeMask typeMask);
+    inline void deRegisterOdcpi(OdcpiPrioritytype priority, OdcpiCallbackTypeMask typeMask) {
+        if (typeMask & NON_EMERGENCY_ODCPI) {
+            mNonEsOdcpiReqCbMap.erase(priority);
+        }
+    }
     inline void injectOdcpi(const Location& location);
+    void fireOdcpiRequest(const OdcpiRequestInfo& request);
     inline void setAddressRequestCb(const std::function<void(const Location&)>& addressRequestCb)
     { mAddressRequestCb = addressRequestCb;}
     inline void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr)
@@ -566,7 +576,10 @@ public:
 
     /* ========= ODCPI ===================================================================== */
     /* ======== COMMANDS ====(Called from Client Thread)==================================== */
-    void initOdcpiCommand(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
+    void initOdcpiCommand(const odcpiRequestCallback& callback,
+                          OdcpiPrioritytype priority,
+                          OdcpiCallbackTypeMask typeMask);
+    void deRegisterOdcpiCommand(OdcpiPrioritytype priority, OdcpiCallbackTypeMask typeMask);
     void injectOdcpiCommand(const Location& location);
     void setAddressRequestCbCommand(const std::function<void(const Location&)>& addressRequestCb);
     void injectLocationAndAddrCommand(const Location& location, const GnssCivicAddress& addr);

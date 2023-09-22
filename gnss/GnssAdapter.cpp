@@ -5597,7 +5597,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         // extending the odcpi session past 30 seconds if needed
         if (ODCPI_REQUEST_TYPE_START == request.type) {
             if (!(mOdcpiStateMask & ODCPI_REQ_ACTIVE)  && false == mOdcpiTimer.isActive()) {
-                mControlCallbacks.odcpiReqCb(request);
+                fireOdcpiRequest(request);
                 mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
                 if (nullptr != mEsStatusCb) {
                     mEsStatusCb(request.isEmergencyMode);
@@ -5609,7 +5609,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
             // and restart the timer
             } else if (false == mOdcpiRequest.isEmergencyMode &&
                        true == request.isEmergencyMode) {
-                mControlCallbacks.odcpiReqCb(request);
+                fireOdcpiRequest(request);
                 mOdcpiStateMask |= ODCPI_REQ_ACTIVE;
                 if (nullptr != mEsStatusCb) {
                     mEsStatusCb(request.isEmergencyMode);
@@ -5637,7 +5637,7 @@ void GnssAdapter::requestOdcpi(const OdcpiRequestInfo& request)
         // to avoid spamming more odcpi requests to the framework
         } else if (ODCPI_REQUEST_TYPE_STOP == request.type) {
             LOC_LOGd("request: type %d, isEmergency %d", request.type, request.isEmergencyMode);
-            mControlCallbacks.odcpiReqCb(request);
+            fireOdcpiRequest(request);
             mOdcpiStateMask = 0;
             sendEmergencyCallStatusEvent = true;
             if (nullptr != mEsStatusCb) {
@@ -5823,36 +5823,84 @@ bool GnssAdapter::reportQwesCapabilities(
 }
 
 void GnssAdapter::initOdcpiCommand(const odcpiRequestCallback& callback,
-                                   OdcpiPrioritytype priority)
+                                   OdcpiPrioritytype priority,
+                                   OdcpiCallbackTypeMask typeMask)
 {
     struct MsgInitOdcpi : public LocMsg {
         GnssAdapter& mAdapter;
         odcpiRequestCallback mOdcpiCb;
         OdcpiPrioritytype mPriority;
+        OdcpiCallbackTypeMask mTypeMask;
         inline MsgInitOdcpi(GnssAdapter& adapter,
                 const odcpiRequestCallback& callback,
-                OdcpiPrioritytype priority) :
+                OdcpiPrioritytype priority,
+                OdcpiCallbackTypeMask typeMask) :
                 LocMsg(),
                 mAdapter(adapter),
-                mOdcpiCb(callback), mPriority(priority){}
+                mOdcpiCb(callback), mPriority(priority),
+                mTypeMask(typeMask) {}
         inline virtual void proc() const {
-            mAdapter.initOdcpi(mOdcpiCb, mPriority);
+            mAdapter.initOdcpi(mOdcpiCb, mPriority, mTypeMask);
         }
     };
 
-    sendMsg(new MsgInitOdcpi(*this, callback, priority));
+    sendMsg(new MsgInitOdcpi(*this, callback, priority, typeMask));
+}
+
+void GnssAdapter::deRegisterOdcpiCommand(OdcpiPrioritytype priority,
+        OdcpiCallbackTypeMask typeMask) {
+    struct MsgDeRegisterNonEsOdcpi : public LocMsg {
+        GnssAdapter& mAdapter;
+        OdcpiPrioritytype mPriority;
+        OdcpiCallbackTypeMask mTypeMask;
+        inline MsgDeRegisterNonEsOdcpi(GnssAdapter& adapter,
+                OdcpiPrioritytype priority,
+                OdcpiCallbackTypeMask typeMask) :
+            LocMsg(),
+            mAdapter(adapter),
+            mPriority(priority),
+            mTypeMask(typeMask) {}
+        inline virtual void proc() const {
+            mAdapter.deRegisterOdcpi(mPriority, mTypeMask);
+        }
+    };
+
+    sendMsg(new MsgDeRegisterNonEsOdcpi(*this, priority, typeMask));
+}
+
+void GnssAdapter::fireOdcpiRequest(const OdcpiRequestInfo& request) {
+    if (request.isEmergencyMode) {
+        mControlCallbacks.odcpiReqCb(request);
+    } else {
+        std::unordered_map<OdcpiPrioritytype, odcpiRequestCallback>::iterator iter;
+        for (int priority = ODCPI_HANDLER_PRIORITY_HIGH;
+                priority >= ODCPI_HANDLER_PRIORITY_LOW && iter == mNonEsOdcpiReqCbMap.end();
+                priority--) {
+            iter = mNonEsOdcpiReqCbMap.find((OdcpiPrioritytype)priority);
+        }
+        if (iter != mNonEsOdcpiReqCbMap.end()) {
+            iter->second(request);
+        }
+    }
 }
 
 void GnssAdapter::initOdcpi(const odcpiRequestCallback& callback,
-            OdcpiPrioritytype priority)
-{
-    LOC_LOGd("In priority: %d, Curr priority: %d", priority, mCallbackPriority);
-    if (priority >= mCallbackPriority) {
-        mControlCallbacks.odcpiReqCb = callback;
-        mCallbackPriority = priority;
-        /* Register for WIFI request */
-        updateEvtMask(LOC_API_ADAPTER_BIT_REQUEST_WIFI,
-                LOC_REGISTRATION_MASK_ENABLED);
+            OdcpiPrioritytype priority, OdcpiCallbackTypeMask typeMask) {
+    if (typeMask & EMERGENCY_ODCPI) {
+        LOC_LOGd("In priority: %d, Curr priority: %d", priority, mCallbackPriority);
+        if (priority >= mCallbackPriority) {
+            mControlCallbacks.odcpiReqCb = callback;
+            mCallbackPriority = priority;
+            /* Register for WIFI request */
+            updateEvtMask(LOC_API_ADAPTER_BIT_REQUEST_WIFI,
+                    LOC_REGISTRATION_MASK_ENABLED);
+        }
+    }
+    if (typeMask & NON_EMERGENCY_ODCPI) {
+        //If this is for non emergency odcpi,
+        //Only set callback to mNonEsOdcpiReqCbMap according to its priority
+        //Will overwrite callback with same priority in this map
+        mNonEsOdcpiReqCbMap[priority] = callback;
     }
     UTIL_READ_CONF(LOC_PATH_IZAT_CONF, izatConfParamTable);
 }
@@ -5975,7 +6023,7 @@ void GnssAdapter::odcpiTimerExpire()
     // if ODCPI request is still active after timer
     // expires, request again and restart timer
     if (mOdcpiStateMask & ODCPI_REQ_ACTIVE) {
-        mControlCallbacks.odcpiReqCb(mOdcpiRequest);
+        fireOdcpiRequest(mOdcpiRequest);
         mOdcpiTimer.restart();
     } else {
         mOdcpiTimer.stop();
