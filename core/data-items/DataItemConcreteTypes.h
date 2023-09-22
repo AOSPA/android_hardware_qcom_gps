@@ -43,7 +43,7 @@ SPDX-License-Identifier: BSD-3-Clause-Clear
 #include <IDataItemCore.h>
 #include <gps_extended_c.h>
 #include <inttypes.h>
-
+#include <unordered_set>
 #define MAC_ADDRESS_LENGTH    6
 // MAC address length in bytes
 // QMI_LOC_SRN_MAC_ADDR_LENGTH_V02
@@ -649,6 +649,28 @@ public:
     virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
     // Data members
     bool mIsEmergency;
+};
+
+class LocFeatureStatusDataItem: public IDataItemCore {
+    public:
+        LocFeatureStatusDataItem(std::unordered_set<int> fids) :
+            mFids(fids) {mId = LOC_FEATURE_STATUS_DATA_ITEM_ID;}
+        virtual ~LocFeatureStatusDataItem() {}
+        virtual void stringify(string& /*valueStr*/) override;
+        virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
+        // Data members
+        std::unordered_set<int> mFids;
+};
+
+class NlpSessionStartedDataItem: public IDataItemCore {
+    public:
+        NlpSessionStartedDataItem(bool nlpStarted = false) :
+            mNlpStarted(nlpStarted) {mId = NETWORK_POSITIONING_STARTED_DATA_ITEM_ID;}
+        virtual ~NlpSessionStartedDataItem() {}
+        virtual void stringify(string& /*valueStr*/) override;
+        virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
+        // Data members
+        bool mNlpStarted;
 };
 
 } // namespace loc_core

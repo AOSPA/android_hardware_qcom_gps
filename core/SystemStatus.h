@@ -842,6 +842,38 @@ public:
     }
 };
 
+class SystemStatusLocFeatureStatus : public SystemStatusItemBase {
+public:
+    LocFeatureStatusDataItem mDataItem;
+    inline SystemStatusLocFeatureStatus(std::unordered_set<int> fids) : mDataItem(fids) {}
+    inline SystemStatusLocFeatureStatus(const LocFeatureStatusDataItem& itemBase):
+            mDataItem(itemBase) {}
+    inline bool equals(const SystemStatusItemBase& peer) override {
+        return mDataItem.mFids ==
+            ((const SystemStatusLocFeatureStatus&)peer).mDataItem.mFids;
+    }
+    inline void dump(void) override {
+        string str;
+        mDataItem.stringify(str);
+        LOC_LOGd("Location feature qwes status: %s", str.c_str());
+    }
+};
+
+class SystemStatusNlpSessionStarted : public SystemStatusItemBase {
+public:
+    NlpSessionStartedDataItem mDataItem;
+    inline SystemStatusNlpSessionStarted(bool value = false): mDataItem(value) {}
+    inline SystemStatusNlpSessionStarted(const NlpSessionStartedDataItem& itemBase):
+        mDataItem(itemBase) {}
+    inline bool equals(const SystemStatusItemBase& peer) override {
+        return mDataItem.mNlpStarted ==
+            ((const SystemStatusNlpSessionStarted&)peer).mDataItem.mNlpStarted;
+    }
+    inline void dump(void) override {
+        LOC_LOGd("NLP Session started: %d", mDataItem.mNlpStarted);
+    }
+};
+
 /******************************************************************************
  SystemStatusReports
 ******************************************************************************/
@@ -893,6 +925,8 @@ public:
     std::vector<SystemStatusMccMnc>           mMccMnc;
     std::vector<SystemStatusBtDeviceScanDetail> mBtDeviceScanDetail;
     std::vector<SystemStatusBtleDeviceScanDetail> mBtLeDeviceScanDetail;
+    std::vector<SystemStatusLocFeatureStatus>  mLocFeatureStatus;
+    std::vector<SystemStatusNlpSessionStarted>  mNlpSessionStarted;
 };
 
 /******************************************************************************
@@ -945,6 +979,8 @@ public:
     bool eventRegionStatus(bool region);
     bool eventInEmergencyCall(bool isEmergency);
     void setTracking(bool tracking);
+    bool eventLocFeatureStatus(std::unordered_set<int> fids);
+    bool eventNlpSessionStatus(bool nlpStarted);
 };
 
 } // namespace loc_core
