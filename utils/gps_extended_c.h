@@ -1351,6 +1351,8 @@ typedef struct
     Gnss_LocSVTimeSpeedStructType   svTimeSpeed;
     /**< Unfiltered SV Time and Speed information
     */
+    uint8_t dopplerAccelValid;
+    /**<   Validity for Doppler acceleration. */
     float                           dopplerAccel;
     /**< Satellite Doppler Accelertion\n
          - Units: Hz/s \n
