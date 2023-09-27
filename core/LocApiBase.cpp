@@ -1186,20 +1186,22 @@ bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
           return false;
     }
 
+    int64_t timePairQtimerNsec = (timePair.qtimerTick / 192) * 10000;
     const GPSTimeStruct& gpsTimeAtOrigin = locationExtended.gpsTime;
     int64_t originMsec = (int64_t)gpsTimeAtOrigin.gpsWeek * (int64_t)MSEC_IN_ONE_WEEK +
                          (int64_t)gpsTimeAtOrigin.gpsTimeOfWeekMs;
     int64_t timePairMsec = (int64_t)timePair.gpsTime.gpsWeek * (int64_t)MSEC_IN_ONE_WEEK +
                             (int64_t)timePair.gpsTime.gpsTimeOfWeekMs;
+
     gpsTimeDiffMsec = originMsec - timePairMsec;
 
-    qtimerNsecAtOrigin = timePair.qtimerTick * 10000/192 + gpsTimeDiffMsec * 1000000;
+    qtimerNsecAtOrigin = timePairQtimerNsec + gpsTimeDiffMsec * 1000000;
 
     clock_gettime(CLOCK_BOOTTIME, &curBootTime);
     curBootTimeNs = ((int64_t)curBootTime.tv_sec) * 1000000000 + (int64_t)curBootTime.tv_nsec;
     // qtimer freq: 19200000, so
     // so 1 tick equals 1000,000,000/19,200,000 ns = 10000/192
-    curQTimerNSec = getQTimerTickCount() * 10000/192;
+    curQTimerNSec = (getQTimerTickCount() / 192) * 10000;
     bootTimeNsAtOrigin = curBootTimeNs - (curQTimerNSec - qtimerNsecAtOrigin);
 
     bootTimeUnc = timePair.timeUncMsec;
@@ -1208,8 +1210,8 @@ bool ElapsedRealtimeEstimator::getElapsedRealtimeForGpsTime(
              " curBoottimeNSec=%" PRIi64 " bootimeNsecAtOrigin=%" PRIi64 ", boottime unc =%f",
              gpsTimeAtOrigin.gpsWeek, gpsTimeAtOrigin.gpsTimeOfWeekMs,
              timePair.gpsTime.gpsWeek, timePair.gpsTime.gpsTimeOfWeekMs,
-             timePair.qtimerTick * 100000 / 192,
-             curQTimerNSec, qtimerNsecAtOrigin, curBootTimeNs, bootTimeNsAtOrigin, bootTimeUnc);
+             timePairQtimerNsec, curQTimerNSec, qtimerNsecAtOrigin,
+             curBootTimeNs, bootTimeNsAtOrigin, bootTimeUnc);
 
     if (bootTimeNsAtOrigin > 0) {
         return true;
