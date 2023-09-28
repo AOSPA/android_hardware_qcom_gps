@@ -1275,6 +1275,19 @@ typedef struct {
   /**<  Pseudo Range rate correction in meters per second. */
 } Gnss_LocDgnssSVMeasurement;
 
+typedef struct {
+  uint8_t prMlInferValid;
+  /**<   Indicates whether the ML Inference Pseudorange correction in meters
+     field contains valid information. \n
+     - 0x01 (TRUE)  -- Valid \n
+     - 0x00 (FALSE) -- Invalid
+  */
+
+  float prMlInfer;
+  /**<   ML Inference, per SV measurement PR correction data in meters.
+  */
+} Gnss_MlInferSVMeasurementStruct;
+
 typedef struct
 {
     uint32_t                          size;
@@ -1410,6 +1423,9 @@ typedef struct
 
     /** < DGNSS Measurements Report for SVs */
     Gnss_LocDgnssSVMeasurement   dgnssSvMeas;
+
+    /** <  ML Inference, per SV measurement PR correction data */
+    Gnss_MlInferSVMeasurementStruct mlInferSvMeasurement;
 } Gnss_SVMeasurementStructType;
 
 
