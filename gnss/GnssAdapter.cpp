@@ -192,6 +192,7 @@ GnssAdapter::GnssAdapter() :
     mPowerConnectState(POWER_CONNECT_UNKNOWN),
     mBlockCPIInfo{},
     mEsStatusCb(nullptr),
+    mEngHubLoadSuccessful(false),
     mEngServiceInfo{},
     mPowerOn(false),
     mNativeAgpsHandler(mSystemStatus->getOsObserver(), *this),
@@ -7223,10 +7224,10 @@ GnssAdapter::configLeverArm(uint32_t sessionId,
         err = LOCATION_ERROR_SUCCESS;
     }
 
-    if (configInfo.leverArmValidMask & LEVER_ARM_TYPE_DR_IMU_TO_GNSS_BIT) {
-        if (mEngServiceInfo.dreIntEnabled && mEngHubProxy->configLeverArm(configInfo)) {
-        err = LOCATION_ERROR_SUCCESS;
-    }
+    if (true == mEngHubLoadSuccessful) {
+        if (false == mEngHubProxy->configLeverArm(configInfo)) {
+            err = LOCATION_ERROR_GENERAL_FAILURE;
+        }
     }
 
     reportResponse(err, sessionId);
@@ -8020,7 +8021,6 @@ GnssAdapter::initEngHubProxyCommand() {
 bool
 GnssAdapter::initEngHubProxy() {
     static bool firstTime = true;
-    static bool engHubLoadSuccessful = false;
 
     const char *error = nullptr;
     unsigned int processListLength = 0;
@@ -8128,7 +8128,7 @@ GnssAdapter::initEngHubProxy() {
                       [ this ] { return isEngineServiceEnable(); });
             if (hubProxy != nullptr) {
                 mEngHubProxy = hubProxy;
-                engHubLoadSuccessful = true;
+                mEngHubLoadSuccessful = true;
             }
         }
         else {
@@ -8136,7 +8136,7 @@ GnssAdapter::initEngHubProxy() {
         }
 
         LOC_LOGd("first time initialization %d, returned %d",
-                 firstTime, engHubLoadSuccessful);
+                 firstTime, mEngHubLoadSuccessful);
 
     } while (0);
 
@@ -8146,7 +8146,7 @@ GnssAdapter::initEngHubProxy() {
     }
 
     firstTime = false;
-    return engHubLoadSuccessful;
+    return mEngHubLoadSuccessful;
 }
 
 std::vector<double>

@@ -362,6 +362,7 @@ class GnssAdapter : public LocAdapterBase {
     bool mPowerOn;
     std::queue<GnssLatencyInfo> mGnssLatencyInfoQueue;
     GnssReportLoggerUtil mLogger;
+    bool mEngHubLoadSuccessful;
     EngineServiceInfo mEngServiceInfo;
     ElapsedRealtimeEstimator mPositionElapsedRealTimeCal;
     typedef enum {
