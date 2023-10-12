@@ -1784,6 +1784,16 @@ bool SystemStatus::eventDataItemNotify(IDataItemCore* dataitem)
                     SystemStatusPreciseLocationEnabled(
                         *(static_cast<PreciseLocationEnabledDataItem*>(dataitem))));
             break;
+        case LOC_FEATURE_STATUS_DATA_ITEM_ID:
+            ret = setIteminReport(mCache.mLocFeatureStatus,
+                    SystemStatusLocFeatureStatus(
+                        *(static_cast<LocFeatureStatusDataItem*>(dataitem))));
+            break;
+        case NETWORK_POSITIONING_STARTED_DATA_ITEM_ID:
+            ret = setIteminReport(mCache.mNlpSessionStarted,
+                    SystemStatusNlpSessionStarted(
+                        *(static_cast<NlpSessionStartedDataItem*>(dataitem))));
+            break;
         default:
             break;
     }
@@ -2059,5 +2069,29 @@ bool SystemStatus::eventGpsEnabled(bool gpsEnabled) {
     return true;
 }
 
+/******************************************************************************
+@brief      API to update Location feature QWES status
+
+@param[In]  Location feature QWES status
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventLocFeatureStatus(std::unordered_set<int> fids) {
+    SystemStatusLocFeatureStatus  s(fids);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
+/******************************************************************************
+@brief      API to update network positioning session state
+
+@param[In]  session state
+
+@return     true when successfully done
+******************************************************************************/
+bool SystemStatus::eventNlpSessionStatus(bool nlpStarted) {
+    SystemStatusNlpSessionStarted s(nlpStarted);
+    mSysStatusObsvr.notify({&s.mDataItem});
+    return true;
+}
 } // namespace loc_core
 

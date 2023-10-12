@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -111,7 +111,9 @@ static void enableNfwLocationAccess(std::vector<std::string>& enabledNfws);
 static void nfwInit(const NfwCbInfo& cbInfo);
 static void getPowerStateChanges(std::function<void(bool)> powerStateCb);
 
-static void odcpiInit(const odcpiRequestCallback& callback, OdcpiPrioritytype priority);
+static void odcpiInit(const odcpiRequestCallback& callback, OdcpiPrioritytype priority,
+        OdcpiCallbackTypeMask typeMask);
+static void deRegisterOdcpi(OdcpiPrioritytype priority, OdcpiCallbackTypeMask typeMask);
 static void odcpiInject(const Location& location);
 
 static void blockCPI(double latitude, double longitude, float accuracy,
@@ -187,6 +189,7 @@ static const GnssInterface gGnssInterface = {
     getDebugReport,
     updateConnectionStatus,
     odcpiInit,
+    deRegisterOdcpi,
     odcpiInject,
     blockCPI,
     setEsStatusCallback,
@@ -456,10 +459,17 @@ static void updateConnectionStatus(bool connected, int8_t type,
     }
 }
 
-static void odcpiInit(const odcpiRequestCallback& callback, OdcpiPrioritytype priority)
+static void odcpiInit(const odcpiRequestCallback& callback, OdcpiPrioritytype priority,
+        OdcpiCallbackTypeMask typeMask)
 {
     if (NULL != gGnssAdapter) {
-        gGnssAdapter->initOdcpiCommand(callback, priority);
+        gGnssAdapter->initOdcpiCommand(callback, priority, typeMask);
+    }
+}
+
+static void deRegisterOdcpi(OdcpiPrioritytype priority, OdcpiCallbackTypeMask typeMask) {
+    if (NULL != gGnssAdapter) {
+        gGnssAdapter->deRegisterOdcpiCommand(priority, typeMask);
     }
 }
 

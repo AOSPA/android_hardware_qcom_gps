@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -53,7 +53,7 @@ GeofenceAPIClient::GeofenceAPIClient(const shared_ptr<IGnssGeofenceCallback>& ca
     LocationAPIClientBase(),
     mGnssGeofencingCbIface(callback)
 {
-    LOC_LOGD("%s]: (%p)", __FUNCTION__, &callback);
+    LOC_LOGd("callback: %p", &callback);
 
     LocationCallbacks locationCallbacks;
     memset(&locationCallbacks, 0, sizeof(LocationCallbacks));
@@ -92,7 +92,7 @@ void GeofenceAPIClient::geofenceAdd(uint32_t geofence_id, double latitude, doubl
         double radius_meters, int32_t last_transition, int32_t monitor_transitions,
         uint32_t notification_responsiveness_ms, uint32_t unknown_timer_ms)
 {
-    LOC_LOGD("%s]: (%d %f %f %f %d %d %d %d)", __FUNCTION__,
+    LOC_LOGd("geofence id: %d, geofence info: %f %f %f %d %d %d %d",
             geofence_id, latitude, longitude, radius_meters,
             last_transition, monitor_transitions, notification_responsiveness_ms, unknown_timer_ms);
 
@@ -120,13 +120,13 @@ void GeofenceAPIClient::geofenceAdd(uint32_t geofence_id, double latitude, doubl
 
 void GeofenceAPIClient::geofencePause(uint32_t geofence_id)
 {
-    LOC_LOGD("%s]: (%d)", __FUNCTION__, geofence_id);
+    LOC_LOGd("geofence id %d", geofence_id);
     locAPIPauseGeofences(1, &geofence_id);
 }
 
 void GeofenceAPIClient::geofenceResume(uint32_t geofence_id, int32_t monitor_transitions)
 {
-    LOC_LOGD("%s]: (%d %d)", __FUNCTION__, geofence_id, monitor_transitions);
+    LOC_LOGd("geofence_id: %d monitor_transitions: %d", geofence_id, monitor_transitions);
     GeofenceBreachTypeMask mask = 0;
     if (monitor_transitions & IGnssGeofenceCallback::ENTERED)
         mask |= GEOFENCE_BREACH_ENTER_BIT;
@@ -137,13 +137,13 @@ void GeofenceAPIClient::geofenceResume(uint32_t geofence_id, int32_t monitor_tra
 
 void GeofenceAPIClient::geofenceRemove(uint32_t geofence_id)
 {
-    LOC_LOGD("%s]: (%d)", __FUNCTION__, geofence_id);
+    LOC_LOGd("geofence_id: %d", geofence_id);
     locAPIRemoveGeofences(1, &geofence_id);
 }
 
 void GeofenceAPIClient::geofenceRemoveAll()
 {
-    LOC_LOGD("%s]", __FUNCTION__);
+    LOC_LOGd("");
     locAPIRemoveAllGeofences();
 }
 
@@ -151,7 +151,7 @@ void GeofenceAPIClient::geofenceRemoveAll()
 void GeofenceAPIClient::onGeofenceBreachCb(
         const GeofenceBreachNotification& geofenceBreachNotification)
 {
-    LOC_LOGD("%s]: (%d)", __FUNCTION__, geofenceBreachNotification.count);
+    LOC_LOGd("BreachNotification.count %d", geofenceBreachNotification.count);
     mMutex.lock();
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();
@@ -183,7 +183,7 @@ void GeofenceAPIClient::onGeofenceBreachCb(
 
 void GeofenceAPIClient::onGeofenceStatusCb(GeofenceStatusNotification geofenceStatusNotification)
 {
-    LOC_LOGD("%s]: (%d)", __FUNCTION__, geofenceStatusNotification.available);
+    LOC_LOGd("geofenceStatusNotification: %d", geofenceStatusNotification.available);
     mMutex.lock();
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();
@@ -203,7 +203,7 @@ void GeofenceAPIClient::onGeofenceStatusCb(GeofenceStatusNotification geofenceSt
 
 void GeofenceAPIClient::onAddGeofencesCb(size_t count, LocationError* errors, uint32_t* ids)
 {
-    LOC_LOGD("%s]: (%zu)", __FUNCTION__, count);
+    LOC_LOGd("count: %zu", count);
     mMutex.lock();
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();
@@ -224,7 +224,7 @@ void GeofenceAPIClient::onAddGeofencesCb(size_t count, LocationError* errors, ui
 
 void GeofenceAPIClient::onRemoveGeofencesCb(size_t count, LocationError* errors, uint32_t* ids)
 {
-    LOC_LOGD("%s]: (%zu)", __FUNCTION__, count);
+    LOC_LOGd("count: %zu", count);
     mMutex.lock();
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();
@@ -245,7 +245,7 @@ void GeofenceAPIClient::onRemoveGeofencesCb(size_t count, LocationError* errors,
 
 void GeofenceAPIClient::onPauseGeofencesCb(size_t count, LocationError* errors, uint32_t* ids)
 {
-    LOC_LOGD("%s]: (%zu)", __FUNCTION__, count);
+    LOC_LOGd("count: %zu", count);
     mMutex.lock();
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();
@@ -266,7 +266,7 @@ void GeofenceAPIClient::onPauseGeofencesCb(size_t count, LocationError* errors, 
 
 void GeofenceAPIClient::onResumeGeofencesCb(size_t count, LocationError* errors, uint32_t* ids)
 {
-    LOC_LOGD("%s]: (%zu)", __FUNCTION__, count);
+    LOC_LOGd("count: %zu", count);
     mMutex.lock();
     auto cbIface = mGnssGeofencingCbIface;
     mMutex.unlock();

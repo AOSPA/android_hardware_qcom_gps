@@ -30,7 +30,7 @@
  /*
  Changes from Qualcomm Innovation Center are provided under the following license:
 
- Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted (subject to the limitations in the
@@ -175,10 +175,10 @@ protected:
     }
     bool isInSession();
     const LOC_API_ADAPTER_EVENT_MASK_T mExcludedMask;
-    bool isMaster();
     EngineLockState mEngineLockState;
 
 public:
+    bool isMaster();
     inline void sendMsg(const LocMsg* msg) const {
         if (nullptr != mMsgTask) {
             mMsgTask->sendMsg(msg);
