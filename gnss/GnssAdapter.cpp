@@ -3563,6 +3563,16 @@ void
 GnssAdapter::startTimeBasedTracking(LocationAPI* client, uint32_t sessionId,
         const TrackingOptions& trackingOptions)
 {
+    //Don't allow session start in SUSPEND/SHUTDOWN state
+    if ((POWER_STATE_SUSPEND == mSystemPowerState) ||
+        (POWER_STATE_DEEP_SLEEP_ENTRY == mSystemPowerState) ||
+        POWER_STATE_SHUTDOWN == mSystemPowerState) {
+
+        LOC_LOGe("Not allowed in powerstate %d, return!", mSystemPowerState);
+        reportResponse(client, LOCATION_ERROR_NOT_SUPPORTED, sessionId);
+        return;
+    }
+
     LOC_LOGd("minInterval %u minDistance %u mode %u powermode %u tbm %u",
             trackingOptions.minInterval, trackingOptions.minDistance,
             trackingOptions.mode, trackingOptions.powerMode, trackingOptions.tbm);
