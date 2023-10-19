@@ -472,6 +472,8 @@ bool XtraSystemStatusObserver::updateXtraConfig(bool enable, const XtraConfigPar
         ss << configParams.xtraIntegrityDownloadEnable << endl;
         ss << configParams.xtraIntegrityDownloadIntervalMinute << endl;
         ss << configParams.xtraDaemonDebugLogLevel << endl;
+        ss << configParams.ntsKeServerURL << endl;
+        ss << configParams.xtraDaemonDiagLoggingStatus << endl;
     }
 
     string s = ss.str();

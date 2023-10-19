@@ -73,6 +73,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <IDataItemCore.h>
 #include <gps_extended_c.h>
 #include <inttypes.h>
+#include <unordered_set>
 
 #define MAC_ADDRESS_LENGTH    6
 // MAC address length in bytes
@@ -668,7 +669,27 @@ class NtripStartedDataItem: public IDataItemCore {
         // Data members
         bool mNtripStarted;
 };
+class LocFeatureStatusDataItem: public IDataItemCore {
+    public:
+        LocFeatureStatusDataItem(std::unordered_set<int> fids) :
+            mFids(fids) {mId = LOC_FEATURE_STATUS_DATA_ITEM_ID;}
+        virtual ~LocFeatureStatusDataItem() {}
+        virtual void stringify(string& /*valueStr*/) override;
+        virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
+        // Data members
+        std::unordered_set<int> mFids;
+};
 
+class NlpSessionStartedDataItem: public IDataItemCore {
+    public:
+        NlpSessionStartedDataItem(bool nlpStarted = false) :
+            mNlpStarted(nlpStarted) {mId = NETWORK_POSITIONING_STARTED_DATA_ITEM_ID;}
+        virtual ~NlpSessionStartedDataItem() {}
+        virtual void stringify(string& /*valueStr*/) override;
+        virtual int32_t copyFrom(IDataItemCore* /*src*/) override;
+        // Data members
+        bool mNlpStarted;
+};
 } // namespace loc_core
 
 #endif //DATAITEM_CONCRETETYPES_H

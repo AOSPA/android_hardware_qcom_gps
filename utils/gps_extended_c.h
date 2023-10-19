@@ -859,7 +859,7 @@ typedef enum {
 // if necessary.
 #define DEFAULT_IMPL(rtv)                                     \
 {                                                             \
-    LOC_LOGD("%s: default implementation invoked", __func__); \
+    LOC_LOGA("%s: default implementation invoked", __func__); \
     return rtv;                                               \
 }
 
@@ -1275,6 +1275,19 @@ typedef struct {
   /**<  Pseudo Range rate correction in meters per second. */
 } Gnss_LocDgnssSVMeasurement;
 
+typedef struct {
+  uint8_t prMlInferValid;
+  /**<   Indicates whether the ML Inference Pseudorange correction in meters
+     field contains valid information. \n
+     - 0x01 (TRUE)  -- Valid \n
+     - 0x00 (FALSE) -- Invalid
+  */
+
+  float prMlInfer;
+  /**<   ML Inference, per SV measurement PR correction data in meters.
+  */
+} Gnss_MlInferSVMeasurementStruct;
+
 typedef struct
 {
     uint32_t                          size;
@@ -1338,6 +1351,8 @@ typedef struct
     Gnss_LocSVTimeSpeedStructType   svTimeSpeed;
     /**< Unfiltered SV Time and Speed information
     */
+    uint8_t dopplerAccelValid;
+    /**<   Validity for Doppler acceleration. */
     float                           dopplerAccel;
     /**< Satellite Doppler Accelertion\n
          - Units: Hz/s \n
@@ -1410,6 +1425,9 @@ typedef struct
 
     /** < DGNSS Measurements Report for SVs */
     Gnss_LocDgnssSVMeasurement   dgnssSvMeas;
+
+    /** <  ML Inference, per SV measurement PR correction data */
+    Gnss_MlInferSVMeasurementStruct mlInferSvMeasurement;
 } Gnss_SVMeasurementStructType;
 
 
@@ -2265,7 +2283,8 @@ typedef enum {
     LOC_ON_PRECISE_TRACKING_START = 1 << 2,
     LOC_ON_TRACKING_START = 1 << 3,
     LOC_ON_EMERGENCY = 1 << 4,
-    LOC_ON_NTRIP_START =  1 << 5
+    LOC_ON_NTRIP_START =  1 << 5,
+    LOC_ON_NLP_SESSION_START = 1 << 6,
 } LocLaunchTriggerEvents;
 
 /* Process subscribed for dynamic launch
