@@ -62,6 +62,7 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
 #include <loc_pla.h>
 
 #ifndef ENGINE_HUB_PROXY_BASE_H
@@ -170,6 +171,11 @@ public:
 
     inline virtual bool configPrecisePositioning(uint32_t featureId,
             bool enable, const std::string& appHash) { return false;}
+
+    inline virtual bool sendPowerStateInfo(uint8_t powerState) {
+       (void)powerState;
+       return false;
+    }
 };
 
 typedef std::function<void(int count, EngineLocationInfo* locationArr)>
