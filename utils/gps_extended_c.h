@@ -1060,6 +1060,7 @@ enum loc_api_adapter_event_index {
     LOC_API_ADAPTER_EVENT_REPORT_INFO,                 // Event report info
     LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT,        // Latency information report
     LOC_API_ADAPTER_FEATURE_STATUS_UPDATE,             // Dynamic feature status update
+    LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT,         // Engine Debug data report
     LOC_API_ADAPTER_EVENT_MAX
 };
 
@@ -1104,6 +1105,8 @@ enum loc_api_adapter_event_index {
 #define LOC_API_ADAPTER_BIT_EVENT_REPORT_INFO                (1ULL<<LOC_API_ADAPTER_EVENT_REPORT_INFO)
 #define LOC_API_ADAPTER_BIT_LATENCY_INFORMATION              (1ULL<<LOC_API_ADAPTER_LATENCY_INFORMATION_REPORT)
 #define LOC_API_ADAPTER_BIT_FEATURE_STATUS_UPDATE            (1ULL<<LOC_API_ADAPTER_FEATURE_STATUS_UPDATE)
+#define LOC_API_ADAPTER_BIT_ENGINE_DEBUG_DATA_REPORT         (1ULL<<LOC_API_ADAPTER_ENGINE_DEBUG_DATA_REPORT)
+
 
 typedef uint64_t LOC_API_ADAPTER_EVENT_MASK_T;
 
@@ -2363,9 +2366,16 @@ typedef std::function<void(const OdcpiRequestInfo& request)> OdcpiRequestCallbac
 
 /* ODCPI callback priorities*/
 enum OdcpiPrioritytype {
+    //ODCPI callback registered by AFW via IGNSS AIDL has LOW priority
     ODCPI_HANDLER_PRIORITY_LOW,
+    ODCPI_HANDLER_PRIORITY_DEFAULT = ODCPI_HANDLER_PRIORITY_LOW,
+    //ODCPI callback registered by IzatProvider on LE/KaiOS has medium priority
+    ODCPI_HANDLER_PRIORITY_MEDIUM,
+    //Non emergency ODCPI callback registered by IzatManager for RTT position injection
+    //has high priority
     ODCPI_HANDLER_PRIORITY_HIGH
 };
+
 
 /*
  * Callback with AGNSS(IpV4) status information.
@@ -2449,6 +2459,13 @@ typedef void (*LocAgpsCloseResultCb)(bool isSuccess, AGpsExtType agpsType, void*
 typedef uint64_t NetworkHandle;
 #define NETWORK_HANDLE_UNKNOWN  ~0
 #define MAX_NETWORK_HANDLES 10
+
+typedef enum {
+    LOC_FEATURE_STATUS_UNKNOWN = 0,
+    LOC_FEATURE_STATUS_NONE = 1,
+    LOC_FEATURE_STATUS_OK = 2,
+    LOC_FEATURE_STATUS_EXPIRED = 3
+} LocFeatureStatus;
 
 #ifdef __cplusplus
 }
