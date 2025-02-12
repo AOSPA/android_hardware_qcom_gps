@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -94,7 +94,7 @@ void convertGnssLocation(const Location& in, GnssLocation& out)
                  out.elapsedRealtime.timeUncertaintyNs, out.elapsedRealtime.flags);
     }
 
-    out.timestampMillis = static_cast<long>(in.timestamp);
+    out.timestampMillis = in.timestamp;
 }
 
 void convertGnssLocation(const GnssLocation& in, Location& out)

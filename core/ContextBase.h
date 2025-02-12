@@ -329,6 +329,13 @@ public:
                        sQwesFeatureMask &= ~LOCATION_CAPABILITIES_QWES_WIFI_RTT_POSITIONING;
                    }
                break;
+               case LOCATION_QWES_FEATURE_STATUS_GNSS_NHZ:
+                   if (itr->second) {
+                       sQwesFeatureMask |= LOCATION_CAPABILITIES_QWES_GNSS_NHZ;
+                   } else {
+                       sQwesFeatureMask &= ~LOCATION_CAPABILITIES_QWES_GNSS_NHZ;
+                   }
+               break;
            }
        }
 

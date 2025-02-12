@@ -45,6 +45,10 @@ libloc_core_la_c_sources = \
 if USE_EXTERNAL_AP
 AM_CFLAGS += -DFEATURE_EXTERNAL_AP
 endif
+if PTP_SUPPORTED
+AM_CFLAGS += -DPTP_SUPPORTED
+AM_CFLAGS += -I$(WORKSPACE)/external/open-avb/lib/libgptp
+endif
 
 library_includedir = $(pkgincludedir)
 
@@ -67,6 +71,10 @@ AM_CFLAGS += -DFEATURE_AUTOMOTIVE
 endif
 
 libloc_core_la_LIBADD = -ldl $(GPSUTILS_LIBS)
+
+if PTP_SUPPORTED
+libloc_core_la_LIBADD += -lgptp
+endif
 
 #Create and Install libraries
 lib_LTLIBRARIES = libloc_core.la

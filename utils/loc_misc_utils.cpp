@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -76,6 +76,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <inttypes.h>
 #include <sys/stat.h>
+
+#include <sys/types.h>
+#include <pwd.h>
 
 #ifndef MSEC_IN_ONE_SEC
 #define MSEC_IN_ONE_SEC 1000ULL
@@ -389,7 +392,7 @@ void loc_convert_velocity_gnss_to_vrp(float enuVelocity[3], float rollPitchYaw[3
 }
 
 // Wait for the system script(rootdir/etc/init.qcom.rc) to create the folder
-void locUtilWaitForDir(const char* dirName) {
+void locUtilWaitForDir(const char* dirName, const char* uidName) {
     struct stat buf_stat;
     while (1) {
         LOC_LOGv("waiting for %s...", dirName);
@@ -401,4 +404,22 @@ void locUtilWaitForDir(const char* dirName) {
         usleep(100000);
     }
     LOC_LOGv("done");
+
+    if (nullptr != uidName) {
+        struct stat statbuf;
+        struct passwd *pwd;
+
+        do {
+            if (-1 != lstat(dirName, &statbuf)) {
+                if ((pwd = getpwuid(statbuf.st_uid)) != NULL) {
+                    LOC_LOGd("dir group is %s", pwd->pw_name);
+                    if (strcmp(pwd->pw_name, uidName) == 0) {
+                        break;
+                    }
+                }
+            }
+            // check every 100 millsecond
+            usleep (100000);
+        } while (1);
+    }
 }

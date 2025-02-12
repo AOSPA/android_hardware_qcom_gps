@@ -366,6 +366,9 @@ LocAdapterBase::getCapabilities()
         }
         //Get QWES feature status mask
         mask |= ContextBase::getQwesFeatureStatus();
+#if defined (FEATURE_AUTOMOTIVE) || defined (FEATURE_NHZ_ENABLED)
+        mask |= LOCATION_CAPABILITIES_QWES_GNSS_NHZ;
+#endif
         if (ContextBase::isAntennaInfoAvailable()) {
             mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
         }

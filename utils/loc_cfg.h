@@ -128,17 +128,17 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOC_PROCESS_MAX_ARG_STR_LENGTH 64
 
 #define UTIL_UPDATE_CONF(conf_data, len, config_table) \
-    loc_update_conf((conf_data), (len), (&config_table[0]), \
+    loc_update_conf((conf_data), (len), config_table, \
                     sizeof(config_table) / sizeof(config_table[0]))
 
 #define UTIL_READ_CONF_DEFAULT(filename) \
     loc_read_conf((filename), NULL, 0);
 
 #define UTIL_READ_CONF(filename, config_table) \
-    loc_read_conf((filename), (&config_table[0]), sizeof(config_table) / sizeof(config_table[0]))
+    loc_read_conf((filename), config_table, sizeof(config_table) / sizeof(config_table[0]))
 
 #define UTIL_READ_CONF_LONG(filename, config_table, rec_len) \
-    loc_read_conf_long((filename), (&config_table[0]), \
+    loc_read_conf_long((filename), config_table, \
             sizeof(config_table) / sizeof(config_table[0]), (rec_len))
 
 /*=============================================================================
@@ -193,26 +193,26 @@ extern "C" {
 bool isVendorEnhanced();
 void setVendorEnhanced(bool vendorEnhanced);
 void loc_read_conf_long(const char* conf_file_name,
-                        const loc_param_s_type* config_table,
+                        const loc_param_s_type config_table[],
                         uint32_t table_length, uint16_t string_len);
-int loc_read_conf_r_long(FILE *conf_fp, const loc_param_s_type* config_table,
+int loc_read_conf_r_long(FILE *conf_fp, const loc_param_s_type config_table[],
                          uint32_t table_length, uint16_t string_len);
 int loc_update_conf_long(const char* conf_data, int32_t length,
-                         const loc_param_s_type* config_table, uint32_t table_length,
+                         const loc_param_s_type config_table[], uint32_t table_length,
                          uint16_t string_len);
 
 inline void loc_read_conf(const char* conf_file_name,
-                          const loc_param_s_type* config_table, uint32_t table_length) {
+                          const loc_param_s_type config_table[], uint32_t table_length) {
     loc_read_conf_long(conf_file_name, config_table, table_length, LOC_MAX_PARAM_STRING);
 }
 
-inline int loc_read_conf_r(FILE *conf_fp, const loc_param_s_type* config_table,
+inline int loc_read_conf_r(FILE *conf_fp, const loc_param_s_type config_table[],
                     uint32_t table_length) {
     return (loc_read_conf_r_long(conf_fp, config_table, table_length, LOC_MAX_PARAM_STRING));
 }
 
 inline int loc_update_conf(const char* conf_data, int32_t length,
-                    const loc_param_s_type* config_table, uint32_t table_length) {
+                    const loc_param_s_type config_table[], uint32_t table_length) {
     return (loc_update_conf_long(
                     conf_data, length, config_table, table_length, LOC_MAX_PARAM_STRING));
 }

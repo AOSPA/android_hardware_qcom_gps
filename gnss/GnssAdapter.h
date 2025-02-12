@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -310,7 +310,7 @@ class GnssAdapter : public LocAdapterBase {
     powerIndicationCb mPowerIndicationCb;
     bool mGnssPowerStatisticsInit;
     uint64_t mBootReferenceEnergy;
-    ElapsedRealtimeEstimator mPowerElapsedRealTimeCal;
+    RealtimeEstimator mPowerElapsedRealTimeCal;
 
     /* ==== Measurement Corrections========================================================= */
     bool mIsMeasCorrInterfaceOpen;
@@ -364,7 +364,7 @@ class GnssAdapter : public LocAdapterBase {
     GnssReportLoggerUtil mLogger;
     bool mEngHubLoadSuccessful;
     EngineServiceInfo mEngServiceInfo;
-    ElapsedRealtimeEstimator mPositionElapsedRealTimeCal;
+    RealtimeEstimator mPositionElapsedRealTimeCal;
     typedef enum {
         HMAC_CONFIG_UNKNOWN = 0,
         HMAC_CONFIG_DISABLED,
@@ -390,6 +390,22 @@ class GnssAdapter : public LocAdapterBase {
     static uint16_t getNumSvUsed(uint64_t svUsedIdsMask,
                                  int totalSvCntInThisConstellation);
 
+    static bool isEphNetworkBased(const GnssEphCommon& commanEphRpt);
+    static void convertGpsEphemeris(const GpsEphemerisResponse& ephRpt,
+            GpsEphemerisResponse& halEph);
+    static void convertGalEphemeris(const GalileoEphemerisResponse& ephRpt,
+            GalileoEphemerisResponse& halEph);
+    static void convertGloEphemeris(const GlonassEphemerisResponse& ephRpt,
+            GlonassEphemerisResponse& halEph);
+    static void convertBdsEphemeris(const BdsEphemerisResponse& ephRpt,
+            BdsEphemerisResponse& halEph);
+    static void convertQzssEphemeris(const QzssEphemerisResponse& ephRpt,
+            QzssEphemerisResponse& halEph);
+    static void convertNavicEphemeris(const NavicEphemerisResponse& ephRpt,
+            NavicEphemerisResponse& halEph);
+    static void convertEphReportInfo(const GnssSvEphemerisReport& svEphemeris,
+            GnssSvEphemerisReport& ephInfo, bool& needToReportEph);
+
     /* ======== UTILITIES ================================================================== */
     inline void initOdcpi(const odcpiRequestCallback& callback,
                           OdcpiPrioritytype priority,
@@ -406,7 +422,7 @@ class GnssAdapter : public LocAdapterBase {
     inline void injectLocationAndAddr(const Location& location, const GnssCivicAddress& addr)
     { mLocApi->injectPositionAndCivicAddress(location, addr);}
     void fillElapsedRealTime(const GpsLocationExtended& locationExtended,
-                             Location& out);
+                             GnssLocationInfoNotification& out);
     void combineBlacklistSvs(const GnssSvIdConfig& blacklistSvs,
             const GnssSvTypeConfig& constellationConfig,
             GnssSvIdConfig& combinedBlacklistSvs);
@@ -648,7 +664,7 @@ public:
     /* ==== REPORTS ======================================================================== */
     virtual void handleEngineLockStatusEvent(EngineLockState engineLockState);
     void handleEngineLockStatus(EngineLockState engineLockState);
-    /* ======== EVENTS ====(Called from QMI/EngineHub Thread)===================================== */
+    /* ======== EVENTS ====(Called from QMI/EngineHub Thread)================================== */
     virtual void reportPositionEvent(const UlpLocation& ulpLocation,
                                      const GpsLocationExtended& locationExtended,
                                      enum loc_sess_status status,
@@ -746,6 +762,7 @@ public:
             mControlCallbacks.nfwStatusCb(notification);
         }
     }
+    void reportSvEphemerisData (const GnssSvEphemerisReport& svEphemeris);
     inline bool getE911State(GnssNiType niType) {
         if (NULL != mControlCallbacks.isInEmergencyStatusCb) {
             return mControlCallbacks.isInEmergencyStatusCb();

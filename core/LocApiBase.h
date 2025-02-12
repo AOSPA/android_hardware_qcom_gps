@@ -107,14 +107,12 @@ class LocAdapterBase;
 struct LocSsrMsg;
 struct LocOpenMsg;
 
-typedef struct
-{
+typedef struct {
     uint32_t accumulatedDistance;
     uint32_t numOfBatchedPositions;
 } LocApiBatchData;
 
-typedef struct
-{
+typedef struct {
     uint32_t hwId;
 } LocApiGeofenceData;
 
@@ -409,7 +407,7 @@ public:
     virtual void configOsnmaEnablement(bool enable, LocApiResponse* adapterResponse=nullptr);
 };
 
-class ElapsedRealtimeEstimator {
+class RealtimeEstimator {
     typedef struct {
         GPSTimeStruct gpsTime;
         int64_t qtimerTick;
@@ -430,7 +428,7 @@ private:
     GpsTimeQtimerTickPair mTimePairMeasReport;
 
 public:
-    inline ElapsedRealtimeEstimator(int64_t travelTimeNanosEstimate) :
+    inline RealtimeEstimator(int64_t travelTimeNanosEstimate) :
             mInitialTravelTime(travelTimeNanosEstimate) {
         reset();
     }
@@ -439,8 +437,9 @@ public:
     inline int64_t getElapsedRealtimeUncNanos() { return 5000000;}
     void reset();
     static int64_t getElapsedRealtimeQtimer(int64_t qtimerTicksAtOrigin);
-    bool getElapsedRealtimeForGpsTime(const GpsLocationExtended& locationExtended,
-                                      int64_t &elapsedTime, float & elpasedTimeUnc);
+    bool fillAdditionalTimestamps(const GpsLocationExtended& locationExtended,
+                                      int64_t &elapsedTime, float & elpasedTimeUnc,
+                                      uint64_t &gptpTime, bool &gPTPValidity);
     void saveGpsTimeAndQtimerPairInPvtReport(const GpsLocationExtended& locationExtended);
     void saveGpsTimeAndQtimerPairInMeasReport(const GnssSvMeasurementSet& svMeasurementSet);
     static bool getCurrentTime(struct timespec& currentTime, int64_t& sinceBootTimeNanos);
