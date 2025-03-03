@@ -1,4 +1,5 @@
 /* Copyright (c) 2015, 2017, 2020 The Linux Foundation. All rights reserved.
+.* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,6 +32,7 @@
 #define __IDATAITEMCORE_H__
 
 #include <string>
+#include <inttypes.h>
 #include <DataItemId.h>
 
 namespace loc_core {

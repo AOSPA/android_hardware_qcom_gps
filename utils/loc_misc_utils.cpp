@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -408,6 +408,7 @@ void locUtilWaitForDir(const char* dirName, const char* uidName) {
     if (nullptr != uidName) {
         struct stat statbuf;
         struct passwd *pwd;
+        int counter=0;
 
         do {
             if (-1 != lstat(dirName, &statbuf)) {
@@ -420,6 +421,8 @@ void locUtilWaitForDir(const char* dirName, const char* uidName) {
             }
             // check every 100 millsecond
             usleep (100000);
-        } while (1);
+            counter++;
+        } while (counter < 10);
+        LOC_LOGv("done check for uidName ctr:%d", counter);
     }
 }

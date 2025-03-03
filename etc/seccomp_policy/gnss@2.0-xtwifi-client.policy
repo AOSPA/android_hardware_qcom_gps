@@ -64,6 +64,7 @@ getuid32: 1
 getuid: 1
 fstat64: 1
 fstatat64: 1
+fstatfs64: 1
 mkdir: 1
 rmdir: 1
 creat: 1

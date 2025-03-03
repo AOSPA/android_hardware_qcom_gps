@@ -95,7 +95,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DEG2RAD    (M_PI / 180.0)
 #define PROCESS_NAME_ENGINE_SERVICE "engine-service"
 #define PROCESS_NAME_SAP_MAP        "hmacdaemon"
-#define MIN_TRACKING_INTERVAL (100) // 100 msec
+#define MIN_TRACKING_INTERVAL (MIN_GNSS_TRACKING_INTERVAL) // 100 msec
 #define NHZ_ENABLED_MIN_TRACKING_INTERVAL (100) // 100 msec
 #define NHZ_NOT_ENABLED_MIN_TRACKING_INTERVAL (1000) // 1 sec
 #define BILLION_NSEC (1000000000ULL)
@@ -150,6 +150,42 @@ inline void GnssReportLoggerUtil::log(const GnssLatencyInfo& gnssLatencyMeasInfo
     if (mLogLatency != nullptr) {
         mLogLatency(gnssLatencyMeasInfo);
     }
+}
+
+class LocNvParams
+{
+public:
+
+    enum LocNvParamId {
+       LEVER_ARM_GNSS_TO_VRP = 0, // Blob for LeverArmParams
+       MAX_NUM_OF_LOC_NV_PARAMS,
+       NV_PARAM_E_SIZE   = 0x10000000      // force enum to be 32-bit
+    };
+
+    static const char* getParamName (LocNvParamId nvId);
+
+};
+
+
+const char* LocNvParamNameTable[] =
+{
+    "LEVER_ARM_GNSS_TO_VRP", // 0 LeverArmParams blob
+};
+
+const char* LocNvParams::getParamName(LocNvParamId nvId)
+{
+    int paramNameCnt = 0;
+    const char* paramName = NULL;
+
+    paramNameCnt = sizeof (LocNvParamNameTable)/ sizeof (char*);
+
+    if ((nvId < MAX_NUM_OF_LOC_NV_PARAMS) && (nvId < paramNameCnt)) {
+        paramName = LocNvParamNameTable[nvId];
+    } else {
+        LOC_LOGw("getParamName: name for nv item id %d not set", nvId);
+    }
+
+    return paramName;
 }
 
 GnssAdapter::GnssAdapter() :
@@ -209,6 +245,7 @@ GnssAdapter::GnssAdapter() :
     mPositionElapsedRealTimeCal(30000000),
     mAddressRequestCb(nullptr),
     mHmacConfig(HMAC_CONFIG_UNKNOWN),
+    mNvParamMgr(NvParamMgr::getInstance()),
     mNmeaReqEngTypeMask(LOC_REQ_ENGINE_FUSED_BIT),
     mAppHash(""),
     m3GppSourceMask(QDGNSS_3GPP_SOURCE_UNKNOWN),
@@ -258,10 +295,90 @@ GnssAdapter::GnssAdapter() :
     initEngHubProxyCommand();
     testLaunchQppeBringUp();
     mXtraObserver.init();
+    restoreConfigFromNvm();
     // at last step, let us inform adapater base that we are done
     // with initialization, e.g.: ready to process handleEngineUpEvent
     doneInit();
 
+}
+
+void GnssAdapter::restoreConfigFromNvm()
+{
+
+    LOC_LOGd("restoreConfigFromNvm");
+    struct MsgReadNvmData : public LocMsg {
+        GnssAdapter&       mAdapter;
+
+        inline MsgReadNvmData(GnssAdapter& adapter) :
+            LocMsg(),
+            mAdapter(adapter) {}
+        inline virtual void proc() const {
+            //Read GNSS VRP data
+            mAdapter.mLocConfigInfo.leverArmConfigInfo = mAdapter.readVrpDataFromNvm();
+            LOC_LOGi("0x%x %f %f %f", mAdapter.mLocConfigInfo.leverArmConfigInfo.leverArmValidMask,
+                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP.forwardOffsetMeters,
+                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP.sidewaysOffsetMeters,
+                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP.upOffsetMeters);
+            if (mAdapter.mLocConfigInfo.leverArmConfigInfo.leverArmValidMask) {
+                if (true == mAdapter.mEngHubLoadSuccessful) {
+                    if (false == mAdapter.mEngHubProxy->configLeverArm(
+                            mAdapter.mLocConfigInfo.leverArmConfigInfo)) {
+                        LOC_LOGe("configLeverArm Failed");
+                    } else {
+                        LOC_LOGd("configLeverArm Success");
+                    }
+                }
+            }
+        }
+    };
+    sendMsg(new MsgReadNvmData(*this));
+}
+
+LeverArmConfigInfo GnssAdapter::readVrpDataFromNvm()
+{
+    //Retrieve those parameters from back up NV memory
+    LeverArmConfigInfo configInfo = {};
+
+    const char* paramName = NULL;
+    nv_param_err_code errorCode = NV_PARAM_ERR_NO_ERR;
+    unsigned int size = sizeof(LeverArmConfigInfo);
+    paramName = LocNvParams::getParamName(LocNvParams::LEVER_ARM_GNSS_TO_VRP);
+    unsigned char* leverArmBlob = reinterpret_cast<unsigned char*>(&configInfo);
+    if ((nullptr != leverArmBlob) && (nullptr != mNvParamMgr)) {
+        errorCode = mNvParamMgr->getBlobParam(paramName, leverArmBlob, size);
+        if (NV_PARAM_ERR_NO_ERR == errorCode) {
+            LeverArmConfigInfo* leverArmConfig =
+                  reinterpret_cast<LeverArmConfigInfo*>(leverArmBlob);
+            if (nullptr != leverArmConfig) {
+                configInfo = *leverArmConfig;
+            }
+        }
+    }
+    return configInfo;
+}
+
+bool GnssAdapter::storeVrpData2Nvm(const LeverArmConfigInfo& configInfo)
+{
+    bool retVal = false;
+    nv_param_err_code errorCode = NV_PARAM_ERR_NO_ERR;
+    LOC_LOGi("0x%x %f %f %f", configInfo.leverArmValidMask,
+            configInfo.gnssToVRP.forwardOffsetMeters,
+            configInfo.gnssToVRP.sidewaysOffsetMeters,
+            configInfo.gnssToVRP.upOffsetMeters);
+    if (configInfo.leverArmValidMask & LEVER_ARM_TYPE_GNSS_TO_VRP_BIT) {
+        const char* paramName = NULL;
+        nv_param_err_code errorCode = NV_PARAM_ERR_NO_ERR;
+        unsigned int size = sizeof(LeverArmConfigInfo);
+        if (nullptr != mNvParamMgr) {
+            paramName = LocNvParams::getParamName(LocNvParams::LEVER_ARM_GNSS_TO_VRP);
+            errorCode = mNvParamMgr->saveBlobParam(paramName,
+                    (const unsigned char*)&configInfo, size);
+        }
+    }
+    if (NV_PARAM_ERR_NO_ERR == errorCode) {
+        retVal = true;
+    }
+    return retVal;
 }
 
 void
@@ -345,10 +462,15 @@ GnssAdapter::checkAndSetSPEToRunforNHz(TrackingOptions & out) {
 
 void
 GnssAdapter::convertLocation(Location& out, const UlpLocation& ulpLocation,
-                             const GpsLocationExtended& locationExtended)
+                             const GpsLocationExtended& locationExtended,
+                             loc_sess_status status)
 {
     memset(&out, 0, sizeof(Location));
     out.size = sizeof(Location);
+
+    out.flags |= LOCATION_HAS_SESSION_STATUS_BIT;
+    out.sessionStatus = status;
+
     if (LOC_GPS_LOCATION_HAS_LAT_LONG & ulpLocation.gpsLocation.flags) {
         out.flags |= LOCATION_HAS_LAT_LONG_BIT;
         out.latitude = ulpLocation.gpsLocation.latitude;
@@ -506,6 +628,7 @@ void GnssAdapter::fillElapsedRealTime(const GpsLocationExtended& locationExtende
     if (!(out.location.flags & LOCATION_HAS_ELAPSED_REAL_TIME_BIT)) {
         out.location.elapsedRealTime = getBootTimeMilliSec() * 1000000;
         out.location.elapsedRealTimeUnc = mPositionElapsedRealTimeCal.getElapsedRealtimeUncNanos();
+        out.location.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
     }
 #endif //FEATURE_AUTOMOTIVE
 }
@@ -691,7 +814,7 @@ GnssAdapter::convertLocationInfo(GnssLocationInfoNotification& out,
         out.navSolutionMask = locationExtended.navSolutionMask;
     }
     if (GPS_LOCATION_EXTENDED_HAS_POS_DYNAMICS_DATA & locationExtended.flags) {
-        out.flags |= GPS_LOCATION_EXTENDED_HAS_POS_DYNAMICS_DATA;
+        out.flags |= LDT_GNSS_LOCATION_INFO_POS_DYNAMICS_DATA_BIT;
         if (locationExtended.bodyFrameData.bodyFrameDataMask &
                 LOCATION_NAV_DATA_HAS_LONG_ACCEL_BIT) {
             out.bodyFrameData.bodyFrameDataMask |= LOCATION_NAV_DATA_HAS_LONG_ACCEL_BIT;
@@ -869,6 +992,36 @@ GnssAdapter::convertLocationInfo(GnssLocationInfoNotification& out,
         out.numOfDgnssStationId = locationExtended.numOfDgnssStationId;
         for (uint32_t i = 0; i < locationExtended.numOfDgnssStationId; i++) {
             out.dgnssStationId[i] = locationExtended.dgnssStationId[i];
+        }
+    }
+
+    if (GPS_LOCATION_EXTENDED_HAS_CALCULATED_BASE_LINE_LENGTH  & locationExtended.flags) {
+        out.flags |= LDT_GNSS_LOCATION_INFO_BASE_LINE_LENGTH_BIT;
+        out.baseLineLength = locationExtended.calculatedBaseLineLength;
+    }
+
+    if (GPS_LOCATION_EXTENDED_HAS_CALCULATED_CORR_AGE & locationExtended.flags) {
+        out.flags |= LDT_GNSS_LOCATION_INFO_AGE_OF_CORRECTION_BIT;
+        out.ageMsecOfCorrections = locationExtended.calculatedAgeMsecOfCorrections;
+    }
+
+    if (GPS_LOCATION_EXTENDED_HAS_LEAP_SECONDS_UNC & locationExtended.flags) {
+        out.flags |= LDT_GNSS_LOCATION_INFO_LEAP_SECONDS_UNC_BIT;
+        out.leapSecondsUnc = locationExtended.leapSecondsUnc;
+    }
+
+    if (GPS_LOCATION_EXTENDED_HAS_REPORT_INTERVAL & locationExtended.flags) {
+        out.flags |= LDT_GNSS_LOCATION_INFO_REPORT_INTERVAL_BIT;
+        out.posReportingInterval = locationExtended.posReportingInterval;
+    }
+
+    if (GPS_LOCATION_EXTENDED_HAS_EXTENDED_DATA & locationExtended.flags) {
+        out.flags |= LDT_GNSS_LOCATION_INFO_EXTENDED_DATA_BIT;
+        out.extendedDataLen = locationExtended.extendedDataLen;
+        if (locationExtended.extendedDataLen <= sizeof(out.extendedData)) {
+            memscpy(out.extendedData, locationExtended.extendedDataLen,
+                    locationExtended.extendedData,
+                    locationExtended.extendedDataLen);
         }
     }
 }
@@ -1242,11 +1395,17 @@ GnssAdapter::setConfig()
         mLocApi->setPositionAssistedClockEstimatorMode(
                 mLocConfigInfo.paceConfigInfo.enable);
 
-        // robust location to be disabled on bootup by default
         if (mLocConfigInfo.robustLocationConfigInfo.isValid == false) {
             mLocConfigInfo.robustLocationConfigInfo.isValid = true;
+            // robust location to be enabled on bootup for auto targets
+#ifdef FEATURE_AUTOMOTIVE
+            mLocConfigInfo.robustLocationConfigInfo.enable = true;
+            mLocConfigInfo.robustLocationConfigInfo.enableFor911 = true;
+#else
+            // robust location to be disabled on bootup for non-auto targets
             mLocConfigInfo.robustLocationConfigInfo.enable = false;
             mLocConfigInfo.robustLocationConfigInfo.enableFor911 = false;
+#endif
         }
         mLocApi->configRobustLocation(
                 mLocConfigInfo.robustLocationConfigInfo.enable,
@@ -1723,6 +1882,9 @@ GnssAdapter::combineBlacklistSvs(const GnssSvIdConfig& blacklistSvs,
 
     // Blacklist all SVs for each disabled constellation
     if (constellationConfig.blacklistedSvTypesMask) {
+        if (constellationConfig.blacklistedSvTypesMask & GNSS_SV_TYPES_MASK_GPS_BIT) {
+            combinedBlacklistSvs.gpsBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
+        }
         if (constellationConfig.blacklistedSvTypesMask & GNSS_SV_TYPES_MASK_GLO_BIT) {
             combinedBlacklistSvs.gloBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
         }
@@ -1739,39 +1901,12 @@ GnssAdapter::combineBlacklistSvs(const GnssSvIdConfig& blacklistSvs,
             combinedBlacklistSvs.navicBlacklistSvMask = GNSS_SV_CONFIG_ALL_BITS_ENABLED_MASK;
         }
     }
-    LOC_LOGv("combined blacklist bds 0x%" PRIx64 ", glo 0x%" PRIx64
+    LOC_LOGv("combined blacklist gps 0x%" PRIx64 ", bds 0x%" PRIx64 ", glo 0x%" PRIx64
             ", qzss 0x%" PRIx64 ", gal 0x%" PRIx64 ", sbas 0x%" PRIx64 ", navic 0x%" PRIx64,
-            combinedBlacklistSvs.bdsBlacklistSvMask, combinedBlacklistSvs.gloBlacklistSvMask,
-            combinedBlacklistSvs.qzssBlacklistSvMask, combinedBlacklistSvs.galBlacklistSvMask,
-            combinedBlacklistSvs.sbasBlacklistSvMask, combinedBlacklistSvs.navicBlacklistSvMask);
-
-}
-
-void
-GnssAdapter::gnssSvIdConfigUpdate(const std::vector<GnssSvIdSource>& blacklistedSvIds)
-{
-    // Clear the existing config
-    memset(&mGnssSvIdConfig, 0, sizeof(GnssSvIdConfig));
-
-    // Convert the sv id lists to masks
-    bool convertSuccess = convertToGnssSvIdConfig(blacklistedSvIds, mGnssSvIdConfig);
-
-    // Now send to Modem if conversion successful
-    if (convertSuccess) {
-        gnssSvIdConfigUpdate();
-    } else {
-        LOC_LOGe("convertToGnssSvIdConfig failed");
-    }
-}
-
-void
-GnssAdapter::gnssSvIdConfigUpdate()
-{
-    GnssSvIdConfig blacklistConfig = {};
-    GnssSvTypeConfig currentSvTypeConfig = gnssCombineSvTypeConfigs();
-    combineBlacklistSvs(mGnssSvIdConfig, currentSvTypeConfig, blacklistConfig);
-    // Now set required blacklisted SVs
-    mLocApi->setBlacklistSv(blacklistConfig);
+            combinedBlacklistSvs.gpsBlacklistSvMask, combinedBlacklistSvs.bdsBlacklistSvMask,
+            combinedBlacklistSvs.gloBlacklistSvMask, combinedBlacklistSvs.qzssBlacklistSvMask,
+            combinedBlacklistSvs.galBlacklistSvMask, combinedBlacklistSvs.sbasBlacklistSvMask,
+            combinedBlacklistSvs.navicBlacklistSvMask);
 }
 
 LocationError
@@ -1784,17 +1919,40 @@ GnssAdapter::gnssSvIdConfigUpdateSync(const std::vector<GnssSvIdSource>& blackli
     convertToGnssSvIdConfig(blacklistedSvIds, mGnssSvIdConfig);
 
     // Now send to Modem
-    return gnssSvIdConfigUpdateSync();
+    return gnssSvConfigUpdate();
 }
 
+// This function will combine SV config command from Android and from XTRA daemon
+// as follows so the callflow would work for regardless whether modem support
+// constellation enablement or disablement
+//
+// step 1: obtain SV constellation enablement/disablement info via XTRA QCC path
+// step 2: combine SV constellation enablement/disablement info with info in step 1
+//   rule #1: if all SVs in a constellation are blacklisted, treat that constellation
+//            are disabled as well.
+//   rule #2: if a constellation is disabled, then mark all SVs in that constellation
+//            are blacklisted
+//   rule #3: if a constellation is both enabled and disabled, treat it as disabled
+// We do not cache the current config applied to QMI Loc api and compare with new incoming
+// config, as in case the command failed, cached current config may cause subsequent attempts to
+// set config to current config to always fail
 LocationError
-GnssAdapter::gnssSvIdConfigUpdateSync()
+GnssAdapter::gnssSvConfigUpdate()
 {
-    // Now set required blacklisted SVs
     GnssSvIdConfig blacklistConfig = {};
+    // combine sv constellation enablement/disablement from all sources (SDK and XTRA
     GnssSvTypeConfig currentSvTypeConfig = gnssCombineSvTypeConfigs();
+    // combine sv constellation enablement/disablement with blacklist info
     combineBlacklistSvs(mGnssSvIdConfig, currentSvTypeConfig, blacklistConfig);
-    return mLocApi->setBlacklistSvSync(blacklistConfig);
+    mLocApi->setBlacklistSv(blacklistConfig);
+
+    if (currentSvTypeConfig.size == 0) {
+         mLocApi->resetConstellationControl();
+    } else {
+        mLocApi->setConstellationControl(currentSvTypeConfig);
+    }
+
+    return LOCATION_ERROR_SUCCESS;
 }
 
 void
@@ -2031,6 +2189,7 @@ GnssAdapter::convertToGnssSvIdConfig(
 
     // Empty vector => Clear any previous blacklisted SVs
     if (0 == blacklistedSvIds.size()) {
+        config.gpsBlacklistSvMask = 0;
         config.gloBlacklistSvMask = 0;
         config.bdsBlacklistSvMask = 0;
         config.qzssBlacklistSvMask = 0;
@@ -2045,6 +2204,10 @@ GnssAdapter::convertToGnssSvIdConfig(
             GnssSvId initialSvId = 0;
             uint16_t svIndexOffset = 0;
             switch (source.constellation) {
+            case GNSS_SV_TYPE_GPS:
+                svMaskPtr = &config.gpsBlacklistSvMask;
+                initialSvId = GNSS_SV_CONFIG_GPS_INITIAL_SV_ID;
+                break;
             case GNSS_SV_TYPE_GLONASS:
                 svMaskPtr = &config.gloBlacklistSvMask;
                 initialSvId = GNSS_SV_CONFIG_GLO_INITIAL_SV_ID;
@@ -2108,6 +2271,7 @@ GnssAdapter::convertToGnssSvIdConfig(
 
         // Return true if any one source is valid
         if (0 != config.gloBlacklistSvMask ||
+                0 != config.gpsBlacklistSvMask ||
                 0 != config.bdsBlacklistSvMask ||
                 0 != config.galBlacklistSvMask ||
                 0 != config.qzssBlacklistSvMask ||
@@ -2117,9 +2281,9 @@ GnssAdapter::convertToGnssSvIdConfig(
         }
     }
 
-    LOC_LOGd("blacklist bds 0x%" PRIx64 ", glo 0x%" PRIx64
+    LOC_LOGd("blacklist gps 0x%" PRIx64 ", bds 0x%" PRIx64 ", glo 0x%" PRIx64
             ", qzss 0x%" PRIx64 ", gal 0x%" PRIx64 ", sbas 0x%" PRIx64 ", navic 0x%" PRIx64,
-             config.bdsBlacklistSvMask, config.gloBlacklistSvMask,
+             config.gpsBlacklistSvMask, config.bdsBlacklistSvMask, config.gloBlacklistSvMask,
              config.qzssBlacklistSvMask, config.galBlacklistSvMask,
             config.sbasBlacklistSvMask, config.navicBlacklistSvMask);
 
@@ -2130,6 +2294,11 @@ void GnssAdapter::convertFromGnssSvIdConfig(
         const GnssSvIdConfig& svConfig, std::vector<GnssSvIdSource>& blacklistedSvIds)
 {
     // Convert blacklisted SV mask values to vectors
+    if (svConfig.gpsBlacklistSvMask) {
+        convertGnssSvIdMaskToList(
+                svConfig.gpsBlacklistSvMask, blacklistedSvIds,
+                GNSS_SV_CONFIG_GPS_INITIAL_SV_ID, GNSS_SV_TYPE_GPS);
+    }
     if (svConfig.bdsBlacklistSvMask) {
         convertGnssSvIdMaskToList(
                 svConfig.bdsBlacklistSvMask, blacklistedSvIds,
@@ -2245,8 +2414,9 @@ void GnssAdapter::reportGnssSvIdConfig(const GnssSvIdConfig& svIdConfig)
         if (config.blacklistedSvIds.size() > 0) {
             config.flags |= GNSS_CONFIG_FLAGS_BLACKLISTED_SV_IDS_BIT;
         }
-        LOC_LOGd("blacklist bds 0x%" PRIx64 ", glo 0x%" PRIx64 ", "
+        LOC_LOGd("blacklist gps 0x%" PRIx64 ", bds 0x%" PRIx64 ", glo 0x%" PRIx64 ", "
                  "qzss 0x%" PRIx64 ", gal 0x%" PRIx64 ", sbas 0x%" PRIx64 ", navic 0x%" PRIx64,
+                 svIdConfig.gpsBlacklistSvMask,
                  svIdConfig.bdsBlacklistSvMask, svIdConfig.gloBlacklistSvMask,
                  svIdConfig.qzssBlacklistSvMask, svIdConfig.galBlacklistSvMask,
                  svIdConfig.sbasBlacklistSvMask,  svIdConfig.navicBlacklistSvMask);
@@ -2286,102 +2456,14 @@ GnssAdapter::gnssUpdateSvTypeConfigCommand(GnssSvTypeConfig config,
                     LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
                 LOC_LOGE("MsgGnssUpdateSvTypeConfig, CONSTELLATION_ENABLEMENT not supported.");
             } else {
-                GnssSvTypeConfig currentConfig = mAdapter->gnssCombineSvTypeConfigs();
                 if (mAdapter->gnssSetSvTypeConfig(mConfig, mSource)) {
-                    GnssSvTypeConfig newConfig = mAdapter->gnssCombineSvTypeConfigs();
-                    // Send update request to modem
-                    mAdapter->gnssSvTypeConfigUpdate(currentConfig, newConfig);
+                    mAdapter->gnssSvConfigUpdate();
                 }
             }
         }
     };
 
     sendMsg(new MsgGnssUpdateSvTypeConfig(this, mLocApi, config, source));
-}
-
-void
-GnssAdapter::gnssSvTypeConfigUpdate(const GnssSvTypeConfig& currentConfig,
-                                    const GnssSvTypeConfig& newConfig)
-{
-    LOC_LOGv("old constellations size %" PRIu32" blacklisted 0x%" PRIx64 ", enabled 0x%" PRIx64,
-             currentConfig.size, currentConfig.blacklistedSvTypesMask,
-             currentConfig.enabledSvTypesMask);
-
-    LOC_LOGv("new constellations size %" PRIu32" blacklisted 0x%" PRIx64 ", enabled 0x%" PRIx64,
-            newConfig.size, newConfig.blacklistedSvTypesMask,
-            newConfig.enabledSvTypesMask);
-
-    LOC_LOGv("blacklist bds 0x%" PRIx64 ", glo 0x%" PRIx64
-            ", qzss 0x%" PRIx64 ", gal 0x%" PRIx64 ", sbas 0x%" PRIx64 ", Navic 0x%" PRIx64,
-            mGnssSvIdConfig.bdsBlacklistSvMask, mGnssSvIdConfig.gloBlacklistSvMask,
-            mGnssSvIdConfig.qzssBlacklistSvMask, mGnssSvIdConfig.galBlacklistSvMask,
-            mGnssSvIdConfig.sbasBlacklistSvMask, mGnssSvIdConfig.navicBlacklistSvMask);
-
-    if (currentConfig.equals(newConfig)) {
-        LOC_LOGd("Same svTypeConfig, return");
-        return;
-    }
-
-    if (newConfig.size == 0) {
-        mLocApi->resetConstellationControl();
-        // blacklistedSvTypesMask is 0, no need to combine
-        mLocApi->setBlacklistSv(mGnssSvIdConfig);
-    } else if (newConfig.size == sizeof(newConfig)) {
-        // Gather bits removed from enabled mask
-        GnssSvTypesMask enabledRemoved = currentConfig.enabledSvTypesMask &
-                (currentConfig.enabledSvTypesMask ^ newConfig.enabledSvTypesMask);
-        // Send reset if any constellation is removed from the enabled list
-        if (enabledRemoved != 0) {
-            mLocApi->resetConstellationControl();
-        }
-
-        GnssSvIdConfig blacklistConfig = { };
-        // Add disabled constellation SVs
-        combineBlacklistSvs(mGnssSvIdConfig, newConfig, blacklistConfig);
-
-        // If enable a previously disabled constellation, should unblacklist all Svs for
-        // that constellation
-        GnssSvTypesMask reEnableSvTypesMask = currentConfig.blacklistedSvTypesMask &
-                newConfig.enabledSvTypesMask;
-        if (reEnableSvTypesMask) {
-            if (reEnableSvTypesMask & GNSS_SV_TYPES_MASK_GLO_BIT) {
-                blacklistConfig.gloBlacklistSvMask = 0;
-            }
-            if (reEnableSvTypesMask & GNSS_SV_TYPES_MASK_BDS_BIT) {
-                blacklistConfig.bdsBlacklistSvMask = 0;
-            }
-            if (reEnableSvTypesMask & GNSS_SV_TYPES_MASK_QZSS_BIT) {
-                blacklistConfig.qzssBlacklistSvMask = 0;
-            }
-            if (reEnableSvTypesMask & GNSS_SV_TYPES_MASK_GAL_BIT) {
-                blacklistConfig.galBlacklistSvMask = 0;
-            }
-            if (reEnableSvTypesMask & GNSS_SV_TYPES_MASK_NAVIC_BIT) {
-                blacklistConfig.navicBlacklistSvMask = 0;
-            }
-        }
-
-        // Send blacklist info
-        mLocApi->setBlacklistSv(blacklistConfig);
-
-        // Send only enabled constellation config
-        if (newConfig.enabledSvTypesMask &&
-                newConfig.enabledSvTypesMask != currentConfig.enabledSvTypesMask) {
-            GnssSvTypeConfig svTypeConfig = {sizeof(GnssSvTypeConfig), 0, 0};
-            svTypeConfig.enabledSvTypesMask = newConfig.enabledSvTypesMask;
-            mLocApi->setConstellationControl(svTypeConfig);
-        }
-    }
-}
-
-void
-GnssAdapter::gnssSvTypeConfigUpdate() {
-    // for modem SSR, blacklist SVs recovery is taken care by gnssSvIdConfigUpdate
-    // size 0 == default NV constellation, size == there is a new constellation config
-    GnssSvTypeConfig currentConfig = gnssCombineSvTypeConfigs();
-    if (currentConfig.size) {
-        mLocApi->setConstellationControl(currentConfig);
-    }
 }
 
 bool
@@ -2405,28 +2487,60 @@ GnssAdapter::gnssCombineSvTypeConfigs() {
     // bit OR enableMask, disableMask from different SW API clients
     for (int i = 0; i < SV_TYPE_CONFIG_MAX_SOURCE; i++) {
         if (mGnssSvTypeConfigs[i].isValid) {
-            // if client set size == 0, means reset constellation
-            // size non zero shall overwrite zero
-            if (mGnssSvTypeConfigs[i].gnssSvTypeConfig.size) {
-                svTypeConfig.size = mGnssSvTypeConfigs[i].gnssSvTypeConfig.size;
-            }
             svTypeConfig.enabledSvTypesMask |=
                 mGnssSvTypeConfigs[i].gnssSvTypeConfig.enabledSvTypesMask;
             svTypeConfig.blacklistedSvTypesMask |=
                 mGnssSvTypeConfigs[i].gnssSvTypeConfig.blacklistedSvTypesMask;
+
+            LOC_LOGd("sv type config source %d, enableMask 0x%" PRIx64 " disableMask 0x%" PRIx64,
+                    i, svTypeConfig.enabledSvTypesMask, svTypeConfig.blacklistedSvTypesMask);
         }
     }
 
-    // if a constellation is being enabled and disabled at the same time,
-    // honor disable mask, set enable mask to 0
-    GnssSvTypesMask conflictMask = svTypeConfig.enabledSvTypesMask &
-        svTypeConfig.blacklistedSvTypesMask;
-    if (conflictMask) {
-        svTypeConfig.enabledSvTypesMask &= ~conflictMask;
+    for (GnssSvIdSource svIdSource : mBlacklistedSvIds) {
+       if (svIdSource.svId == 0) {
+          LOC_LOGd("in blacklist sv list, svId is set to 0 for constellation of %d",
+                   svIdSource.constellation);
+          switch (svIdSource.constellation) {
+          // Note: SBAS constellation need special handling
+          // If GPS is disabled, then SBAS will be disabled.
+          // If GPS is not disabled, then SBAS can not be disabled, but can be blacklisted
+          case GNSS_SV_TYPE_GPS:
+             svTypeConfig.blacklistedSvTypesMask |= GNSS_SV_TYPES_MASK_GPS_BIT;
+             break;
+          case GNSS_SV_TYPE_GLONASS:
+             svTypeConfig.blacklistedSvTypesMask |= GNSS_SV_TYPES_MASK_GLO_BIT;
+             break;
+          case GNSS_SV_TYPE_QZSS:
+             svTypeConfig.blacklistedSvTypesMask |= GNSS_SV_TYPES_MASK_QZSS_BIT;
+             break;
+          case GNSS_SV_TYPE_BEIDOU:
+             svTypeConfig.blacklistedSvTypesMask |= GNSS_SV_TYPES_MASK_BDS_BIT;
+             break;
+          case GNSS_SV_TYPE_GALILEO:
+             svTypeConfig.blacklistedSvTypesMask |= GNSS_SV_TYPES_MASK_GAL_BIT;
+             break;
+          case GNSS_SV_TYPE_NAVIC:
+             svTypeConfig.blacklistedSvTypesMask |= GNSS_SV_TYPES_MASK_NAVIC_BIT;
+             break;
+          default:
+              break;
+          }
+       }
     }
 
-    LOC_LOGd("Combined svTypeConfig enableMask 0x%" PRIx64 " disableMask 0x%" PRIx64,
-            svTypeConfig.enabledSvTypesMask, svTypeConfig.blacklistedSvTypesMask);
+    // if client set size == 0, means reset constellation
+    // size non zero shall overwrite zero
+    if (svTypeConfig.enabledSvTypesMask || svTypeConfig.blacklistedSvTypesMask) {
+       svTypeConfig.size = sizeof(svTypeConfig);
+       // enabled mask is the opporsite of disabled mask
+       svTypeConfig.enabledSvTypesMask = (~svTypeConfig.blacklistedSvTypesMask) &
+                                          GNSS_SV_TYPES_MASK_ALL;
+    }
+
+    LOC_LOGd("Combined svTypeConfig size %d, enableMask 0x%" PRIx64 " disableMask 0x%" PRIx64,
+             svTypeConfig.size, svTypeConfig.enabledSvTypesMask,
+             svTypeConfig.blacklistedSvTypesMask);
 
     return svTypeConfig;
 }
@@ -2487,11 +2601,9 @@ GnssAdapter::gnssResetSvTypeConfigCommand()
                     LOC_SUPPORTED_FEATURE_CONSTELLATION_ENABLEMENT_V02)) {
                 LOC_LOGE("MsgGnssResetSvTypeConfig, CONSTELLATION_ENABLEMENT not supported.");
             } else {
-                GnssSvTypeConfig currentConfig = mAdapter->gnssCombineSvTypeConfigs();
                 // only being called by LocSDK, the default main client
                 if (mAdapter->gnssSetSvTypeConfig({0, 0, 0}, SV_TYPE_CONFIG_FROM_API)) {
-                    GnssSvTypeConfig newConfig = mAdapter->gnssCombineSvTypeConfigs();
-                    mAdapter->gnssSvTypeConfigUpdate(currentConfig, newConfig);
+                    mAdapter->gnssSvConfigUpdate();
                 }
             }
         }
@@ -3146,8 +3258,7 @@ GnssAdapter::handleEngineUpEvent()
             // must be called only after capabilities are known
             mAdapter.setConfig();
             mAdapter.setTribandState();
-            mAdapter.gnssSvIdConfigUpdate();
-            mAdapter.gnssSvTypeConfigUpdate();
+            mAdapter.gnssSvConfigUpdate();
             mAdapter.updateSystemPowerState(mAdapter.getSystemPowerState());
             if (mAdapter.mPowerConnectState != POWER_CONNECT_UNKNOWN) {
                 mAdapter.mLocApi->updatePowerConnectState(
@@ -4214,13 +4325,6 @@ GnssAdapter::computeVRPBasedLla(const UlpLocation& loc, GpsLocationExtended& loc
     double lla[3];
 
     uint16_t locFlags = loc.gpsLocation.flags;
-    uint64_t locExtFlags = locExt.flags;
-
-    // check for SPE fix
-    if (!((locExtFlags & GPS_LOCATION_EXTENDED_HAS_OUTPUT_ENG_TYPE) &&
-          (locExt.locOutputEngType == LOC_OUTPUT_ENGINE_SPE))){
-        return;
-    }
 
     // we can only do translation if we have VRP based lever ARM info
     LeverArmTypeMask leverArmFlags = leverArmConfigInfo.leverArmValidMask;
@@ -4326,6 +4430,10 @@ GnssAdapter::reportPositionEvent(const UlpLocation& ulpLocation,
                     mAdapter.mGnssMbSvIdUsedInPosition = mLocationExtended.gnss_mb_sv_used_ids;
                 }
             }
+
+            // obtain the VRP based latitude/longitude/altitude for SPE fix
+            mAdapter.computeVRPBasedLla(mUlpLocation,
+                    mLocationExtended, mAdapter.mLocConfigInfo.leverArmConfigInfo);
 
             if (!mAdapter.reportSpeAsEnginePosition(mUlpLocation, mLocationExtended, mStatus)){
                 // extract bug report info - this returns true if consumed by systemstatus
@@ -4677,7 +4785,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
         GnssLocationInfoNotification locationInfo = {};
         list<trackingCallback> cbRunnables;
         convertLocationInfo(locationInfo, locationExtended, status);
-        convertLocation(locationInfo.location, ulpLocation, locationExtended);
+        convertLocation(locationInfo.location, ulpLocation, locationExtended, status);
         fillElapsedRealTime(locationExtended, locationInfo);
         logLatencyInfo();
 
@@ -4787,10 +4895,6 @@ GnssAdapter::reportSpeAsEnginePosition(const UlpLocation& ulpLocation,
         engLocationInfo.locationExtended = locationExtended;
         engLocationInfo.sessionStatus = status;
 
-        // obtain the VRP based latitude/longitude/altitude for SPE fix
-        computeVRPBasedLla(engLocationInfo.location,
-                           engLocationInfo.locationExtended,
-                           mLocConfigInfo.leverArmConfigInfo);
         enginePositionReported = reportEnginePositions(1, &engLocationInfo);
     }
     return enginePositionReported;
@@ -4803,6 +4907,7 @@ GnssAdapter::reportEnginePositions(unsigned int count,
     if (isPrecisePositioningEnabled) {
         bool needReportEnginePositions = needReportEnginePosition();
         GnssLocationInfoNotification locationInfo[LOC_OUTPUT_ENGINE_COUNT] = {};
+        memset(locationInfo, 0, sizeof(locationInfo));
         for (unsigned int i = 0; i < count; i++) {
             const EngineLocationInfo* engLocation = (locationArr+i);
             // if it is fused/default location, call reportPosition maintain legacy behavior
@@ -4819,7 +4924,8 @@ GnssAdapter::reportEnginePositions(unsigned int count,
                                     engLocation->sessionStatus);
                 convertLocation(locationInfo[i].location,
                                 engLocation->location,
-                                engLocation->locationExtended);
+                                engLocation->locationExtended,
+                                engLocation->sessionStatus);
                 fillElapsedRealTime(engLocation->locationExtended,
                                     locationInfo[i]);
             }
@@ -7523,6 +7629,8 @@ GnssAdapter::configLeverArmCommand(const LeverArmConfigInfo& configInfo) {
             mConfigInfo(configInfo) {}
         inline virtual void proc() const {
             mAdapter.configLeverArm(mSessionId, mConfigInfo);
+            //Save it to NVM
+            mAdapter.storeVrpData2Nvm(mConfigInfo);
         }
     };
 
@@ -7892,6 +8000,37 @@ uint32_t GnssAdapter::configOutputNmeaTypesCommand(GnssNmeaTypesMask enabledNmea
     return sessionId;
 }
 
+uint32_t GnssAdapter::gnssInjectMmfDataCommand(const GnssMapMatchedData& data) {
+
+    // generated session id will be none-zero
+    uint32_t sessionId = generateSessionId();
+    LOC_LOGd("session id %u", sessionId);
+
+    struct MsgInjectMmfData : public LocMsg {
+        GnssAdapter&       mAdapter;
+        uint32_t           mSessionId;
+        const GnssMapMatchedData& mMmfData;
+
+        inline MsgInjectMmfData(GnssAdapter& adapter,
+                                 uint32_t sessionId,
+                                 const GnssMapMatchedData& mmfData) :
+            LocMsg(),
+            mAdapter(adapter),
+            mSessionId(sessionId),
+            mMmfData(mmfData) {}
+        inline virtual void proc() const {
+            LocationError err = LOCATION_ERROR_NOT_SUPPORTED;
+            if (true == mAdapter.mEngHubProxy->gnssInjectMmfData(mMmfData)) {
+                err =  LOCATION_ERROR_SUCCESS;
+            }
+            mAdapter.reportResponse(err, mSessionId);
+        }
+    };
+
+    sendMsg(new MsgInjectMmfData(*this, sessionId, data));
+    return sessionId;
+
+}
 void GnssAdapter::powerIndicationInitCommand(const powerIndicationCb powerIndicationCallback) {
     LOC_LOGi("GnssAdapter::powerIndicationInitCommand");
 
@@ -8771,11 +8910,17 @@ void GnssAdapter::handleDisablePPENtrip() {
 }
 
 void GnssAdapter::checkUpdateDgnssNtrip(bool isLocationValid) {
-    LOC_LOGd("isInSession %d mDgnssState 0x%x isLocationValid %d isMlpEnabled %d",
-            isInSession(), mDgnssState, isLocationValid, isMlpEnabled());
-    //Enable edgnss -daemon when isInSession and isMlpEnabled.
-    //isMlpEnabled is true when RTK or edgnss feature is enabled.
-    if (isInSession() && isMlpEnabled()) {
+    LOC_LOGd("isInSession %d mDgnssState 0x%x isLocationValid %d "
+             "isMlpEnabled %d mSystemPowerState %d",
+            isInSession(), mDgnssState, isLocationValid, isMlpEnabled(), mSystemPowerState);
+    //1. Enable edgnss-daemon when isInSession and isMlpEnabled.
+    // isMlpEnabled is true when RTK or edgnss feature is enabled.
+    //2. Modem sometimes send PVT very closely right after power is suspended
+    // so need to check power is not in suspend or shutdown state
+    if (isInSession() && isMlpEnabled() &&
+            (POWER_STATE_SUSPEND != mSystemPowerState) &&
+            (POWER_STATE_DEEP_SLEEP_ENTRY != mSystemPowerState) &&
+            (POWER_STATE_SHUTDOWN != mSystemPowerState)) {
         uint64_t curBootTime = getBootTimeMilliSec();
         if (mDgnssState == (DGNSS_STATE_ENABLE_NTRIP_COMMAND | DGNSS_STATE_NO_NMEA_PENDING)) {
             mDgnssState |= DGNSS_STATE_NTRIP_SESSION_STARTED;

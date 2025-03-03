@@ -20,7 +20,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -262,8 +262,7 @@ bool GnssConfiguration::setBlocklistedSource(GnssSvIdSource& copyToSource,
     switch (copyFromSource.constellation) {
     case GnssConstellationType::GPS:
         copyToSource.constellation = GNSS_SV_TYPE_GPS;
-        LOC_LOGe("GPS SVs can't be blocklisted.");
-        retVal = false;
+        svIdOffset = GNSS_SV_CONFIG_GPS_INITIAL_SV_ID - 1;
         break;
     case GnssConstellationType::SBAS:
         copyToSource.constellation = GNSS_SV_TYPE_SBAS;

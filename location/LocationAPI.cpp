@@ -338,6 +338,22 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
     return locationApiObj;
 }
 
+uint32_t
+LocationControlAPI::gnssInjectMmfData(const GnssMapMatchedData& data)
+{
+    uint32_t id = 0;
+    pthread_mutex_lock(&gDataMutex);
+
+    if (gData.gnssInterface != NULL) {
+        id = gData.gnssInterface->gnssInjectMmfData(data);
+    } else {
+        LOC_LOGe(" No gnss interface available for Location Control API client %p ", this);
+    }
+
+    pthread_mutex_unlock(&gDataMutex);
+    return id;
+}
+
 void
 LocationAPI::destroy(locationApiDestroyCompleteCallback destroyCompleteCb)
 {

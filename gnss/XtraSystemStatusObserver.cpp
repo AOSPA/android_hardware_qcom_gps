@@ -208,6 +208,14 @@ bool XtraSystemStatusObserver::updateLockStatus(GnssConfigGpsLock lock) {
     // MO(AFW bit) is enabled and disabled when MO is disabled
     mGpsLock = lock & ~GNSS_CONFIG_GPS_LOCK_NFW_ALL;
 
+    if (ContextBase::mGps_conf.GNSS_DEPLOYMENT == PDS_API_ENABLED) {
+       mGpsLock = mGpsLock & ~GNSS_CONFIG_GPS_LOCK_MO;
+    }
+
+    LOC_LOGd("gnss deployment %d, in lock 0x%x, out lock 0x%x",
+             ContextBase::mGps_conf.GNSS_DEPLOYMENT, lock,
+             mGpsLock);
+
     if (!mReqStatusReceived) {
         return true;
     }

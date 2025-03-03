@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -828,6 +828,22 @@ public:
         match command with response.
     */
     virtual uint32_t configOsnmaEnablement(bool IsEnabled) = 0;
+
+    /** @brief
+        API to support passing map-matched Feedback data to the DRE engine.
+        Clients should use the below API to pass Map-matched data that will
+        be used by the DRE engine to compute position reports.<br/>
+
+        @param
+        GnssMapMatchedData: structure to store MMF data fields
+                        <br/>
+
+        @return
+        A session id that will be returned in responseCallback to
+        match command with response.
+    */
+
+    virtual uint32_t gnssInjectMmfData(const GnssMapMatchedData& data) = 0;
 };
 
 #endif /* ILOCATIONAPI_H */

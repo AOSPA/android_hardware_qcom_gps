@@ -98,6 +98,13 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /**  Maximum number of satellites in an ephemeris report.  */
 #define GNSS_EPHEMERIS_LIST_MAX_SIZE_V02 32
 
+/** GNSS engine rate if requested rate and current running
+ *  rate are not mulitples of each other */
+#define MIN_GNSS_TRACKING_INTERVAL (100)
+
+/** OEM DRE Data Blob size */
+#define LDT_LOC_OEM_DRE_DATA_BLOB_SIZE 4096
+
 enum LocationError {
     LOCATION_ERROR_SUCCESS = 0,
     LOCATION_ERROR_GENERAL_FAILURE,
@@ -115,7 +122,7 @@ enum LocationError {
 };
 
 // Flags to indicate which values are valid in a Location
-typedef uint16_t LocationFlagsMask;
+typedef uint32_t LocationFlagsMask;
 enum LocationFlagsBits {
     LOCATION_HAS_LAT_LONG_BIT          = (1<<0), // location has valid latitude and longitude
     LOCATION_HAS_ALTITUDE_BIT          = (1<<1), // location has valid altitude
@@ -133,6 +140,7 @@ enum LocationFlagsBits {
     LOCATION_HAS_TIME_UNC_BIT          = (1<<13), // location has timeUncMs
     LOCATION_HAS_GPTP_TIME_BIT         = (1<<14), // location has valid GPTP time
     LOCATION_HAS_GPTP_TIME_UNC_BIT     = (1<<15), // location has valid GPTP time Uncertainity
+    LOCATION_HAS_SESSION_STATUS_BIT    = (1<<16), // location has session status
 };
 
 typedef uint16_t LocationTechnologyMask;
@@ -189,7 +197,9 @@ enum GnssLocationNavSolutionBits {
     // Posiiton Report is RTF fixed corrected
     LOCATION_NAV_CORRECTION_RTK_FIXED_BIT  = (1<<7),
     // Position report is computed with only SBAS corrected SVs.
-    LOCATION_NAV_CORRECTION_ONLY_SBAS_CORRECTED_SV_USED_BIT = (1<<8)
+    LOCATION_NAV_CORRECTION_ONLY_SBAS_CORRECTED_SV_USED_BIT = (1<<8),
+    /** Postion report is MMF Aided */
+    LOCATION_NAV_MMF_AIDED_POSITION    = (1<<9)
 };
 
 typedef uint32_t GnssLocationPosDataMask;
@@ -273,6 +283,11 @@ typedef uint64_t GnssLocationInfoFlagMask;
 #define LDT_GNSS_LOCATION_INFO_PROTECT_CROSS_TRACK_BIT (1ULL<<35) // Cross-track protection level
 #define LDT_GNSS_LOCATION_INFO_PROTECT_VERTICAL_BIT (1ULL<<36) // vertical protection level
 #define LDT_GNSS_LOCATION_INFO_DGNSS_STATION_ID_BIT (1ULL<<37) // dgnss station id
+#define LDT_GNSS_LOCATION_INFO_BASE_LINE_LENGTH_BIT  (1ULL<<38) // base station & receiver distance
+#define LDT_GNSS_LOCATION_INFO_AGE_OF_CORRECTION_BIT (1ULL<<39) // Age of Corrections
+#define LDT_GNSS_LOCATION_INFO_LEAP_SECONDS_UNC_BIT (1ULL<<40) // Leap Second Uncertainity
+#define LDT_GNSS_LOCATION_INFO_REPORT_INTERVAL_BIT  (1ULL<<41) // Valid reporting interval
+#define LDT_GNSS_LOCATION_INFO_EXTENDED_DATA_BIT    (1ULL<<42) // Gnss Extended Data
 
 enum GeofenceBreachType {
     GEOFENCE_BREACH_ENTER = 0,
@@ -908,6 +923,8 @@ enum GnssSignalTypeBits {
     GNSS_SIGNAL_BEIDOU_B2BI         = (1<<22),
     /** BEIDOU B2B_Q RF Band */
     GNSS_SIGNAL_BEIDOU_B2BQ         = (1<<23),
+    /** NAVIC L1 RF Band */
+    GNSS_SIGNAL_NAVIC_L1            = (1<<24),
 };
 
 #define GNSS_SIGNAL_TYPE_MASK_ALL\
@@ -918,7 +935,7 @@ enum GnssSignalTypeBits {
      GNSS_SIGNAL_BEIDOU_B2AI | GNSS_SIGNAL_QZSS_L1CA | GNSS_SIGNAL_QZSS_L1S |\
      GNSS_SIGNAL_QZSS_L2| GNSS_SIGNAL_QZSS_L5 | GNSS_SIGNAL_SBAS_L1 |\
      GNSS_SIGNAL_NAVIC_L5 | GNSS_SIGNAL_BEIDOU_B2AQ | GNSS_SIGNAL_BEIDOU_B2BI |\
-     GNSS_SIGNAL_BEIDOU_B2BQ)
+     GNSS_SIGNAL_BEIDOU_B2BQ | GNSS_SIGNAL_NAVIC_L1)
 
 enum Gnss_LocSvSystemEnumType {
     GNSS_LOC_SV_SYSTEM_UNKNOWN                = 0,
@@ -966,7 +983,8 @@ enum Gnss_LocSignalEnumType {
     GNSS_LOC_SIGNAL_TYPE_BEIDOU_B2A_Q = 19,     /**<  BEIDOU B2A_Q RF Band  */
     GNSS_LOC_SIGNAL_TYPE_BEIDOU_B2B_I = 20,     /**<  BeiDou B2B_I RF band (data) */
     GNSS_LOC_SIGNAL_TYPE_BEIDOU_B2B_Q = 21,     /**< BeiDou B2B_Q RF band (Pilot)*/
-    GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES = 22    /**<  Maximum number of signal types */
+    GNSS_LOC_SIGNAL_TYPE_NAVIC_L1 = 22,         /**<  NAVIC L1 RF Band */
+    GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES = 23    /**<  Maximum number of signal types */
 };
 
 typedef uint32_t PositioningEngineMask;
@@ -1003,9 +1021,27 @@ enum LocEngineRunState {
 typedef uint64_t GnssDataMask;
 enum GnssDataBits {
     // Jammer Indicator is available
-    GNSS_LOC_DATA_JAMMER_IND_BIT = (1ULL << 0),
+    GNSS_LOC_DATA_JAMMER_IND_BIT    = (1ULL << 0),
     // AGC is available
-    GNSS_LOC_DATA_AGC_BIT = (1ULL << 1)
+    GNSS_LOC_DATA_AGC_BIT           = (1ULL << 1),
+    // AGC status for L1 band is available.
+    GNSS_LOC_DATA_AGC_STATUS_L1_BIT = (1ULL << 2),
+    // AGC status for L2 band is available.
+    GNSS_LOC_DATA_AGC_STATUS_L2_BIT = (1ULL << 3),
+    // AGC status for L5 band is available.
+    GNSS_LOC_DATA_AGC_STATUS_L5_BIT = (1ULL << 4),
+};
+
+/** Indicate RF Automatic Gain Control Status <br/>   */
+enum AgcStatus {
+    /**< AGC status is unknown <br/> */
+    AGC_STATUS_UNKNOWN                              = 0,
+    /**< AGC status is No saturation <br/> */
+    AGC_STATUS_NO_SATURATION                        = 1,
+    /**< AGC status is Front end gain maximum saturation <br/> */
+    AGC_STATUS_FRONT_END_GAIN_MAXIMUM_SATURATION    = 2,
+    /**< AGC status is Front end gain minimum saturation <br/> */
+    AGC_STATUS_FRONT_END_GAIN_MINIMUM_SATURATION    = 3,
 };
 
 typedef uint32_t GnssSystemTimeStructTypeFlags;
@@ -1110,10 +1146,16 @@ enum LocationQualityType {
     LOCATION_FIXED_QUALITY_TYPE = 3,
 };
 
+enum loc_sess_status {
+    LOC_SESS_SUCCESS,
+    LOC_SESS_INTERMEDIATE,
+    LOC_SESS_FAILURE
+};
 
 struct Location {
     uint32_t size;           // set to sizeof(Location)
     LocationFlagsMask flags; // bitwise OR of LocationFlagsBits to mark which params are valid
+    loc_sess_status sessionStatus; // location session status
     uint64_t timestamp;      // UTC timestamp for location fix, milliseconds since January 1, 1970
     double latitude;         // in degrees
     double longitude;        // in degrees
@@ -1137,10 +1179,8 @@ struct Location {
     float timeUncMs;             // Time uncertainty in milliseconds
                                  // SPE report: confidence level is 99%
                                  // Other engine report: confidence not unspecified
-    // GPTP time field in ns
-    uint64_t elapsedgPTPTime;
-    // GPTP time Unc
-    uint64_t elapsedgPTPTimeUnc;
+    uint64_t elapsedgPTPTime;    // GPTP time field in ns
+    uint64_t elapsedgPTPTimeUnc; // GPTP time Unc
 };
 
 enum LocReqEngineTypeMask {
@@ -1219,7 +1259,17 @@ struct TrackingOptions : LocationOptions {
         bool updated = false;
         if (other.minInterval < minInterval) {
             updated = true;
-            minInterval = other.minInterval;
+            if (minInterval % other.minInterval != 0) {
+                minInterval = MIN_GNSS_TRACKING_INTERVAL;
+            } else {
+                minInterval = other.minInterval;
+            }
+        } else if (other.minInterval > minInterval) {
+            // Will update option to true only if tbf's are not multiple of each other
+            if (other.minInterval % minInterval != 0) {
+                updated = true;
+                minInterval = MIN_GNSS_TRACKING_INTERVAL;
+            }
         }
         if (other.powerMode < powerMode) {
             updated = true;
@@ -1498,17 +1548,14 @@ typedef uint32_t DrSolutionStatusMask;
 #define DRE_WARNING_SENSOR_TEMP_OUT_OF_RANGE   (1<<13)
 #define DRE_WARNING_USER_DYNAMICS_INSUFFICIENT (1<<14)
 #define DRE_WARNING_FACTORY_DATA_INCONSISTENT  (1<<15)
+#define DRE_WARNING_MMF_UNAVAILABLE            (1<<16)
+#define DRE_WARNING_MMF_NOT_USABLE             (1<<17)
+
 
 struct LLAInfo {
     double latitude;  // in degree
     double longitude; // in degree
     float altitude;  // altitude wrt to ellipsoid
-};
-
-enum loc_sess_status {
-    LOC_SESS_SUCCESS,
-    LOC_SESS_INTERMEDIATE,
-    LOC_SESS_FAILURE
 };
 
 struct GnssLocationInfoNotification {
@@ -1591,6 +1638,25 @@ struct GnssLocationInfoNotification {
     //   - Monitoring station -- 1000-2023 (Station ID biased by 1000).
     //   - Other values reserved.
     uint16_t dgnssStationId[DGNSS_STATION_ID_MAX];
+    // Distance between the base station and the receiver
+    // Unit - meters
+    double baseLineLength;
+    // Difference in time between the fix timestamp using the
+    // correction and the time of the correction
+    // Unit - milli-seconds
+    uint64_t ageMsecOfCorrections;
+    /** Uncertainty for the GNSS leap second.
+     *  Units -- Seconds */
+    uint8_t leapSecondsUnc;
+    /** Current reporting interval. Intervals at which GNSS engine is
+     *  delivering position reports. It is minimum of all clients
+     *  requesting position reports.
+     *  Unit - milli-seconds*/
+    uint32_t posReportingInterval;
+    /** Must be set to # of elements in extendedData */
+    uint32_t extendedDataLen;
+    /**   Data blob payload  */
+    uint8_t extendedData[LDT_LOC_OEM_DRE_DATA_BLOB_SIZE];
 };
 
 // Indicate the API that is called to generate the location report
@@ -1653,6 +1719,7 @@ struct GnssNiNotification {
 #define QZSS_L5_Q_CARRIER_FREQUENCY     (1176450000.0)
 #define SBAS_L1_CA_CARRIER_FREQUENCY    (1575420000.0)
 #define NAVIC_L5_CARRIER_FREQUENCY      (1176450000.0)
+#define NAVIC_L1_CARRIER_FREQUENCY      (1575420000.0)
 
 struct GnssSv {
     uint32_t size;       // set to sizeof(GnssSv)
@@ -1664,7 +1731,7 @@ struct GnssSv {
     //    - For QZSS:    193 to 197
     //    - For BDS:     201 to 263
     //    - For GAL:     301 to 336
-    //    - For NAVIC:   401 to 414
+    //    - For NAVIC:   401 to 420
     uint16_t svId;
     GnssSvType type;   // type of SV (GPS, SBAS, GLONASS, QZSS, BEIDOU, GALILEO, NAVIC)
     float cN0Dbhz;     // signal strength
@@ -1869,6 +1936,9 @@ struct GnssDataNotification {
     GnssDataMask  gnssDataMask[GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES];  // bitwise OR of GnssDataBits
     double        jammerInd[GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES];     // Jammer Indication
     double        agc[GNSS_LOC_MAX_NUMBER_OF_SIGNAL_TYPES];           // Automatic gain control
+    AgcStatus     agcStatusL1; // RF Automatic gain control status for L1 band.
+    AgcStatus     agcStatusL2; // RF Automatic gain control status for L2 band.
+    AgcStatus     agcStatusL5; // RF Automatic gain control status for L5 band.
 };
 
 struct GnssMeasurementsAgc {
@@ -1883,6 +1953,9 @@ struct GnssMeasurementsNotification {
     uint32_t count;        // number of items in GnssMeasurements array
     GnssMeasurementsData measurements[GNSS_MEASUREMENTS_MAX];
     GnssMeasurementsClock clock; // clock
+    AgcStatus     agcStatusL1; // RF Automatic gain control status for L1 band.
+    AgcStatus     agcStatusL2; // RF Automatic gain control status for L2 band.
+    AgcStatus     agcStatusL5; // RF Automatic gain control status for L5 band.
     bool isFullTracking;
     uint32_t agcCount;     // number of items in GnssMeasurementsAgc array
     GnssMeasurementsAgc gnssAgc[GNSS_BANDS_MAX];
@@ -1913,6 +1986,10 @@ inline bool operator ==(GnssSvIdSource const& left, GnssSvIdSource const& right)
 struct GnssSvIdConfig {
     uint32_t size; // set to sizeof(GnssSvIdConfig)
 
+    // GPS - SV 1 maps to bit 0
+#define GNSS_SV_CONFIG_GPS_INITIAL_SV_ID 1
+    uint64_t gpsBlacklistSvMask;
+
     // GLONASS - SV 65 maps to bit 0
 #define GNSS_SV_CONFIG_GLO_INITIAL_SV_ID 65
     uint64_t gloBlacklistSvMask;
@@ -1942,6 +2019,7 @@ struct GnssSvIdConfig {
 
     inline bool equals(const GnssSvIdConfig& inConfig) {
         if ((inConfig.size == size) &&
+                (inConfig.gpsBlacklistSvMask == gpsBlacklistSvMask) &&
                 (inConfig.gloBlacklistSvMask == gloBlacklistSvMask) &&
                 (inConfig.bdsBlacklistSvMask == bdsBlacklistSvMask) &&
                 (inConfig.qzssBlacklistSvMask == qzssBlacklistSvMask) &&
@@ -2236,6 +2314,10 @@ struct GnssDcReportInfo {
     uint32_t             numValidBits;
     // dc report data, packed into uint8_t
     std::vector<uint8_t> dcReportData;
+    /** SV's Pseudo-Random Number validity */
+    bool prnValid;
+    /** SV's Pseudo-Random Number. */
+    uint8_t prn;
 };
 
 // Specify the set of terrestrial technologies
@@ -3599,5 +3681,71 @@ enum OdcpiCallbackTypeMaskBits {
 };
 
 typedef uint16_t OdcpiCallbackTypeMask;
+
+enum {
+    LDT_MMF_DATA_VALID_UTC_TIME     = (1<<0),
+    LDT_MMF_DATA_VALID_LAT_DIFF     = (1<<1),
+    LDT_MMF_DATA_VALID_LONG_DIFF    = (1<<2),
+    LDT_MMF_DATA_VALID_TUNNEL       = (1<<3),
+    LDT_MMF_DATA_VALID_BEARING      = (1<<4),
+    LDT_MMF_DATA_VALID_ALTITUDE     = (1<<5),
+    LDT_MMF_DATA_VALID_HOR_ACC      = (1<<6),
+    LDT_MMF_DATA_VALID_ALT_ACC      = (1<<7),
+    LDT_MMF_DATA_VALID_BEARING_ACC  = (1<<8),
+} GnssMmfDataValidity;
+
+struct GnssMapMatchedData {
+    /** Validity fields for MMF data fields to follow
+     *  Flags defined uisng enum GnssMmfDataValidity */
+    uint64_t validityMask;
+
+    /** Unix epoch time of the location fix for which map-match
+     *  feedback is being sent, since the start of the Unix epoch
+     *  (00:00:00 January 1, 1970 UTC).
+     *  Unit: Milli-seconds */
+    uint64_t utcTimestampMs;
+
+    /** Latitude difference = map matched latitude - reported latitude
+     *  Unit: Degrees
+     *  Range: [-90.0, 90.0] */
+    double mapMatchedLatitudeDifference;
+
+    /** Longitude difference = map matched longitude - reported longitude
+     *  Unit: Degrees
+     *  Range: [-180.0, 180.0] */
+    double mapMatchedLongitudeDifference;
+
+    /** Bearing: The horizontal direction of travel of the device with
+     *  respect to north and is unrelated to the device orientation.
+     *  Unit: Degrees
+     *  range: [0, 360) */
+    float bearing;
+
+    /** Absolute Altitude above the WGS 84 reference ellipsoid
+        Unit: meters */
+    double altitude;
+
+    /** Horizontal accuracy radius defined with the
+     *  68th percentile confidence level.
+     *  Unit: meter
+     *  Range: 0 or greater */
+    float horizontalAccuracy;
+
+    /** Altitude accuracy. Defined with 68% confidence level.
+     *  Unit:meter
+     *  Range: 0 or greater */
+    float altitudeAccuracy;
+
+    /** Estimated bearing accuracy defined with
+     *  68 percentile confidence level (1 sigma).
+     *  Unit: Degrees
+     *  Range [0, 360) */
+    float bearingAccuracy;
+
+    /** Road Type. Decision to use the MMF data depends on isTunnel
+     *  Value: True or False */
+    bool isTunnel;
+
+};
 
 #endif /* LOCATIONDATATYPES_H */

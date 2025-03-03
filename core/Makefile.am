@@ -6,7 +6,6 @@ AM_CFLAGS = -I./ \
             -I./data-items/ \
             -I./data-items/common \
             -I./observer \
-            -I$(WORKSPACE)/gps-noship/flp \
             -D__func__=__PRETTY_FUNCTION__ \
             -fno-short-enums \
             -std=c++11

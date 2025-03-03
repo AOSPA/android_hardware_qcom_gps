@@ -30,7 +30,7 @@
  /*
  Changes from Qualcomm Innovation Center are provided under the following license:
 
- Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted (subject to the limitations in the
@@ -91,12 +91,12 @@
 // LE targets with no logcat support
 #if defined(FEATURE_EXTERNAL_AP) || defined(USE_SYSLOG_LOGGING)
 #include <syslog.h>
-#define ALOGE(...) syslog(LOG_ERR,     "LOC_LOGE: " __VA_ARGS__);
-#define ALOGW(...) syslog(LOG_WARNING, "LOC_LOGW: " __VA_ARGS__);
-#define ALOGI(...) syslog(LOG_NOTICE,  "LOC_LOGI: " __VA_ARGS__);
-#define ALOGD(...) syslog(LOG_DEBUG,   "LOC_LOGD: " __VA_ARGS__);
-#define ALOGV(...) syslog(LOG_NOTICE,  "LOC_LOGV: " __VA_ARGS__);
-#define ALOGA(...) syslog(LOG_NOTICE,  "LOC_LOGA: " __VA_ARGS__);
+#define ALOGE(format, x...) syslog(LOG_ERR,     "E/%s (%d): " format, LOG_TAG, getpid(), ##x);
+#define ALOGW(format, x...) syslog(LOG_WARNING, "W/%s (%d): " format, LOG_TAG, getpid(), ##x);
+#define ALOGI(format, x...) syslog(LOG_NOTICE,  "I/%s (%d): " format, LOG_TAG, getpid(), ##x);
+#define ALOGD(format, x...) syslog(LOG_DEBUG,   "D/%s (%d): " format, LOG_TAG, getpid(), ##x);
+#define ALOGV(format, x...) syslog(LOG_NOTICE,  "V/%s (%d): " format, LOG_TAG, getpid(), ##x);
+#define ALOGA(format, x...) syslog(LOG_NOTICE,  "A/%s (%d): " format, LOG_TAG, getpid(), ##x);
 #else /* FEATURE_EXTERNAL_AP */
 #define TS_PRINTF(format, x...)                                  \
 {                                                                \

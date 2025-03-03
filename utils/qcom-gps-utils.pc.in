@@ -3,8 +3,8 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: gps-utils
+Name: qcom-gps-utils
 Description: QTI GPS Location utils
 Version: @VERSION
 Libs: -L${libdir} -lgps_utils
-Cflags: -I${includedir}/gps-utils
+Cflags: -I${includedir}/qcom-gps-utils

@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -314,6 +314,10 @@ LocationCapabilitiesMask
 LocAdapterBase::getCapabilities()
 {
     LocationCapabilitiesMask mask = 0;
+    // Below feature flag needs to be set irrespective of engine capabilities are known or not
+#if defined (FEATURE_AUTOMOTIVE) || defined (FEATURE_NHZ_ENABLED)
+        mask |= LOCATION_CAPABILITIES_QWES_GNSS_NHZ;
+#endif
 
     if (isEngineCapabilitiesKnown()) {
         // time based tracking always supported
@@ -366,9 +370,6 @@ LocAdapterBase::getCapabilities()
         }
         //Get QWES feature status mask
         mask |= ContextBase::getQwesFeatureStatus();
-#if defined (FEATURE_AUTOMOTIVE) || defined (FEATURE_NHZ_ENABLED)
-        mask |= LOCATION_CAPABILITIES_QWES_GNSS_NHZ;
-#endif
         if (ContextBase::isAntennaInfoAvailable()) {
             mask |= LOCATION_CAPABILITIES_ANTENNA_INFO;
         }
