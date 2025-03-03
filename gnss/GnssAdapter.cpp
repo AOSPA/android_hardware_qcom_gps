@@ -152,42 +152,6 @@ inline void GnssReportLoggerUtil::log(const GnssLatencyInfo& gnssLatencyMeasInfo
     }
 }
 
-class LocNvParams
-{
-public:
-
-    enum LocNvParamId {
-       LEVER_ARM_GNSS_TO_VRP = 0, // Blob for LeverArmParams
-       MAX_NUM_OF_LOC_NV_PARAMS,
-       NV_PARAM_E_SIZE   = 0x10000000      // force enum to be 32-bit
-    };
-
-    static const char* getParamName (LocNvParamId nvId);
-
-};
-
-
-const char* LocNvParamNameTable[] =
-{
-    "LEVER_ARM_GNSS_TO_VRP", // 0 LeverArmParams blob
-};
-
-const char* LocNvParams::getParamName(LocNvParamId nvId)
-{
-    int paramNameCnt = 0;
-    const char* paramName = NULL;
-
-    paramNameCnt = sizeof (LocNvParamNameTable)/ sizeof (char*);
-
-    if ((nvId < MAX_NUM_OF_LOC_NV_PARAMS) && (nvId < paramNameCnt)) {
-        paramName = LocNvParamNameTable[nvId];
-    } else {
-        LOC_LOGw("getParamName: name for nv item id %d not set", nvId);
-    }
-
-    return paramName;
-}
-
 GnssAdapter::GnssAdapter() :
     LocAdapterBase(0,
                    LocContext::getLocContext(LocContext::mLocationHalName),
@@ -245,7 +209,6 @@ GnssAdapter::GnssAdapter() :
     mPositionElapsedRealTimeCal(30000000),
     mAddressRequestCb(nullptr),
     mHmacConfig(HMAC_CONFIG_UNKNOWN),
-    mNvParamMgr(NvParamMgr::getInstance()),
     mNmeaReqEngTypeMask(LOC_REQ_ENGINE_FUSED_BIT),
     mAppHash(""),
     m3GppSourceMask(QDGNSS_3GPP_SOURCE_UNKNOWN),
@@ -295,90 +258,10 @@ GnssAdapter::GnssAdapter() :
     initEngHubProxyCommand();
     testLaunchQppeBringUp();
     mXtraObserver.init();
-    restoreConfigFromNvm();
     // at last step, let us inform adapater base that we are done
     // with initialization, e.g.: ready to process handleEngineUpEvent
     doneInit();
 
-}
-
-void GnssAdapter::restoreConfigFromNvm()
-{
-
-    LOC_LOGd("restoreConfigFromNvm");
-    struct MsgReadNvmData : public LocMsg {
-        GnssAdapter&       mAdapter;
-
-        inline MsgReadNvmData(GnssAdapter& adapter) :
-            LocMsg(),
-            mAdapter(adapter) {}
-        inline virtual void proc() const {
-            //Read GNSS VRP data
-            mAdapter.mLocConfigInfo.leverArmConfigInfo = mAdapter.readVrpDataFromNvm();
-            LOC_LOGi("0x%x %f %f %f", mAdapter.mLocConfigInfo.leverArmConfigInfo.leverArmValidMask,
-                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP.forwardOffsetMeters,
-                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP.sidewaysOffsetMeters,
-                mAdapter.mLocConfigInfo.leverArmConfigInfo.gnssToVRP.upOffsetMeters);
-            if (mAdapter.mLocConfigInfo.leverArmConfigInfo.leverArmValidMask) {
-                if (true == mAdapter.mEngHubLoadSuccessful) {
-                    if (false == mAdapter.mEngHubProxy->configLeverArm(
-                            mAdapter.mLocConfigInfo.leverArmConfigInfo)) {
-                        LOC_LOGe("configLeverArm Failed");
-                    } else {
-                        LOC_LOGd("configLeverArm Success");
-                    }
-                }
-            }
-        }
-    };
-    sendMsg(new MsgReadNvmData(*this));
-}
-
-LeverArmConfigInfo GnssAdapter::readVrpDataFromNvm()
-{
-    //Retrieve those parameters from back up NV memory
-    LeverArmConfigInfo configInfo = {};
-
-    const char* paramName = NULL;
-    nv_param_err_code errorCode = NV_PARAM_ERR_NO_ERR;
-    unsigned int size = sizeof(LeverArmConfigInfo);
-    paramName = LocNvParams::getParamName(LocNvParams::LEVER_ARM_GNSS_TO_VRP);
-    unsigned char* leverArmBlob = reinterpret_cast<unsigned char*>(&configInfo);
-    if ((nullptr != leverArmBlob) && (nullptr != mNvParamMgr)) {
-        errorCode = mNvParamMgr->getBlobParam(paramName, leverArmBlob, size);
-        if (NV_PARAM_ERR_NO_ERR == errorCode) {
-            LeverArmConfigInfo* leverArmConfig =
-                  reinterpret_cast<LeverArmConfigInfo*>(leverArmBlob);
-            if (nullptr != leverArmConfig) {
-                configInfo = *leverArmConfig;
-            }
-        }
-    }
-    return configInfo;
-}
-
-bool GnssAdapter::storeVrpData2Nvm(const LeverArmConfigInfo& configInfo)
-{
-    bool retVal = false;
-    nv_param_err_code errorCode = NV_PARAM_ERR_NO_ERR;
-    LOC_LOGi("0x%x %f %f %f", configInfo.leverArmValidMask,
-            configInfo.gnssToVRP.forwardOffsetMeters,
-            configInfo.gnssToVRP.sidewaysOffsetMeters,
-            configInfo.gnssToVRP.upOffsetMeters);
-    if (configInfo.leverArmValidMask & LEVER_ARM_TYPE_GNSS_TO_VRP_BIT) {
-        const char* paramName = NULL;
-        nv_param_err_code errorCode = NV_PARAM_ERR_NO_ERR;
-        unsigned int size = sizeof(LeverArmConfigInfo);
-        if (nullptr != mNvParamMgr) {
-            paramName = LocNvParams::getParamName(LocNvParams::LEVER_ARM_GNSS_TO_VRP);
-            errorCode = mNvParamMgr->saveBlobParam(paramName,
-                    (const unsigned char*)&configInfo, size);
-        }
-    }
-    if (NV_PARAM_ERR_NO_ERR == errorCode) {
-        retVal = true;
-    }
-    return retVal;
 }
 
 void
@@ -7629,8 +7512,6 @@ GnssAdapter::configLeverArmCommand(const LeverArmConfigInfo& configInfo) {
             mConfigInfo(configInfo) {}
         inline virtual void proc() const {
             mAdapter.configLeverArm(mSessionId, mConfigInfo);
-            //Save it to NVM
-            mAdapter.storeVrpData2Nvm(mConfigInfo);
         }
     };
 

@@ -80,7 +80,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <queue>
 #include <NativeAgpsHandler.h>
 #include <unordered_map>
-#include <base_util/nvparam_mgr.h>
 
 #define MAX_URL_LEN 256
 #define NMEA_SENTENCE_MAX_LENGTH 200
@@ -95,7 +94,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class GnssAdapter;
 
-using namespace qc_loc_fw;
 typedef std::map<LocationSessionKey, LocationOptions> LocationSessionMap;
 typedef std::map<LocationSessionKey, TrackingOptions> TrackingOptionsMap;
 
@@ -378,7 +376,6 @@ class GnssAdapter : public LocAdapterBase {
         HMAC_CONFIG_TEST_MODE,
     } HmacConfigType;
     HmacConfigType mHmacConfig;
-    NvParamMgr*   mNvParamMgr;
 
     /* === NativeAgpsHandler ======================================================== */
     NativeAgpsHandler mNativeAgpsHandler;
@@ -458,11 +455,7 @@ protected:
 
 public:
     GnssAdapter();
-    virtual inline ~GnssAdapter() {
-        if (nullptr != mNvParamMgr) {
-            mNvParamMgr->releaseInstance();
-        }
-    }
+    virtual inline ~GnssAdapter() { }
 
     /* ==== SSR ============================================================================ */
     /* ======== EVENTS ====(Called from QMI Thread)========================================= */
@@ -878,9 +871,6 @@ public:
     // This function can only be called from Engine Hub
     void handleQesdkQwesStatusFromEHub(
             const std::unordered_map<LocationQwesFeatureType, bool> &featureMap);
-    void restoreConfigFromNvm();
-    LeverArmConfigInfo readVrpDataFromNvm();
-    bool storeVrpData2Nvm(const LeverArmConfigInfo& configInfo);
 
 };
 
