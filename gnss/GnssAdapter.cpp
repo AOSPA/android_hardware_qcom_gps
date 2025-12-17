@@ -424,22 +424,24 @@ void GnssAdapter::fillElapsedRealTime(const GpsLocationExtended& locationExtende
             out.elapsedRealTime = elapsedTimeNs;
             out.elapsedRealTimeUnc = (int64_t) (elapsedTimeUncMsec * 1000000);
         }
-#ifndef FEATURE_AUTOMOTIVE
-        else if (out.timestamp > 0) {
-            int64_t locationTimeNanos = (int64_t)out.timestamp * 1000000;
-            bool isCurDataTimeTrustable = (out.timestamp % mLocPositionMode.min_interval == 0);
-            int64_t elapsedRealTime = mPositionElapsedRealTimeCal.getElapsedRealtimeEstimateNanos(
-                    locationTimeNanos, isCurDataTimeTrustable,
-                    (int64_t)mLocPositionMode.min_interval * 1000000);
-
-            if (elapsedRealTime != -1) {
-                out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
-                out.elapsedRealTime = elapsedRealTime;
-                out.elapsedRealTimeUnc = mPositionElapsedRealTimeCal.getElapsedRealtimeUncNanos();
-            }
-        }
-#endif //FEATURE_AUTOMOTIVE
     }
+#ifndef FEATURE_AUTOMOTIVE
+    bool needToUseCurrentBootTime = false;
+    uint64_t currentBootTime = getBootTimeMilliSec() * 1000000;
+    if (!(out.flags & LOCATION_HAS_ELAPSED_REAL_TIME_BIT)) {
+       needToUseCurrentBootTime = true;
+       LOC_LOGw("can not calculate elapsed real time, set to current time");
+    } else if (out.elapsedRealTime > currentBootTime) {
+       needToUseCurrentBootTime = true;
+       LOC_LOGw("elapsed real time is %" PRIu64 " nsec in future, set to current time",
+                out.elapsedRealTime - currentBootTime);
+    }
+    if (needToUseCurrentBootTime) {
+       out.elapsedRealTime =currentBootTime;
+       out.elapsedRealTimeUnc = mPositionElapsedRealTimeCal.getElapsedRealtimeUncNanos();
+       out.flags |= LOCATION_HAS_ELAPSED_REAL_TIME_BIT;
+    }
+#endif //FEATURE_AUTOMOTIVE
 }
 
 /* This is utility routine that computes number of SV used
@@ -6280,27 +6282,28 @@ GnssAdapter::nfwControlCommand(std::vector<std::string>& enabledNfws) {
                 return;
             }
 
-            GnssConfigGpsLock gpsLock;
+            if (mAdapter.mSupportNfwControl) {
+                GnssConfigGpsLock gpsLock;
 
-            uint32_t nfwControlBits;
-            nfwControlBits = mAdapter.getNfwControlBits(mEnabledNfws);
-            gpsLock = ContextBase::mGps_conf.GPS_LOCK;
-            gpsLock &= GNSS_CONFIG_GPS_LOCK_MO;
-            gpsLock |= nfwControlBits;
-            ContextBase::mGps_conf.GPS_LOCK = gpsLock;
+                uint32_t nfwControlBits;
+                nfwControlBits = mAdapter.getNfwControlBits(mEnabledNfws);
+                gpsLock = ContextBase::mGps_conf.GPS_LOCK;
+                gpsLock &= GNSS_CONFIG_GPS_LOCK_MO;
+                gpsLock |= nfwControlBits;
+                ContextBase::mGps_conf.GPS_LOCK = gpsLock;
 
-            LOC_LOGv("gpsLock = 0x%X nfwControlBits = 0x%X", gpsLock, nfwControlBits);
-            mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
-                         mApi.setGpsLockSync((GnssConfigGpsLock)gpsLock);
-            }));
+                LOC_LOGv("gpsLock = 0x%X nfwControlBits = 0x%X", gpsLock, nfwControlBits);
+                mApi.sendMsg(new LocApiMsg([&mApi = mApi, gpsLock]() {
+                             mApi.setGpsLockSync((GnssConfigGpsLock)gpsLock);
+                }));
+            } else {
+                LOC_LOGw("NFW control is not supported, do not use this for NFW status");
+            }
         }
     };
 
-    if (mSupportNfwControl) {
-        sendMsg(new MsgControlNfwLocationAccess(*this, *mLocApi, enabledNfws));
-    } else {
-        LOC_LOGw("NFW control is not supported, do not use this for NFW");
-    }
+    sendMsg(new MsgControlNfwLocationAccess(*this, *mLocApi, enabledNfws));
+
 }
 
 // Set tunc constrained mode, use 0 session id to indicate
